@@ -8,3 +8,4 @@ composer.lock
 
 # Local test artefacts
 /.phpunit.cache/
+.phpunit.result.cache
