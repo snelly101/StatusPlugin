@@ -57,6 +57,7 @@ class Plugin {
 		add_filter( 'cron_schedules', array( Cron::class, 'add_schedules' ) ); // phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 
 		Privacy::register();
+		NotificationManager::register();
 
 		add_action( Cron::RUN_MONITOR_CHECKS, array( MonitorRunner::class, 'run_due_checks' ) );
 		add_action( Cron::PROCESS_NOTIFICATIONS, array( NotificationQueue::class, 'process_batch' ) );
