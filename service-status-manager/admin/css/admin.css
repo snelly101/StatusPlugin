@@ -1,0 +1,135 @@
+/* Service Status Manager - wp-admin styling */
+
+.ssm-wrap {
+	max-width: 1200px;
+}
+
+.ssm-status-operational { --ssm-c: #16a34a; }
+.ssm-status-degraded { --ssm-c: #eab308; }
+.ssm-status-partial-outage { --ssm-c: #f97316; }
+.ssm-status-major-outage { --ssm-c: #dc2626; }
+.ssm-status-maintenance { --ssm-c: #2563eb; }
+.ssm-status-unknown { --ssm-c: #6b7280; }
+
+.ssm-overall-banner {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 14px 18px;
+	border-radius: 6px;
+	background: #fff;
+	border-left: 5px solid var(--ssm-c, #6b7280);
+	margin: 16px 0;
+	box-shadow: 0 1px 2px rgba(0,0,0,.05);
+}
+
+.ssm-status-dot {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: var(--ssm-c, #6b7280);
+	display: inline-block;
+}
+
+.ssm-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 10px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+	background: color-mix(in srgb, var(--ssm-c, #6b7280) 15%, white);
+	color: var(--ssm-c, #6b7280);
+}
+
+.ssm-badge::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--ssm-c, #6b7280);
+}
+
+.ssm-stat-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: 12px;
+	margin: 20px 0;
+}
+
+.ssm-stat-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+}
+
+.ssm-stat-card--warn {
+	border-color: #dc2626;
+	background: #fef2f2;
+}
+
+.ssm-stat-value {
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1.2;
+}
+
+.ssm-stat-label {
+	color: #646970;
+	font-size: 13px;
+}
+
+.ssm-two-col {
+	display: flex;
+	gap: 24px;
+	align-items: flex-start;
+	flex-wrap: wrap;
+}
+
+.ssm-col-list {
+	flex: 2;
+	min-width: 400px;
+}
+
+.ssm-col-form {
+	flex: 1;
+	min-width: 320px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	padding: 0 16px 16px;
+	border-radius: 6px;
+}
+
+.ssm-activity-list {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 12px 16px;
+}
+
+.ssm-activity-list li {
+	padding: 4px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.ssm-activity-list li:last-child {
+	border-bottom: none;
+}
+
+.ssm-monitor-type-fields {
+	display: none;
+}
+
+.ssm-secret-value {
+	font-family: monospace;
+	letter-spacing: 1px;
+}
+
+.ssm-log-level-error { color: #dc2626; font-weight: 600; }
+.ssm-log-level-warning { color: #b45309; font-weight: 600; }
+.ssm-log-level-info { color: #2563eb; }
+.ssm-log-level-debug { color: #6b7280; }

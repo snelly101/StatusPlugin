@@ -1,0 +1,419 @@
+/*
+ * Service Status Manager - public status page styling.
+ * Uses CSS custom properties so branding (Settings > Branding) and
+ * light/dark themes can be swapped without editing markup.
+ */
+
+.ssm-status-page {
+	--ssm-primary: #2563eb;
+	--ssm-secondary: #1e293b;
+	--ssm-bg: #ffffff;
+	--ssm-surface: #f8fafc;
+	--ssm-border: #e2e8f0;
+	--ssm-text: #0f172a;
+	--ssm-text-muted: #64748b;
+	--ssm-radius: 8px;
+
+	--ssm-operational: #16a34a;
+	--ssm-degraded: #eab308;
+	--ssm-partial-outage: #f97316;
+	--ssm-major-outage: #dc2626;
+	--ssm-maintenance: #2563eb;
+	--ssm-unknown: #6b7280;
+
+	max-width: 900px;
+	margin: 0 auto;
+	padding: 24px 16px 64px;
+	color: var(--ssm-text);
+	font-size: 16px;
+	line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+	.ssm-status-page[data-ssm-theme="auto"] {
+		--ssm-bg: #0f172a;
+		--ssm-surface: #1e293b;
+		--ssm-border: #334155;
+		--ssm-text: #f1f5f9;
+		--ssm-text-muted: #94a3b8;
+	}
+}
+
+.ssm-status-page[data-ssm-theme="dark"] {
+	--ssm-bg: #0f172a;
+	--ssm-surface: #1e293b;
+	--ssm-border: #334155;
+	--ssm-text: #f1f5f9;
+	--ssm-text-muted: #94a3b8;
+}
+
+.ssm-status-page * {
+	box-sizing: border-box;
+}
+
+.ssm-page-header {
+	text-align: center;
+	margin-bottom: 24px;
+}
+
+.ssm-page-logo {
+	max-height: 60px;
+	margin-bottom: 12px;
+}
+
+.ssm-page-title {
+	margin: 0 0 8px;
+	font-size: 2rem;
+}
+
+.ssm-page-section {
+	margin: 32px 0;
+}
+
+.ssm-status-banner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	padding: 18px 20px;
+	border-radius: var(--ssm-radius);
+	background: var(--ssm-surface);
+	border: 1px solid var(--ssm-border);
+	border-left: 6px solid var(--ssm-c, var(--ssm-unknown));
+}
+
+.ssm-status-icon {
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: var(--ssm-c, var(--ssm-unknown));
+	flex-shrink: 0;
+}
+
+.ssm-summary-desc {
+	display: block;
+	color: var(--ssm-text-muted);
+	font-size: .9rem;
+}
+
+.ssm-summary-updated {
+	margin-left: auto;
+	font-size: .85rem;
+	color: var(--ssm-text-muted);
+}
+
+/* Status colour mapping (applied to badges, banners, and monitor icons). */
+.ssm-status-operational { --ssm-c: var(--ssm-operational); }
+.ssm-status-degraded { --ssm-c: var(--ssm-degraded); }
+.ssm-status-partial-outage { --ssm-c: var(--ssm-partial-outage); }
+.ssm-status-major-outage { --ssm-c: var(--ssm-major-outage); }
+.ssm-status-maintenance { --ssm-c: var(--ssm-maintenance); }
+.ssm-status-unknown { --ssm-c: var(--ssm-unknown); }
+
+.ssm-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	border-radius: 999px;
+	font-size: .8rem;
+	font-weight: 600;
+	background: color-mix(in srgb, var(--ssm-c, var(--ssm-unknown)) 15%, var(--ssm-bg));
+	color: var(--ssm-c, var(--ssm-unknown));
+	white-space: nowrap;
+}
+
+.ssm-badge::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--ssm-c, var(--ssm-unknown));
+}
+
+.ssm-badge--severity-informational, .ssm-badge--severity-minor { --ssm-c: var(--ssm-degraded); }
+.ssm-badge--severity-major { --ssm-c: var(--ssm-partial-outage); }
+.ssm-badge--severity-critical { --ssm-c: var(--ssm-major-outage); }
+.ssm-badge--status-resolved, .ssm-badge--maintenance-completed { --ssm-c: var(--ssm-operational); }
+.ssm-badge--maintenance-cancelled { --ssm-c: var(--ssm-unknown); }
+.ssm-badge--maintenance-scheduled, .ssm-badge--maintenance-in_progress { --ssm-c: var(--ssm-maintenance); }
+
+.ssm-services {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ssm-service-group-title {
+	margin: 20px 0 8px;
+	font-size: 1.1rem;
+}
+
+.ssm-service-row {
+	background: var(--ssm-surface);
+	border: 1px solid var(--ssm-border);
+	border-radius: var(--ssm-radius);
+	padding: 12px 16px;
+}
+
+.ssm-service-heading {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.ssm-service-name {
+	font-weight: 600;
+	flex: 1;
+}
+
+.ssm-service-desc {
+	margin: 6px 0 0;
+	color: var(--ssm-text-muted);
+	font-size: .9rem;
+}
+
+.ssm-monitor-list {
+	list-style: none;
+	margin: 10px 0 0;
+	padding: 8px 0 0;
+	border-top: 1px solid var(--ssm-border);
+}
+
+.ssm-monitor-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 4px 0;
+	font-size: .9rem;
+}
+
+.ssm-incident, .ssm-maintenance {
+	background: var(--ssm-surface);
+	border: 1px solid var(--ssm-border);
+	border-radius: var(--ssm-radius);
+	padding: 16px;
+	margin-bottom: 16px;
+}
+
+.ssm-incident--pinned {
+	border-color: var(--ssm-major-outage);
+}
+
+.ssm-incident-header, .ssm-maintenance-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.ssm-incident-title, .ssm-maintenance-header h4 {
+	margin: 0;
+	font-size: 1.05rem;
+	flex: 1;
+}
+
+.ssm-incident-services, .ssm-maintenance-services, .ssm-maintenance-window {
+	color: var(--ssm-text-muted);
+	font-size: .85rem;
+	margin: 4px 0;
+}
+
+.ssm-incident-timeline {
+	list-style: none;
+	margin: 12px 0 0;
+	padding: 12px 0 0 0;
+	border-top: 1px solid var(--ssm-border);
+}
+
+.ssm-incident-timeline li {
+	padding: 8px 0;
+}
+
+.ssm-timeline-status {
+	font-weight: 600;
+	margin-right: 8px;
+}
+
+.ssm-timeline-message p:first-child {
+	margin-top: 4px;
+}
+
+.ssm-timeline-author {
+	color: var(--ssm-text-muted);
+	font-size: .85rem;
+}
+
+.ssm-no-incidents, .ssm-no-maintenance {
+	color: var(--ssm-text-muted);
+}
+
+.ssm-subscribe-form,
+.ssm-manage-form {
+	background: var(--ssm-surface);
+	border: 1px solid var(--ssm-border);
+	border-radius: var(--ssm-radius);
+	padding: 20px;
+}
+
+.ssm-form-row {
+	margin-bottom: 16px;
+	border: none;
+	padding: 0;
+}
+
+.ssm-form-row legend {
+	font-weight: 600;
+	margin-bottom: 6px;
+	padding: 0;
+}
+
+.ssm-form-row label:not(.ssm-checkbox-row) {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.ssm-form-row input[type="text"],
+.ssm-form-row input[type="email"],
+.ssm-form-row input[type="tel"],
+.ssm-form-row input[type="url"],
+.ssm-form-row select {
+	width: 100%;
+	max-width: 420px;
+	padding: 8px 10px;
+	border: 1px solid var(--ssm-border);
+	border-radius: 6px;
+	background: var(--ssm-bg);
+	color: var(--ssm-text);
+	margin-bottom: 8px;
+}
+
+.ssm-checkbox-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 4px 0;
+	font-weight: normal;
+}
+
+.ssm-checkbox-row--indent {
+	margin-left: 24px;
+	font-size: .9rem;
+}
+
+.ssm-selection-heading {
+	font-weight: 600;
+	margin: 12px 0 4px;
+}
+
+.ssm-privacy-notice {
+	font-size: .85rem;
+	color: var(--ssm-text-muted);
+}
+
+.ssm-honeypot {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+.ssm-button {
+	display: inline-block;
+	padding: 10px 18px;
+	border-radius: 6px;
+	border: 1px solid var(--ssm-border);
+	background: var(--ssm-bg);
+	color: var(--ssm-text);
+	cursor: pointer;
+	font-size: .95rem;
+	margin: 4px 6px 4px 0;
+}
+
+.ssm-button-primary {
+	background: var(--ssm-primary);
+	border-color: var(--ssm-primary);
+	color: #fff;
+}
+
+.ssm-button-danger {
+	color: var(--ssm-major-outage);
+	border-color: var(--ssm-major-outage);
+}
+
+.ssm-notice {
+	padding: 12px 16px;
+	border-radius: var(--ssm-radius);
+	margin-bottom: 16px;
+	background: var(--ssm-surface);
+	border: 1px solid var(--ssm-border);
+}
+
+.ssm-notice-success { border-left: 4px solid var(--ssm-operational); }
+.ssm-notice-error { border-left: 4px solid var(--ssm-major-outage); }
+
+.ssm-history-service {
+	margin-bottom: 20px;
+}
+
+.ssm-history-monitor-head {
+	display: flex;
+	justify-content: space-between;
+	font-size: .9rem;
+	margin-bottom: 4px;
+}
+
+.ssm-uptime-bars {
+	display: flex;
+	gap: 2px;
+}
+
+.ssm-bar {
+	flex: 1;
+	height: 28px;
+	border-radius: 2px;
+	background: var(--ssm-border);
+}
+
+.ssm-bar-up { background: var(--ssm-operational); }
+.ssm-bar-degraded { background: var(--ssm-degraded); }
+.ssm-bar-down { background: var(--ssm-major-outage); }
+.ssm-bar-nodata { background: var(--ssm-border); }
+
+.ssm-uptime-percentage {
+	font-weight: 600;
+}
+
+.ssm-page-footer {
+	margin-top: 40px;
+	padding-top: 16px;
+	border-top: 1px solid var(--ssm-border);
+	display: flex;
+	gap: 16px;
+	font-size: .85rem;
+}
+
+.screen-reader-text {
+	position: absolute;
+	left: -9999px;
+}
+
+/* Respect reduced-motion preferences: the plugin ships no motion by
+   default, but third-party themes may animate .ssm- elements. */
+@media (prefers-reduced-motion: reduce) {
+	.ssm-status-page * {
+		animation-duration: 0.001ms !important;
+		transition-duration: 0.001ms !important;
+	}
+}
+
+.ssm-status-page a:focus-visible,
+.ssm-status-page button:focus-visible,
+.ssm-status-page input:focus-visible,
+.ssm-status-page select:focus-visible {
+	outline: 2px solid var(--ssm-primary);
+	outline-offset: 2px;
+}
