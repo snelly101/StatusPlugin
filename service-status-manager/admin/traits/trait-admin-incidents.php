@@ -12,6 +12,7 @@
 
 namespace ServiceStatusManager\Admin;
 
+use ServiceStatusManager\Capabilities;
 use ServiceStatusManager\IncidentManager;
 use ServiceStatusManager\MaintenanceManager;
 

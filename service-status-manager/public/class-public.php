@@ -11,6 +11,8 @@ namespace ServiceStatusManager\Publicweb;
 
 use ServiceStatusManager\SubscriberManager;
 use ServiceStatusManager\RateLimiter;
+use ServiceStatusManager\StatusPageManager;
+use ServiceStatusManager\Capabilities;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -26,6 +28,7 @@ class PublicController {
 	public function register() {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_filter( 'query_vars', array( $this, 'add_query_vars' ) );
+		add_action( 'template_redirect', array( $this, 'guard_private_status_page' ), 5 );
 		add_action( 'template_redirect', array( $this, 'handle_token_actions' ) );
 
 		add_action( 'admin_post_nopriv_ssm_public_subscribe', array( $this, 'handle_subscribe' ) );
@@ -66,6 +69,66 @@ class PublicController {
 				'nonce'   => wp_create_nonce( 'wp_rest' ),
 			)
 		);
+	}
+
+	/**
+	 * Gates access to a page containing [service_status_page] when the
+	 * plugin's main status page has been marked private. Runs on
+	 * template_redirect (before any output) so it can safely set a cookie
+	 * after a successful password check and issue a redirect.
+	 *
+	 * Logged-in users with the plugin's "view" capability (any of the
+	 * plugin's roles, or an administrator) always have access, satisfying
+	 * the "WordPress user authentication" option from the private-page
+	 * requirements; a shared password provides the "password protection"
+	 * option for visitors without a WordPress account.
+	 */
+	public function guard_private_status_page() {
+		if ( ! is_singular() ) {
+			return;
+		}
+
+		$post = get_post();
+		if ( ! $post || ! has_shortcode( $post->post_content, 'service_status_page' ) ) {
+			return;
+		}
+
+		$page = StatusPageManager::get_page_by_slug( 'main' );
+		if ( ! $page || 'private' !== $page->visibility ) {
+			return;
+		}
+
+		if ( current_user_can( Capabilities::VIEW ) ) {
+			return;
+		}
+
+		if ( empty( $page->password_hash ) ) {
+			auth_redirect();
+			return;
+		}
+
+		$cookie_name = 'ssm_page_auth_' . $page->id;
+		$expected    = hash_hmac( 'sha256', $page->id . '|' . $page->password_hash, wp_salt( 'auth' ) );
+
+		if ( isset( $_COOKIE[ $cookie_name ] ) && hash_equals( $expected, wp_unslash( $_COOKIE[ $cookie_name ] ) ) ) {
+			return;
+		}
+
+		if ( ! empty( $_POST['ssm_page_password'] ) && isset( $_POST['ssm_page_password_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['ssm_page_password_nonce'] ) ), 'ssm_page_password_' . $page->id ) ) {
+			if ( ! RateLimiter::allow( 'status_page_password_' . RateLimiter::client_fingerprint(), 10, 10 * MINUTE_IN_SECONDS ) ) {
+				wp_die( esc_html__( 'Too many attempts. Please try again later.', 'service-status-manager' ), '', array( 'response' => 429 ) );
+			}
+
+			if ( wp_check_password( wp_unslash( $_POST['ssm_page_password'] ), $page->password_hash ) ) {
+				$secure = is_ssl();
+				setcookie( $cookie_name, $expected, time() + 12 * HOUR_IN_SECONDS, COOKIEPATH ?: '/', COOKIE_DOMAIN, $secure, true );
+				wp_safe_redirect( home_url( add_query_arg( array(), $_SERVER['REQUEST_URI'] ?? '/' ) ) );
+				exit;
+			}
+		}
+
+		require SSM_PLUGIN_DIR . 'public/templates/password-gate.php';
+		exit;
 	}
 
 	/**

@@ -29,6 +29,10 @@ $shortcodes = new Shortcodes();
 			</style>
 		<?php endif; ?>
 
+		<?php if ( ! empty( $page->custom_css ) ) : ?>
+			<style><?php echo wp_strip_all_tags( $page->custom_css ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></style>
+		<?php endif; ?>
+
 		<header class="ssm-page-header">
 			<?php if ( $page->logo_url ) : ?>
 				<img src="<?php echo esc_url( $page->logo_url ); ?>" alt="<?php echo esc_attr( $page->name ); ?>" class="ssm-page-logo" />

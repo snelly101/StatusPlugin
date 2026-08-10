@@ -1,0 +1,10 @@
+# Composer (dev-only dependency: PHPUnit for the test suite)
+/vendor/
+composer.lock
+
+# Editor/OS cruft
+.DS_Store
+*.swp
+
+# Local test artefacts
+/.phpunit.cache/

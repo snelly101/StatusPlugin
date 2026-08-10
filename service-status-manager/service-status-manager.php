@@ -44,6 +44,18 @@ spl_autoload_register(
 			return;
 		}
 
+		// A handful of files intentionally don't follow the short-name ->
+		// kebab-case convention below (mainly because "Public" is a
+		// reserved word in PHP and cannot be used as a class name), so
+		// they are mapped explicitly rather than guessed.
+		$exceptions = array(
+			__NAMESPACE__ . '\\Publicweb\\PublicController' => 'public/class-public.php',
+		);
+		if ( isset( $exceptions[ $class ] ) ) {
+			require_once SSM_PLUGIN_DIR . $exceptions[ $class ];
+			return;
+		}
+
 		$relative = substr( $class, strlen( __NAMESPACE__ . '\\' ) );
 		$parts    = explode( '\\', $relative );
 		$short    = array_pop( $parts );
@@ -64,15 +76,24 @@ spl_autoload_register(
 			}
 		}
 
-		$file_base = strtolower( preg_replace( '/([a-z0-9])([A-Z])/', '$1-$2', $short ) );
-		$file_base = str_replace( '_', '-', $file_base );
+		$kebab = function ( $name ) {
+			$name = preg_replace( '/([a-z0-9])([A-Z])/', '$1-$2', $name );
+			return strtolower( str_replace( '_', '-', $name ) );
+		};
 
-		$is_interface = 0 === strpos( $short, 'I' ) && isset( $short[1] ) && strtoupper( $short[1] ) === $short[1];
+		$class_base = $kebab( $short );
+
+		// Interface/trait files are named after the short class name with
+		// its "Interface"/"Trait" suffix dropped (interface-monitor-
+		// provider.php for MonitorProviderInterface, not interface-
+		// monitor-provider-interface.php).
+		$interface_base = preg_match( '/Interface$/', $short ) ? $kebab( substr( $short, 0, -9 ) ) : $class_base;
+		$trait_base      = preg_match( '/Trait$/', $short ) ? $kebab( substr( $short, 0, -5 ) ) : $class_base;
 
 		$candidates = array(
-			$dir . 'class-' . $file_base . '.php',
-			$dir . 'interface-' . preg_replace( '/^i-/', '', $file_base ) . '.php',
-			$dir . 'trait-' . $file_base . '.php',
+			$dir . 'class-' . $class_base . '.php',
+			$dir . 'interface-' . $interface_base . '.php',
+			$dir . 'trait-' . $trait_base . '.php',
 		);
 
 		foreach ( $candidates as $candidate ) {

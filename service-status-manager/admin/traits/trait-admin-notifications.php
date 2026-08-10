@@ -7,6 +7,7 @@
 
 namespace ServiceStatusManager\Admin;
 
+use ServiceStatusManager\Capabilities;
 use ServiceStatusManager\Notifications\NotificationQueue;
 use ServiceStatusManager\RateLimiter;
 

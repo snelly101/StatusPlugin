@@ -287,34 +287,36 @@ function ssm_table( $table ) {
  * @param string $level   One of error, warning, info, debug.
  * @param array  $context Optional structured context, will be JSON encoded.
  */
-function ssm_log( $message, $level = 'info', $context = array() ) {
-	$levels        = array(
-		'error'   => 0,
-		'warning' => 1,
-		'info'    => 2,
-		'debug'   => 3,
-	);
-	$configured    = ssm_get_setting( 'log_level', 'error' );
-	$configured_ix = $levels[ $configured ] ?? 0;
-	$message_ix    = $levels[ $level ] ?? 2;
+if ( ! function_exists( 'ssm_log' ) ) {
+	function ssm_log( $message, $level = 'info', $context = array() ) {
+		$levels        = array(
+			'error'   => 0,
+			'warning' => 1,
+			'info'    => 2,
+			'debug'   => 3,
+		);
+		$configured    = ssm_get_setting( 'log_level', 'error' );
+		$configured_ix = $levels[ $configured ] ?? 0;
+		$message_ix    = $levels[ $level ] ?? 2;
 
-	if ( $message_ix > $configured_ix ) {
-		return;
+		if ( $message_ix > $configured_ix ) {
+			return;
+		}
+
+		$message = ssm_mask_secrets( $message );
+
+		global $wpdb;
+		$wpdb->insert(
+			ssm_table( 'logs' ),
+			array(
+				'level'      => $level,
+				'message'    => $message,
+				'context'    => ! empty( $context ) ? wp_json_encode( ssm_mask_secrets_array( $context ) ) : null,
+				'created_at' => ssm_now(),
+			),
+			array( '%s', '%s', '%s', '%s' )
+		);
 	}
-
-	$message = ssm_mask_secrets( $message );
-
-	global $wpdb;
-	$wpdb->insert(
-		ssm_table( 'logs' ),
-		array(
-			'level'      => $level,
-			'message'    => $message,
-			'context'    => ! empty( $context ) ? wp_json_encode( ssm_mask_secrets_array( $context ) ) : null,
-			'created_at' => ssm_now(),
-		),
-		array( '%s', '%s', '%s', '%s' )
-	);
 }
 
 /**
