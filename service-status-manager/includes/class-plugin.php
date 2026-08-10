@@ -84,6 +84,7 @@ class Plugin {
 		add_action( 'ssm_incident_updated', array( WebhookDispatcher::class, 'dispatch_incident_updated' ), 10, 2 );
 		add_action( 'ssm_incident_resolved', array( WebhookDispatcher::class, 'dispatch_incident_resolved' ) );
 		add_action( 'ssm_service_status_changed', array( WebhookDispatcher::class, 'dispatch_service_status_changed' ), 10, 3 );
+		add_action( 'ssm_monitor_status_changed', array( WebhookDispatcher::class, 'dispatch_monitor_status_changed' ), 10, 3 );
 		add_action( 'ssm_maintenance_status_changed', array( WebhookDispatcher::class, 'dispatch_maintenance_status_changed' ), 10, 3 );
 	}
 

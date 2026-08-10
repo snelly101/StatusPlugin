@@ -232,6 +232,17 @@ class MonitorRunner {
 			);
 		}
 
+		if ( $new_state !== $monitor->current_state ) {
+			/**
+			 * Fires when a monitor's current_state changes.
+			 *
+			 * @param int    $monitor_id Monitor ID.
+			 * @param string $old_state  Previous state slug.
+			 * @param string $new_state  New state slug.
+			 */
+			do_action( 'ssm_monitor_status_changed', $monitor->id, $monitor->current_state, $new_state );
+		}
+
 		ServiceManager::recalculate_status( $monitor->service_id );
 	}
 
