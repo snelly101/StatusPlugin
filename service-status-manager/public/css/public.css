@@ -339,6 +339,33 @@
 	color: #fff;
 }
 
+.ssm-subscribe-toggle summary {
+	list-style: none;
+	cursor: pointer;
+	width: fit-content;
+}
+
+.ssm-subscribe-toggle summary::-webkit-details-marker {
+	display: none;
+}
+
+.ssm-subscribe-toggle summary::marker {
+	content: "";
+}
+
+.ssm-subscribe-toggle summary:focus-visible {
+	outline: 2px solid var(--ssm-primary);
+	outline-offset: 2px;
+}
+
+.ssm-subscribe-toggle[open] summary {
+	margin-bottom: 16px;
+}
+
+.ssm-subscribe-toggle-content {
+	max-width: 480px;
+}
+
 .ssm-button-danger {
 	color: var(--ssm-major-outage);
 	border-color: var(--ssm-major-outage);

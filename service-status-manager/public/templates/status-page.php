@@ -53,8 +53,12 @@ $shortcodes = new Shortcodes();
 
 	<?php if ( 'yes' === $atts['show_subscribe'] ) : ?>
 		<div class="ssm-page-section ssm-page-subscribe-cta">
-			<h2><?php esc_html_e( 'Get notified', 'service-status-manager' ); ?></h2>
-			<?php echo $shortcodes->render_subscribe( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<details class="ssm-subscribe-toggle">
+				<summary class="ssm-button ssm-button-primary"><?php esc_html_e( 'Get notified', 'service-status-manager' ); ?></summary>
+				<div class="ssm-subscribe-toggle-content">
+					<?php echo $shortcodes->render_subscribe( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				</div>
+			</details>
 		</div>
 	<?php endif; ?>
 
