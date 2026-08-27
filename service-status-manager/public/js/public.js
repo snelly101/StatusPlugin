@@ -57,6 +57,7 @@
 		initTheme( root );
 		initHeader( root );
 		initServiceRows( root );
+		initIncidentCollapse( root );
 		initUptimeTooltips( root );
 		initSubscribeModal( root );
 		initSelectAllToggle( root );
@@ -197,6 +198,30 @@
 	function toggleServiceRow( heading ) {
 		var row = heading.closest( '.ssm-service-row' );
 		var open = row.classList.toggle( 'ssm-is-open' );
+		heading.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+	}
+
+	/**
+	 * Resolved incidents render their description + full update timeline
+	 * collapsed behind their header by default (see incidents.php); this
+	 * wires up the same click/keyboard toggle used for service rows.
+	 */
+	function initIncidentCollapse( root ) {
+		on( root, 'click', '.ssm-incident-header.ssm-is-expandable', function ( e, heading ) {
+			toggleIncident( heading );
+		} );
+
+		on( root, 'keydown', '.ssm-incident-header.ssm-is-expandable', function ( e, heading ) {
+			if ( 'Enter' === e.key || ' ' === e.key ) {
+				e.preventDefault();
+				toggleIncident( heading );
+			}
+		} );
+	}
+
+	function toggleIncident( heading ) {
+		var card = heading.closest( '.ssm-incident' );
+		var open = card.classList.toggle( 'ssm-is-open' );
 		heading.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
 	}
 

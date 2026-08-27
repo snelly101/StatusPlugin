@@ -42,12 +42,25 @@ $render_incident = function ( $incident ) use ( $severity_labels, $status_labels
 	$services      = IncidentManager::get_services_for_incident( $incident->id );
 	$is_resolved   = 'resolved' === $incident->status;
 	$severity_class = $severity_status_class[ $incident->severity ] ?? 'ssm-status-unknown';
+	// Resolved incidents collapse their description + full update timeline
+	// behind a toggle by default, so a long-lived status page doesn't fill
+	// up with every past update; active incidents stay fully expanded
+	// since that detail is what visitors actually need right now.
+	$collapsible = $is_resolved;
+	$detail_id   = 'ssm-incident-detail-' . $incident->id;
 	?>
 	<article class="ssm-card ssm-incident <?php echo esc_attr( $severity_class ); ?> <?php echo $is_resolved ? 'ssm-incident--resolved' : ''; ?> <?php echo $incident->is_pinned ? 'ssm-incident--pinned' : ''; ?>">
-		<header class="ssm-incident-header">
+		<header class="ssm-incident-header<?php echo $collapsible ? ' ssm-is-expandable' : ''; ?>"
+			<?php if ( $collapsible ) : ?>
+			role="button" tabindex="0" aria-expanded="false" aria-controls="<?php echo esc_attr( $detail_id ); ?>"
+			<?php endif; ?>
+		>
 			<h4 class="ssm-incident-title"><?php echo esc_html( $incident->title ); ?></h4>
 			<span class="ssm-status-pill <?php echo esc_attr( $severity_class ); ?>"><?php echo esc_html( $severity_labels[ $incident->severity ] ?? $incident->severity ); ?></span>
 			<span class="ssm-status-pill <?php echo $is_resolved ? 'ssm-status-operational' : esc_attr( $severity_class ); ?>"><?php echo esc_html( $status_labels[ $incident->status ] ?? $incident->status ); ?></span>
+			<?php if ( $collapsible ) : ?>
+				<span class="ssm-incident-expand-icon"><?php echo ssm_icon( 'chevron-down' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+			<?php endif; ?>
 		</header>
 
 		<?php if ( ! empty( $services ) ) : ?>
@@ -57,22 +70,38 @@ $render_incident = function ( $incident ) use ( $severity_labels, $status_labels
 			</p>
 		<?php endif; ?>
 
-		<?php if ( $incident->description ) : ?>
-			<div class="ssm-incident-description"><?php echo wp_kses_post( wpautop( $incident->description ) ); ?></div>
-		<?php endif; ?>
+		<?php
+		$render_body = function () use ( $incident, $updates, $status_labels ) {
+			?>
+			<?php if ( $incident->description ) : ?>
+				<div class="ssm-incident-description"><?php echo wp_kses_post( wpautop( $incident->description ) ); ?></div>
+			<?php endif; ?>
 
-		<ol class="ssm-incident-timeline">
-			<?php foreach ( $updates as $update ) : ?>
-				<li>
-					<span class="ssm-timeline-status"><?php echo esc_html( $status_labels[ $update->status ] ?? $update->status ); ?></span>
-					<time datetime="<?php echo esc_attr( $update->created_at ); ?>"><?php echo esc_html( ssm_format_datetime( $update->created_at ) ); ?></time>
-					<div class="ssm-timeline-message"><?php echo wp_kses_post( wpautop( $update->message ) ); ?></div>
-					<?php if ( $update->author_name ) : ?>
-						<span class="ssm-timeline-author">&mdash; <?php echo esc_html( $update->author_name ); ?></span>
-					<?php endif; ?>
-				</li>
-			<?php endforeach; ?>
-		</ol>
+			<ol class="ssm-incident-timeline">
+				<?php foreach ( $updates as $update ) : ?>
+					<li>
+						<span class="ssm-timeline-status"><?php echo esc_html( $status_labels[ $update->status ] ?? $update->status ); ?></span>
+						<time datetime="<?php echo esc_attr( $update->created_at ); ?>"><?php echo esc_html( ssm_format_datetime( $update->created_at ) ); ?></time>
+						<div class="ssm-timeline-message"><?php echo wp_kses_post( wpautop( $update->message ) ); ?></div>
+						<?php if ( $update->author_name ) : ?>
+							<span class="ssm-timeline-author">&mdash; <?php echo esc_html( $update->author_name ); ?></span>
+						<?php endif; ?>
+					</li>
+				<?php endforeach; ?>
+			</ol>
+			<?php
+		};
+		?>
+
+		<?php if ( $collapsible ) : ?>
+			<div class="ssm-incident-detail" id="<?php echo esc_attr( $detail_id ); ?>">
+				<div class="ssm-incident-detail-inner">
+					<?php $render_body(); ?>
+				</div>
+			</div>
+		<?php else : ?>
+			<?php $render_body(); ?>
+		<?php endif; ?>
 	</article>
 	<?php
 };

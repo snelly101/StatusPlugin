@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.4.2
+Stable tag: 1.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,11 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.5.0 =
+Resolved incidents on the public status page now collapse their description and full update timeline behind a click/tap toggle by default (matching the existing expandable service rows), instead of every past update always being fully shown - a long-lived status page no longer fills up with historical detail nobody needs at a glance. Active incidents are unaffected and stay fully expanded.
+
+Also fixes a bug where resolving an incident could make an affected service's status page badge regress to "Unknown": resolving an incident recalculates the status of every affected automatic-mode service from its monitors, but a service with no monitors attached has no data to recalculate from, and this was being treated as "force it to Unknown" instead of "leave it alone". Recalculation is now skipped entirely when a service has no active monitors, so its existing status is preserved.
 
 = 1.4.2 =
 Incident update/resolved notifications didn't make clear they were an update to an existing incident rather than a new one - the "New Incident"/"Incident Update"/"Resolved" distinction only ever appeared in the email subject line, never in the SMS text or the email body itself, so anyone not reading the subject carefully (or receiving it as an SMS, which has no separate subject) had no way to tell. Both now lead with that label - the email body shows it as a small heading above the severity/status row, and SMS puts it first, ahead of the severity and title.

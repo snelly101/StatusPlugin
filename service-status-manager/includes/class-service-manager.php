@@ -379,6 +379,17 @@ class ServiceManager {
 		$monitors = MonitorManager::get_monitors_for_service( $service_id );
 		$states   = wp_list_pluck( array_filter( $monitors, fn( $m ) => $m->is_active ), 'current_state' );
 
+		if ( empty( $states ) ) {
+			// Nothing to recalculate from (no monitors attached, or none
+			// active) - leave the service's current status as-is rather
+			// than forcing it to "unknown". Without this, resolving an
+			// incident on a service with no monitor would make the
+			// service look worse than before the incident, since this is
+			// also called from IncidentManager::add_update() for every
+			// affected service the moment an incident is resolved.
+			return;
+		}
+
 		self::set_status( $service_id, StatusCalculator::calculate_service_status( $states ) );
 	}
 
