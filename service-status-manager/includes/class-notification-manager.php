@@ -123,6 +123,7 @@ class NotificationManager {
 					'severity'          => $incident->severity,
 					'status_label'      => ucfirst( $incident->status ),
 					'affected_services' => implode( ', ', wp_list_pluck( $services, 'name' ) ),
+					'started_at'        => ssm_format_datetime( $incident->starts_at ),
 					'url'               => $url,
 					'manage_url'        => self::manage_url( $subscriber->id ),
 					'unsubscribe_url'   => self::unsubscribe_url( $subscriber->id ),
@@ -225,6 +226,18 @@ class NotificationManager {
 
 		$subscribers = self::get_matching_subscribers( $service_ids, array(), $group_ids, 'informational', true );
 
+		$status_labels = array(
+			'maintenance_announced' => __( 'Scheduled', 'service-status-manager' ),
+			'maintenance_started'   => __( 'In progress', 'service-status-manager' ),
+			'maintenance_completed' => __( 'Completed', 'service-status-manager' ),
+			'maintenance_extended'  => __( 'Extended', 'service-status-manager' ),
+			'maintenance_cancelled' => __( 'Cancelled', 'service-status-manager' ),
+			'maintenance_reminder'  => __( 'Reminder', 'service-status-manager' ),
+		);
+
+		$page = StatusPageManager::get_page_by_slug( 'main' );
+		$url  = $page ? trailingslashit( home_url() ) : home_url( '/' );
+
 		foreach ( $subscribers as $subscriber ) {
 			foreach ( self::active_channels( $subscriber->id ) as $channel ) {
 				$payload = array(
@@ -233,7 +246,15 @@ class NotificationManager {
 					'body_text'         => wp_strip_all_tags( $maintenance->description ),
 					'sms_summary'       => sprintf( '%s (%s - %s)', wp_strip_all_tags( $maintenance->title ), ssm_format_datetime( $maintenance->scheduled_start ), ssm_format_datetime( $maintenance->scheduled_end ) ),
 					'severity'          => 'informational',
+					'status_label'      => $status_labels[ $event ] ?? '',
+					'schedule_label'    => sprintf(
+						/* translators: 1: start date/time, 2: end date/time */
+						__( '%1$s to %2$s', 'service-status-manager' ),
+						ssm_format_datetime( $maintenance->scheduled_start ),
+						ssm_format_datetime( $maintenance->scheduled_end )
+					),
 					'affected_services' => implode( ', ', wp_list_pluck( $services, 'name' ) ),
+					'url'               => $url,
 					'manage_url'        => self::manage_url( $subscriber->id ),
 					'unsubscribe_url'   => self::unsubscribe_url( $subscriber->id ),
 					'event_type'        => $event,

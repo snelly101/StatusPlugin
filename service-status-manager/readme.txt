@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.3.3
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.4.0 =
+Notification emails now show far more detail. Incident/maintenance payloads already carried severity, status, affected services, and a status-page link, but the email only ever rendered the raw update message and threw the rest away. Emails now show a severity badge, status label, the list of affected services, a maintenance's scheduled start/end window, an incident's start time, and a "View on status page" button - all above the message text - and the plain-text version (used by mail clients that prefer it) mirrors the same information plus the manage-subscription/unsubscribe links, which previously only appeared in the HTML version.
 
 = 1.3.3 =
 The "manage subscription" page had no "Everything" option - just a plain checklist of services/groups/monitors, all unchecked by default - which reads as "notify me about nothing" even though the backend actually treats no selections as "notify me about everything". That ambiguity made it easy to end up re-ticking specific items (putting the subscription right back into a fixed, narrower list that stops matching incidents which don't happen to tag one of those exact items) when the intent was the opposite. The manage page now has the same explicit "Everything" toggle as the subscribe modal: ticking it clears and disables the individual boxes, and picking a specific item unticks it, so it's unambiguous which state you're in and saving does what it looks like it will do.
