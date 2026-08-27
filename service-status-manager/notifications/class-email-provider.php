@@ -139,6 +139,9 @@ class EmailProvider implements NotificationProviderInterface {
 				<p style="text-align:center;"><img src="<?php echo esc_url( $logo ); ?>" alt="<?php echo esc_attr( $site_name ); ?>" style="max-height:48px;" /></p>
 			<?php endif; ?>
 			<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:24px;">
+				<?php if ( ! empty( $message['notice_label'] ) ) : ?>
+					<p style="margin:0 0 4px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#2563eb;"><?php echo esc_html( $message['notice_label'] ); ?></p>
+				<?php endif; ?>
 				<?php if ( ( $is_incident_event && $severity ) || ! empty( $message['status_label'] ) ) : ?>
 					<p style="margin:0 0 16px;">
 						<?php if ( $is_incident_event && $severity ) : ?>
@@ -196,6 +199,10 @@ class EmailProvider implements NotificationProviderInterface {
 	private function build_text_body( array $message ) {
 		$is_incident_event = in_array( $message['event_type'] ?? '', array( 'incident_created', 'incident_updated', 'incident_resolved' ), true );
 		$lines = array();
+
+		if ( ! empty( $message['notice_label'] ) ) {
+			$lines[] = strtoupper( $message['notice_label'] );
+		}
 
 		$header_bits = array();
 		if ( $is_incident_event && ! empty( $message['severity'] ) ) {

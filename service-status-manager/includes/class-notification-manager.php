@@ -106,9 +106,17 @@ class NotificationManager {
 		$page = StatusPageManager::get_page_by_slug( 'main' );
 		$url  = $page ? trailingslashit( home_url() ) . '?ssm_incident=' . $incident->slug : home_url( '/' );
 
+		// A distinct "what kind of notice is this" label (New Incident /
+		// Incident Update / Resolved), separate from the incident's
+		// operational status (Investigating/Monitoring/Resolved) below -
+		// without it, an update notification looks identical in body/SMS
+		// to the original "new incident" one, and the only place that
+		// difference showed up was the email subject line.
+		$notice_label = rtrim( trim( $prefix ), ':' );
+
 		$sms_summary = self::build_sms_summary(
 			array(
-				sprintf( '%s: %s', ucfirst( $incident->severity ), wp_strip_all_tags( $incident->title ) ),
+				sprintf( '%s - %s: %s', $notice_label, ucfirst( $incident->severity ), wp_strip_all_tags( $incident->title ) ),
 				ucfirst( $incident->status ),
 				$services ? sprintf( __( 'Services: %s', 'service-status-manager' ), implode( ', ', wp_list_pluck( $services, 'name' ) ) ) : '',
 			)
@@ -129,6 +137,7 @@ class NotificationManager {
 					'body_text'         => wp_strip_all_tags( $update->message ?? $incident->description ),
 					'sms_summary'       => $sms_summary,
 					'severity'          => $incident->severity,
+					'notice_label'      => $notice_label,
 					'status_label'      => ucfirst( $incident->status ),
 					'affected_services' => implode( ', ', wp_list_pluck( $services, 'name' ) ),
 					'started_at'        => ssm_format_datetime( $incident->starts_at ),

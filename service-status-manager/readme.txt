@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.4.1
+Stable tag: 1.4.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.4.2 =
+Incident update/resolved notifications didn't make clear they were an update to an existing incident rather than a new one - the "New Incident"/"Incident Update"/"Resolved" distinction only ever appeared in the email subject line, never in the SMS text or the email body itself, so anyone not reading the subject carefully (or receiving it as an SMS, which has no separate subject) had no way to tell. Both now lead with that label - the email body shows it as a small heading above the severity/status row, and SMS puts it first, ahead of the severity and title.
 
 = 1.4.1 =
 SMS notifications now carry the same extra detail as the 1.4.0 email improvements, within SMS length limits: severity and status (incidents) or scheduled window (maintenance), plus the affected service names, ahead of the link. The most important part (what happened) is always first, so if a message is long enough to hit your configured SMS length limit, it's the affected-services list that gets trimmed rather than the headline.
