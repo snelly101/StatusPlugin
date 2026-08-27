@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.2.3
+Stable tag: 1.2.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.2.4 =
+Adds detailed Debug-level logging to incident/maintenance notification targeting (why a subscriber was or wasn't matched, and whether a queue row was actually created for each channel), so an "I created an incident but nobody was notified" report can be diagnosed from Service Status > Logs (with Settings > Logging set to Debug) instead of guesswork. No behaviour change to who gets notified, only visibility into the decision. Also fixes a harmless PHP warning when queuing a brand-new incident's initial notification (a null property access in the de-duplication key).
 
 = 1.2.3 =
 Notifications now go out immediately instead of waiting for the next cron tick. Subscribing sends that subscriber's own confirmation email/SMS synchronously, straight away, before the page even redirects. Every other queued notification (incident/maintenance updates, verification links, etc.) now triggers a non-blocking background request to the plugin's own cron endpoint the moment it's queued, so it's typically sent within a second or two rather than on the next WP-Cron tick - this is best-effort (some hosts block loopback requests), so WP-Cron/real server cron and the "Process notification queue now" tool remain in place as a fallback and continue to work exactly as before.

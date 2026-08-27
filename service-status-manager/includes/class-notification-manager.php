@@ -83,9 +83,11 @@ class NotificationManager {
 	 */
 	private static function notify_for_incident( $incident, $event, $prefix, $update = null ) {
 		if ( ! $incident->is_public || ! $incident->notify ) {
+			ssm_log( sprintf( 'Incident #%d (%s): notifications skipped - "visible on status page" or "send notifications" is off.', $incident->id, $event ), 'debug' );
 			return;
 		}
 		if ( self::below_global_floor( $incident->severity ) ) {
+			ssm_log( sprintf( 'Incident #%d (%s): severity "%s" is below the global minimum notify severity setting.', $incident->id, $event, $incident->severity ), 'debug' );
 			return;
 		}
 
@@ -98,11 +100,20 @@ class NotificationManager {
 
 		$subscribers = self::get_matching_subscribers( $service_ids, $monitor_ids, $group_ids, $incident->severity );
 
+		ssm_log( sprintf( 'Incident #%d (%s): %d matching active subscriber(s) found.', $incident->id, $event, count( $subscribers ) ), 'debug' );
+
 		$page = StatusPageManager::get_page_by_slug( 'main' );
 		$url  = $page ? trailingslashit( home_url() ) . '?ssm_incident=' . $incident->slug : home_url( '/' );
 
 		foreach ( $subscribers as $subscriber ) {
-			foreach ( self::active_channels( $subscriber->id ) as $channel ) {
+			$channels = self::active_channels( $subscriber->id );
+
+			if ( empty( $channels ) ) {
+				ssm_log( sprintf( 'Incident #%d (%s): subscriber #%d matched but has no active+verified channel - nothing queued for them.', $incident->id, $event, $subscriber->id ), 'debug' );
+				continue;
+			}
+
+			foreach ( $channels as $channel ) {
 				$payload = array(
 					'subject'           => $prefix . $incident->title,
 					'body_html'         => wpautop( wp_kses_post( $update->message ?? $incident->description ) ),
@@ -117,7 +128,7 @@ class NotificationManager {
 					'event_type'        => $event,
 				);
 
-				NotificationQueue::enqueue(
+				$queued_id = NotificationQueue::enqueue(
 					array(
 						'subscriber_id'  => $subscriber->id,
 						'channel'        => $channel,
@@ -125,9 +136,11 @@ class NotificationManager {
 						'reference_type' => 'incident',
 						'reference_id'   => $incident->id,
 						'payload'        => $payload,
-						'dedup_key'      => sprintf( 'incident-%d-%s-%d-%s', $incident->id, $update->id ?? $event, $subscriber->id, $channel ),
+						'dedup_key'      => sprintf( 'incident-%d-%s-%d-%s', $incident->id, $update ? $update->id : $event, $subscriber->id, $channel ),
 					)
 				);
+
+				ssm_log( sprintf( 'Incident #%d (%s): queue row %s for subscriber #%d via %s.', $incident->id, $event, $queued_id ? '#' . $queued_id : 'NOT created (duplicate dedup_key)', $subscriber->id, $channel ), 'debug' );
 			}
 		}
 	}
@@ -261,13 +274,17 @@ class NotificationManager {
 
 		$active = $wpdb->get_results( "SELECT * FROM {$subscribers_table} WHERE status = 'active'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
+		ssm_log( sprintf( 'Notification targeting: %d subscriber(s) with status=active found overall.', count( $active ) ), 'debug' );
+
 		$matches = array();
 
 		foreach ( $active as $subscriber ) {
 			if ( $maintenance_context && ! $subscriber->maintenance_notifications ) {
+				ssm_log( sprintf( 'Notification targeting: subscriber #%d skipped - opted out of maintenance notifications.', $subscriber->id ), 'debug' );
 				continue;
 			}
 			if ( ! $maintenance_context && ( self::SEVERITY_ORDER[ $severity ] ?? 0 ) < ( self::SEVERITY_ORDER[ $subscriber->min_severity ] ?? 0 ) ) {
+				ssm_log( sprintf( 'Notification targeting: subscriber #%d skipped - event severity "%s" is below their minimum "%s".', $subscriber->id, $severity, $subscriber->min_severity ), 'debug' );
 				continue;
 			}
 
@@ -278,6 +295,7 @@ class NotificationManager {
 				continue;
 			}
 
+			$hit = false;
 			foreach ( $selections as $selection ) {
 				$hit = ( 'service' === $selection->scope_type && in_array( (int) $selection->scope_id, $service_ids, true ) )
 					|| ( 'monitor' === $selection->scope_type && in_array( (int) $selection->scope_id, $monitor_ids, true ) )
@@ -287,6 +305,10 @@ class NotificationManager {
 					$matches[] = $subscriber;
 					break;
 				}
+			}
+
+			if ( ! $hit ) {
+				ssm_log( sprintf( 'Notification targeting: subscriber #%d skipped - their selected services/groups/monitors do not overlap with this event.', $subscriber->id ), 'debug' );
 			}
 		}
 
