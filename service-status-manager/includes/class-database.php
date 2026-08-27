@@ -234,6 +234,19 @@ class Database {
 			KEY scheduled_start (scheduled_start)
 		) {$charset_collate};";
 
+		$schema['maintenance_updates'] = "CREATE TABLE {$p}maintenance_updates (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			maintenance_id BIGINT UNSIGNED NOT NULL,
+			status VARCHAR(20) NOT NULL,
+			message LONGTEXT NOT NULL,
+			author_name VARCHAR(190) DEFAULT NULL,
+			is_internal TINYINT(1) NOT NULL DEFAULT 0,
+			created_by BIGINT UNSIGNED DEFAULT NULL,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY maintenance_id (maintenance_id)
+		) {$charset_collate};";
+
 		$schema['maintenance_services'] = "CREATE TABLE {$p}maintenance_services (
 			maintenance_id BIGINT UNSIGNED NOT NULL,
 			service_id BIGINT UNSIGNED NOT NULL,

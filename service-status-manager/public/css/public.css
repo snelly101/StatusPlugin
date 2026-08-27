@@ -1133,6 +1133,7 @@
 	font-weight: 700;
 	flex: 1;
 	min-width: 200px;
+	color: var(--ssm-text) !important;
 }
 
 .ssm-maintenance-window,
@@ -1146,6 +1147,37 @@
 	color: var(--ssm-text-muted);
 	font-size: .9rem;
 	margin-top: var(--ssm-sp-2);
+}
+
+.ssm-maintenance-header.ssm-is-expandable {
+	cursor: pointer;
+}
+
+.ssm-maintenance-expand-icon {
+	display: flex;
+	color: var(--ssm-text-faint);
+	transition: transform var(--ssm-normal) var(--ssm-ease);
+	flex-shrink: 0;
+}
+
+.ssm-maintenance.ssm-is-open .ssm-maintenance-expand-icon {
+	transform: rotate(180deg);
+}
+
+.ssm-maintenance-detail {
+	display: grid;
+	grid-template-rows: 0fr;
+	opacity: 0;
+	transition: grid-template-rows var(--ssm-normal) var(--ssm-ease), opacity var(--ssm-normal) var(--ssm-ease);
+}
+
+.ssm-maintenance.ssm-is-open .ssm-maintenance-detail {
+	grid-template-rows: 1fr;
+	opacity: 1;
+}
+
+.ssm-maintenance-detail-inner {
+	overflow: hidden;
 }
 
 .ssm-no-incidents,

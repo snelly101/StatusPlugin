@@ -33,10 +33,11 @@ class NotificationManager {
 		add_action( 'ssm_incident_resolved', array( __CLASS__, 'on_incident_resolved' ) );
 
 		add_action( 'ssm_maintenance_announced', array( __CLASS__, 'on_maintenance_announced' ) );
-		add_action( 'ssm_maintenance_started', array( __CLASS__, 'on_maintenance_started' ) );
-		add_action( 'ssm_maintenance_completed', array( __CLASS__, 'on_maintenance_completed' ) );
+		add_action( 'ssm_maintenance_started', array( __CLASS__, 'on_maintenance_started' ), 10, 2 );
+		add_action( 'ssm_maintenance_completed', array( __CLASS__, 'on_maintenance_completed' ), 10, 2 );
 		add_action( 'ssm_maintenance_extended', array( __CLASS__, 'on_maintenance_extended' ) );
-		add_action( 'ssm_maintenance_cancelled', array( __CLASS__, 'on_maintenance_cancelled' ) );
+		add_action( 'ssm_maintenance_cancelled', array( __CLASS__, 'on_maintenance_cancelled' ), 10, 2 );
+		add_action( 'ssm_maintenance_updated', array( __CLASS__, 'on_maintenance_updated' ), 10, 2 );
 		add_action( 'ssm_maintenance_reminder', array( __CLASS__, 'on_maintenance_reminder' ), 10, 2 );
 
 		add_action( 'ssm_subscriber_verification_needed', array( __CLASS__, 'on_verification_needed' ), 10, 3 );
@@ -195,17 +196,19 @@ class NotificationManager {
 	}
 
 	/**
-	 * @param object $maintenance Maintenance row.
+	 * @param object      $maintenance Maintenance row.
+	 * @param object|null $update      The update row that triggered this transition, if any.
 	 */
-	public static function on_maintenance_started( $maintenance ) {
-		self::notify_for_maintenance( $maintenance, 'maintenance_started', __( 'Maintenance Started: ', 'service-status-manager' ) );
+	public static function on_maintenance_started( $maintenance, $update = null ) {
+		self::notify_for_maintenance( $maintenance, 'maintenance_started', __( 'Maintenance Started: ', 'service-status-manager' ), $update );
 	}
 
 	/**
-	 * @param object $maintenance Maintenance row.
+	 * @param object      $maintenance Maintenance row.
+	 * @param object|null $update      The update row that triggered this transition, if any.
 	 */
-	public static function on_maintenance_completed( $maintenance ) {
-		self::notify_for_maintenance( $maintenance, 'maintenance_completed', __( 'Maintenance Completed: ', 'service-status-manager' ) );
+	public static function on_maintenance_completed( $maintenance, $update = null ) {
+		self::notify_for_maintenance( $maintenance, 'maintenance_completed', __( 'Maintenance Completed: ', 'service-status-manager' ), $update );
 	}
 
 	/**
@@ -216,10 +219,22 @@ class NotificationManager {
 	}
 
 	/**
-	 * @param object $maintenance Maintenance row.
+	 * @param object      $maintenance Maintenance row.
+	 * @param object|null $update      The update row that triggered this transition, if any.
 	 */
-	public static function on_maintenance_cancelled( $maintenance ) {
-		self::notify_for_maintenance( $maintenance, 'maintenance_cancelled', __( 'Maintenance Cancelled: ', 'service-status-manager' ) );
+	public static function on_maintenance_cancelled( $maintenance, $update = null ) {
+		self::notify_for_maintenance( $maintenance, 'maintenance_cancelled', __( 'Maintenance Cancelled: ', 'service-status-manager' ), $update );
+	}
+
+	/**
+	 * A status-unchanged progress note posted to an in-progress (or
+	 * scheduled) maintenance window's timeline.
+	 *
+	 * @param object $maintenance Maintenance row.
+	 * @param object $update      The new update row.
+	 */
+	public static function on_maintenance_updated( $maintenance, $update ) {
+		self::notify_for_maintenance( $maintenance, 'maintenance_updated', __( 'Maintenance Update: ', 'service-status-manager' ), $update );
 	}
 
 	/**
@@ -242,11 +257,14 @@ class NotificationManager {
 	 * Builds and queues maintenance notifications for matching, opted-in
 	 * subscribers.
 	 *
-	 * @param object $maintenance Maintenance row.
-	 * @param string $event       Event type slug.
-	 * @param string $prefix      Subject line prefix.
+	 * @param object      $maintenance Maintenance row.
+	 * @param string      $event       Event type slug.
+	 * @param string      $prefix      Subject line prefix.
+	 * @param object|null $update      The timeline update row that triggered this, if any -
+	 *                                 its message is used instead of the maintenance's static
+	 *                                 description when present (mirrors notify_for_incident()).
 	 */
-	private static function notify_for_maintenance( $maintenance, $event, $prefix ) {
+	private static function notify_for_maintenance( $maintenance, $event, $prefix, $update = null ) {
 		if ( ! $maintenance->is_public ) {
 			return;
 		}
@@ -263,6 +281,7 @@ class NotificationManager {
 			'maintenance_completed' => __( 'Completed', 'service-status-manager' ),
 			'maintenance_extended'  => __( 'Extended', 'service-status-manager' ),
 			'maintenance_cancelled' => __( 'Cancelled', 'service-status-manager' ),
+			'maintenance_updated'   => __( 'Update', 'service-status-manager' ),
 			'maintenance_reminder'  => __( 'Reminder', 'service-status-manager' ),
 		);
 
@@ -276,9 +295,11 @@ class NotificationManager {
 			ssm_format_datetime( $maintenance->scheduled_end )
 		);
 
+		$notice_label = rtrim( trim( $prefix ), ':' );
+
 		$sms_summary = self::build_sms_summary(
 			array(
-				sprintf( '%s: %s', $status_labels[ $event ] ?? '', wp_strip_all_tags( $maintenance->title ) ),
+				sprintf( '%s: %s', $notice_label, wp_strip_all_tags( $maintenance->title ) ),
 				$schedule_label,
 				$services ? sprintf( __( 'Services: %s', 'service-status-manager' ), implode( ', ', wp_list_pluck( $services, 'name' ) ) ) : '',
 			)
@@ -288,10 +309,11 @@ class NotificationManager {
 			foreach ( self::active_channels( $subscriber->id ) as $channel ) {
 				$payload = array(
 					'subject'           => $prefix . $maintenance->title,
-					'body_html'         => wpautop( wp_kses_post( $maintenance->description ) ),
-					'body_text'         => wp_strip_all_tags( $maintenance->description ),
+					'body_html'         => wpautop( wp_kses_post( $update->message ?? $maintenance->description ) ),
+					'body_text'         => wp_strip_all_tags( $update->message ?? $maintenance->description ),
 					'sms_summary'       => $sms_summary,
 					'severity'          => 'informational',
+					'notice_label'      => $notice_label,
 					'status_label'      => $status_labels[ $event ] ?? '',
 					'schedule_label'    => $schedule_label,
 					'affected_services' => implode( ', ', wp_list_pluck( $services, 'name' ) ),
@@ -309,7 +331,7 @@ class NotificationManager {
 						'reference_type' => 'maintenance',
 						'reference_id'   => $maintenance->id,
 						'payload'        => $payload,
-						'dedup_key'      => sprintf( 'maintenance-%d-%s-%d-%s', $maintenance->id, $event, $subscriber->id, $channel ),
+						'dedup_key'      => sprintf( 'maintenance-%d-%s-%d-%s', $maintenance->id, $update ? $event . '-' . $update->id : $event, $subscriber->id, $channel ),
 					)
 				);
 			}

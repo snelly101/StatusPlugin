@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.7.2
+Stable tag: 1.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -203,7 +203,7 @@ Built-in tooling: explicit consent capture with timestamp/wording-version/source
 
 == Developer Hooks ==
 
-Actions: `ssm_incident_created`, `ssm_incident_updated`, `ssm_incident_resolved`, `ssm_service_status_changed`, `ssm_monitor_status_changed`, `ssm_maintenance_status_changed`, `ssm_maintenance_announced`/`started`/`completed`/`extended`/`cancelled`/`reminder`, `ssm_notification_sent`, `ssm_notification_failed`, `ssm_subscriber_confirmed`, `ssm_subscriber_unsubscribed`, `ssm_subscriber_erased`.
+Actions: `ssm_incident_created`, `ssm_incident_updated`, `ssm_incident_resolved`, `ssm_service_status_changed`, `ssm_monitor_status_changed`, `ssm_maintenance_status_changed`, `ssm_maintenance_announced`/`started`/`completed`/`extended`/`cancelled`/`updated`/`reminder`, `ssm_notification_sent`, `ssm_notification_failed`, `ssm_subscriber_confirmed`, `ssm_subscriber_unsubscribed`, `ssm_subscriber_erased`.
 
 Filters: `ssm_overall_status`, `ssm_status_priority_order`, `ssm_status_definitions`, `ssm_notification_recipients` (via the subscriber-matching logic in `NotificationManager`), `ssm_email_subject`, `ssm_email_body`, `ssm_public_service_data`, `ssm_monitor_provider_types`, `ssm_monitor_provider_instance`, `ssm_sanitize_monitor_settings`, `ssm_sms_providers`, `ssm_valid_teams_webhook_host`, `ssm_database_schema`.
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.8.0 =
+Scheduled maintenance now has a full update timeline, matching incidents: a "Timeline" section on the maintenance edit screen with an "Add update" form lets you post a status change (or just a progress note) with your own message, at any time - so you're no longer stuck waiting for a maintenance window to auto-start/auto-complete on its scheduled times via cron. Manually starting, completing, or cancelling a window applies the same service-status effects and respects the same notification checkboxes (When it begins/When completed/When cancelled) as the automatic transitions, which now also produce a timeline entry so the record is complete either way. Adds a new "When a progress update is posted (no status change)" notification checkbox for plain progress notes. The public status page shows each maintenance window's timeline too, collapsed by default once a window is completed or cancelled (same pattern as resolved incidents). Also fixes notification checkboxes on the maintenance edit screen never actually saving when editing an existing event (they only ever took effect when first creating one). New `maintenance_updates` database table (migration runs automatically).
 
 = 1.7.2 =
 Fixes the subscribe wizard showing Back, Next, and Subscribe all at once on every step instead of only the buttons relevant to the current step. The buttons are correctly shown/hidden via the plain HTML `hidden` attribute, but the button styling rule (added in 1.2.1) sets an explicit `display: inline-flex`, which - even without `!important` - always outranks the browser's own built-in "hidden means display:none" rule, so `hidden` was silently being ignored on any `.ssm-button`. Adds a scoped `[hidden] { display: none !important; }` rule so the `hidden` attribute works correctly everywhere on the status page, not just for these buttons.

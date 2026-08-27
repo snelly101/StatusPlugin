@@ -102,6 +102,7 @@ trait AdminIncidentsTrait {
 			'notify_on_complete'  => ! empty( $_POST['notify_on_complete'] ),
 			'notify_on_extend'    => ! empty( $_POST['notify_on_extend'] ),
 			'notify_on_cancel'    => ! empty( $_POST['notify_on_cancel'] ),
+			'notify_on_update'    => ! empty( $_POST['notify_on_update'] ),
 			'reminder_hours'      => array_map( 'absint', (array) ( $_POST['reminder_hours'] ?? array() ) ),
 			'service_ids'         => array_map( 'absint', (array) ( $_POST['service_ids'] ?? array() ) ),
 			'monitor_ids'         => array_map( 'absint', (array) ( $_POST['monitor_ids'] ?? array() ) ),
@@ -139,6 +140,27 @@ trait AdminIncidentsTrait {
 
 		MaintenanceManager::delete_maintenance( absint( $_POST['id'] ?? 0 ) );
 		$this->redirect_with_notice( 'maintenance', __( 'Maintenance deleted.', 'service-status-manager' ) );
+	}
+
+	public function handle_add_maintenance_update() {
+		$this->guard( 'ssm_add_maintenance_update', Capabilities::EDIT_UPDATES );
+
+		$maintenance_id = absint( $_POST['maintenance_id'] ?? 0 );
+		$status         = sanitize_key( wp_unslash( $_POST['status'] ?? 'in_progress' ) );
+		$message        = wp_unslash( $_POST['message'] ?? '' );
+		$is_internal    = ! empty( $_POST['is_internal'] );
+
+		if ( $is_internal && ! current_user_can( Capabilities::MANAGE_INCIDENTS ) ) {
+			$is_internal = false;
+		}
+
+		$result = MaintenanceManager::add_update( $maintenance_id, $status, $message, $is_internal );
+
+		if ( is_wp_error( $result ) ) {
+			$this->redirect_with_notice( 'maintenance', $result->get_error_message(), 'error', array( 'maintenance_id' => $maintenance_id ) );
+		}
+
+		$this->redirect_with_notice( 'maintenance', __( 'Update added.', 'service-status-manager' ), 'success', array( 'maintenance_id' => $maintenance_id ) );
 	}
 
 	/**

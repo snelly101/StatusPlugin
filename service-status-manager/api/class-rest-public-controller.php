@@ -240,6 +240,17 @@ class RestPublicController {
 			'scheduled_start' => $event->scheduled_start,
 			'scheduled_end'   => $event->scheduled_end,
 			'services'        => wp_list_pluck( MaintenanceManager::get_services_for_maintenance( $event->id ), 'name' ),
+			'updates'         => array_map(
+				function ( $update ) {
+					return array(
+						'status'      => $update->status,
+						'message'     => $update->message,
+						'author_name' => $update->author_name,
+						'created_at'  => $update->created_at,
+					);
+				},
+				MaintenanceManager::get_public_updates( $event->id )
+			),
 		);
 	}
 

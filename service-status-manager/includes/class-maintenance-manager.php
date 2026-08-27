@@ -96,6 +96,34 @@ class MaintenanceManager {
 	}
 
 	/**
+	 * Returns only the public (non-internal) updates for a maintenance
+	 * window, in chronological order, for use on the front end.
+	 *
+	 * @param int $maintenance_id Maintenance ID.
+	 * @return array
+	 */
+	public static function get_public_updates( $maintenance_id ) {
+		global $wpdb;
+		$table = ssm_table( 'maintenance_updates' );
+		$sql   = "SELECT * FROM {$table} WHERE maintenance_id = %d AND is_internal = 0 ORDER BY created_at ASC";
+		return $wpdb->get_results( $wpdb->prepare( $sql, absint( $maintenance_id ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/**
+	 * Returns every update (including internal notes) for the admin edit
+	 * screen. Internal notes must never leave this code path.
+	 *
+	 * @param int $maintenance_id Maintenance ID.
+	 * @return array
+	 */
+	public static function get_all_updates( $maintenance_id ) {
+		global $wpdb;
+		$table = ssm_table( 'maintenance_updates' );
+		$sql   = "SELECT * FROM {$table} WHERE maintenance_id = %d ORDER BY created_at ASC";
+		return $wpdb->get_results( $wpdb->prepare( $sql, absint( $maintenance_id ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/**
 	 * @param int $maintenance_id Maintenance ID.
 	 * @return array Monitor rows.
 	 */
@@ -133,6 +161,7 @@ class MaintenanceManager {
 			'on_complete' => ! empty( $data['notify_on_complete'] ),
 			'on_extend'   => ! empty( $data['notify_on_extend'] ),
 			'on_cancel'   => ! empty( $data['notify_on_cancel'] ),
+			'on_update'   => ! empty( $data['notify_on_update'] ),
 			'reminder_hours' => array_values( array_filter( array_map( 'absint', (array) ( $data['reminder_hours'] ?? ssm_get_setting( 'maintenance_reminder_hours', array( 24, 1 ) ) ) ) ) ),
 		);
 
@@ -203,6 +232,26 @@ class MaintenanceManager {
 			'updated_at'      => ssm_now(),
 		);
 
+		// The edit form always submits every notify_on_* checkbox together
+		// (checked or not), so only rebuild notify_settings wholesale when
+		// at least one of them is actually present - this was previously
+		// never persisted on edit at all (only set at creation), so
+		// changing these checkboxes on an existing event had no effect.
+		$notify_keys = array( 'notify_on_announce', 'notify_on_start', 'notify_on_complete', 'notify_on_extend', 'notify_on_cancel', 'notify_on_update' );
+		if ( array_intersect( $notify_keys, array_keys( $data ) ) ) {
+			$fields['notify_settings'] = wp_json_encode(
+				array(
+					'on_announce'    => ! empty( $data['notify_on_announce'] ),
+					'on_start'       => ! empty( $data['notify_on_start'] ),
+					'on_complete'    => ! empty( $data['notify_on_complete'] ),
+					'on_extend'      => ! empty( $data['notify_on_extend'] ),
+					'on_cancel'      => ! empty( $data['notify_on_cancel'] ),
+					'on_update'      => ! empty( $data['notify_on_update'] ),
+					'reminder_hours' => isset( $data['reminder_hours'] ) ? array_values( array_filter( array_map( 'absint', (array) $data['reminder_hours'] ) ) ) : ( json_decode( (string) $existing->notify_settings, true )['reminder_hours'] ?? array() ),
+				)
+			);
+		}
+
 		$wpdb->update( ssm_table( 'maintenance' ), $fields, array( 'id' => $id ) );
 
 		if ( isset( $data['service_ids'] ) ) {
@@ -222,25 +271,17 @@ class MaintenanceManager {
 	}
 
 	/**
-	 * Cancels a scheduled (not yet started) maintenance event.
+	 * Cancels a scheduled or in-progress maintenance event.
 	 *
 	 * @param int $id Maintenance ID.
-	 * @return bool|\WP_Error
+	 * @return int|\WP_Error New update ID.
 	 */
 	public static function cancel_maintenance( $id ) {
-		$existing = self::get_maintenance( $id );
-		if ( ! $existing ) {
-			return new \WP_Error( 'ssm_not_found', __( 'Maintenance event not found.', 'service-status-manager' ) );
-		}
-
-		self::set_status( $id, 'cancelled' );
-		do_action( 'ssm_maintenance_cancelled', self::get_maintenance( $id ) );
-
-		return true;
+		return self::add_update( $id, 'cancelled', '' );
 	}
 
 	/**
-	 * Deletes a maintenance event and its associations.
+	 * Deletes a maintenance event, its timeline, and its associations.
 	 *
 	 * @param int $id Maintenance ID.
 	 */
@@ -248,6 +289,7 @@ class MaintenanceManager {
 		global $wpdb;
 		$id = absint( $id );
 
+		$wpdb->delete( ssm_table( 'maintenance_updates' ), array( 'maintenance_id' => $id ) );
 		$wpdb->delete( ssm_table( 'maintenance_services' ), array( 'maintenance_id' => $id ) );
 		$wpdb->delete( ssm_table( 'maintenance_monitors' ), array( 'maintenance_id' => $id ) );
 		$wpdb->delete( ssm_table( 'maintenance' ), array( 'id' => $id ) );
@@ -256,75 +298,180 @@ class MaintenanceManager {
 	}
 
 	/**
-	 * Updates a maintenance event's status, firing
-	 * ssm_maintenance_status_changed when it actually changes.
+	 * Adds a new timeline update to a maintenance window - the single path
+	 * used both for a manually posted admin update (which may or may not
+	 * change the status) and for the cron-driven automatic
+	 * scheduled -> in_progress -> completed transitions (see
+	 * process_transitions()), so both produce a consistent public timeline
+	 * and apply the same service-status side effects.
 	 *
-	 * @param int    $id     Maintenance ID.
-	 * @param string $status New status.
+	 * @param int    $maintenance_id Maintenance ID.
+	 * @param string $status         New status (one of self::STATUSES). If it
+	 *                                matches the current status, this is a
+	 *                                plain progress note with no transition.
+	 * @param string $message        Update message. Falls back to the
+	 *                                maintenance's own description when blank,
+	 *                                same convention as an incident's first update.
+	 * @param bool   $is_internal    Internal-only note - never notified or shown publicly.
+	 * @param string $author_name    Optional public author name override.
+	 * @return int|\WP_Error New update ID.
 	 */
-	private static function set_status( $id, $status ) {
+	public static function add_update( $maintenance_id, $status, $message = '', $is_internal = false, $author_name = '' ) {
 		global $wpdb;
 
-		$existing = self::get_maintenance( $id );
-		if ( ! $existing || $existing->status === $status || ! in_array( $status, self::STATUSES, true ) ) {
-			return;
+		$maintenance = self::get_maintenance( $maintenance_id );
+		if ( ! $maintenance ) {
+			return new \WP_Error( 'ssm_not_found', __( 'Maintenance event not found.', 'service-status-manager' ) );
 		}
 
-		$fields = array(
-			'status'     => $status,
-			'updated_at' => ssm_now(),
+		$status  = in_array( $status, self::STATUSES, true ) ? $status : $maintenance->status;
+		$message = '' !== trim( wp_strip_all_tags( (string) $message ) ) ? $message : (string) $maintenance->description;
+
+		$update_id = self::insert_update( $maintenance_id, $status, $message, $is_internal, $author_name );
+
+		$old_status     = $maintenance->status;
+		$status_changed = $old_status !== $status;
+
+		if ( $status_changed ) {
+			$fields = array(
+				'status'     => $status,
+				'updated_at' => ssm_now(),
+			);
+			if ( 'completed' === $status ) {
+				$fields['actual_end'] = ssm_now();
+			}
+			$wpdb->update( ssm_table( 'maintenance' ), $fields, array( 'id' => $maintenance_id ) );
+
+			do_action( 'ssm_maintenance_status_changed', $maintenance_id, $old_status, $status );
+			self::apply_transition_side_effects( $maintenance_id, $status, $maintenance->impact );
+		}
+
+		AuditLog::record(
+			'maintenance_update_added',
+			'maintenance',
+			$maintenance_id,
+			array( 'status' => $old_status ),
+			array( 'status' => $status, 'is_internal' => $is_internal )
 		);
-		if ( 'completed' === $status ) {
-			$fields['actual_end'] = ssm_now();
+
+		if ( $is_internal ) {
+			return $update_id;
 		}
 
-		$wpdb->update( ssm_table( 'maintenance' ), $fields, array( 'id' => $id ) );
+		$updated_maintenance = self::get_maintenance( $maintenance_id );
+		$settings            = json_decode( (string) $updated_maintenance->notify_settings, true ) ?: array();
+		$update              = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . ssm_table( 'maintenance_updates' ) . ' WHERE id = %d', $update_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
-		do_action( 'ssm_maintenance_status_changed', $id, $existing->status, $status );
+		$event_map = array(
+			'in_progress' => array( 'ssm_maintenance_started', 'on_start' ),
+			'completed'   => array( 'ssm_maintenance_completed', 'on_complete' ),
+			'cancelled'   => array( 'ssm_maintenance_cancelled', 'on_cancel' ),
+		);
+
+		if ( $status_changed && isset( $event_map[ $status ] ) ) {
+			list( $action, $flag ) = $event_map[ $status ];
+			if ( ! empty( $settings[ $flag ] ) ) {
+				do_action( $action, $updated_maintenance, $update );
+			}
+		} elseif ( ! $status_changed && ! empty( $settings['on_update'] ) ) {
+			/**
+			 * Fires when a progress note is added without changing status
+			 * (e.g. a comment posted while still "in_progress").
+			 *
+			 * @param object $maintenance The maintenance row.
+			 * @param object $update      The new update row.
+			 */
+			do_action( 'ssm_maintenance_updated', $updated_maintenance, $update );
+		}
+
+		return $update_id;
+	}
+
+	/**
+	 * Inserts a raw maintenance timeline update row.
+	 *
+	 * @param int    $maintenance_id Maintenance ID.
+	 * @param string $status         Update status.
+	 * @param string $message        Message body.
+	 * @param bool   $is_internal    Internal-only flag.
+	 * @param string $author_name    Optional author name override.
+	 * @return int New update ID.
+	 */
+	private static function insert_update( $maintenance_id, $status, $message, $is_internal = false, $author_name = '' ) {
+		global $wpdb;
+
+		if ( '' === $author_name ) {
+			$user        = wp_get_current_user();
+			$author_name = $user && $user->exists() ? $user->display_name : ssm_get_setting( 'public_team_name' );
+		}
+
+		$wpdb->insert(
+			ssm_table( 'maintenance_updates' ),
+			array(
+				'maintenance_id' => absint( $maintenance_id ),
+				'status'         => $status,
+				'message'        => wp_kses_post( $message ),
+				'author_name'    => sanitize_text_field( $author_name ),
+				'is_internal'    => $is_internal ? 1 : 0,
+				'created_by'     => get_current_user_id() ?: null,
+				'created_at'     => ssm_now(),
+			)
+		);
+
+		return (int) $wpdb->insert_id;
+	}
+
+	/**
+	 * Applies the same service-status side effects regardless of whether a
+	 * transition was triggered manually or by process_transitions(): puts
+	 * automatic-mode affected services into "maintenance" while in
+	 * progress, and lets them fall back out (recalculated, or reset to
+	 * operational for manual-mode services) once finished.
+	 *
+	 * @param int    $maintenance_id Maintenance ID.
+	 * @param string $new_status     The status just transitioned to.
+	 * @param string $impact         The maintenance's configured impact level.
+	 */
+	private static function apply_transition_side_effects( $maintenance_id, $new_status, $impact ) {
+		$services = self::get_services_for_maintenance( $maintenance_id );
+
+		if ( 'in_progress' === $new_status ) {
+			foreach ( $services as $service ) {
+				if ( 'automatic' === $service->status_mode && 'none' !== $impact ) {
+					ServiceManager::set_status( $service->id, 'maintenance' );
+				}
+			}
+		} elseif ( in_array( $new_status, array( 'completed', 'cancelled' ), true ) ) {
+			foreach ( $services as $service ) {
+				ServiceManager::recalculate_status( $service->id );
+				if ( 'manual' === $service->status_mode && 'maintenance' === $service->status ) {
+					ServiceManager::set_status( $service->id, 'operational' );
+				}
+			}
+		}
 	}
 
 	/**
 	 * Cron entry point (runs every five minutes): moves scheduled events
-	 * into "in_progress" and "completed" as their windows arrive, applies
-	 * a "maintenance" service status while active, and sends configured
-	 * reminder notifications ahead of the start time.
+	 * into "in_progress" and "completed" as their windows arrive (each via
+	 * add_update(), so the automatic transition also produces a timeline
+	 * entry and respects the same on_start/on_complete notify settings a
+	 * manual update would), and sends configured reminder notifications
+	 * ahead of the start time.
 	 */
 	public static function process_transitions() {
 		global $wpdb;
 		$table = ssm_table( 'maintenance' );
 		$now   = ssm_now();
 
-		$starting = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} WHERE status = 'scheduled' AND scheduled_start <= %s", $now ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		foreach ( $starting as $event ) {
-			self::set_status( $event->id, 'in_progress' );
-
-			foreach ( self::get_services_for_maintenance( $event->id ) as $service ) {
-				if ( 'automatic' === $service->status_mode && 'none' !== $event->impact ) {
-					ServiceManager::set_status( $service->id, 'maintenance' );
-				}
-			}
-
-			$settings = json_decode( (string) $event->notify_settings, true ) ?: array();
-			if ( ! empty( $settings['on_start'] ) ) {
-				do_action( 'ssm_maintenance_started', self::get_maintenance( $event->id ) );
-			}
+		$starting = $wpdb->get_results( $wpdb->prepare( "SELECT id FROM {$table} WHERE status = 'scheduled' AND scheduled_start <= %s", $now ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		foreach ( $starting as $row ) {
+			self::add_update( $row->id, 'in_progress', '', false, ssm_get_setting( 'public_team_name' ) );
 		}
 
-		$ending = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} WHERE status = 'in_progress' AND scheduled_end <= %s", $now ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		foreach ( $ending as $event ) {
-			self::set_status( $event->id, 'completed' );
-
-			foreach ( self::get_services_for_maintenance( $event->id ) as $service ) {
-				ServiceManager::recalculate_status( $service->id );
-				if ( 'manual' === $service->status_mode && 'maintenance' === $service->status ) {
-					ServiceManager::set_status( $service->id, 'operational' );
-				}
-			}
-
-			$settings = json_decode( (string) $event->notify_settings, true ) ?: array();
-			if ( ! empty( $settings['on_complete'] ) ) {
-				do_action( 'ssm_maintenance_completed', self::get_maintenance( $event->id ) );
-			}
+		$ending = $wpdb->get_results( $wpdb->prepare( "SELECT id FROM {$table} WHERE status = 'in_progress' AND scheduled_end <= %s", $now ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		foreach ( $ending as $row ) {
+			self::add_update( $row->id, 'completed', '', false, ssm_get_setting( 'public_team_name' ) );
 		}
 
 		self::send_due_reminders();

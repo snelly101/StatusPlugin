@@ -60,6 +60,7 @@ class Admin {
 			'ssm_delete_incident'   => 'handle_delete_incident',
 			'ssm_save_maintenance'  => 'handle_save_maintenance',
 			'ssm_delete_maintenance' => 'handle_delete_maintenance',
+			'ssm_add_maintenance_update' => 'handle_add_maintenance_update',
 			'ssm_save_subscriber'   => 'handle_save_subscriber',
 			'ssm_delete_subscriber' => 'handle_delete_subscriber',
 			'ssm_retry_notification' => 'handle_retry_notification',

@@ -58,6 +58,7 @@
 		initHeader( root );
 		initServiceRows( root );
 		initIncidentCollapse( root );
+		initMaintenanceCollapse( root );
 		initUptimeTooltips( root );
 		initSubscribeModal( root );
 		initSelectAllToggle( root );
@@ -221,6 +222,29 @@
 
 	function toggleIncident( heading ) {
 		var card = heading.closest( '.ssm-incident' );
+		var open = card.classList.toggle( 'ssm-is-open' );
+		heading.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+	}
+
+	/**
+	 * Same collapse behaviour as initIncidentCollapse(), for finished
+	 * (completed/cancelled) maintenance windows - see maintenance.php.
+	 */
+	function initMaintenanceCollapse( root ) {
+		on( root, 'click', '.ssm-maintenance-header.ssm-is-expandable', function ( e, heading ) {
+			toggleMaintenance( heading );
+		} );
+
+		on( root, 'keydown', '.ssm-maintenance-header.ssm-is-expandable', function ( e, heading ) {
+			if ( 'Enter' === e.key || ' ' === e.key ) {
+				e.preventDefault();
+				toggleMaintenance( heading );
+			}
+		} );
+	}
+
+	function toggleMaintenance( heading ) {
+		var card = heading.closest( '.ssm-maintenance' );
 		var open = card.classList.toggle( 'ssm-is-open' );
 		heading.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
 	}
