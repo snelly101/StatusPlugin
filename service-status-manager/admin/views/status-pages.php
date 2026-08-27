@@ -122,8 +122,8 @@ $page_settings      = $editing ? ( json_decode( (string) $editing->settings, tru
 				</td></tr>
 			<tr><th><?php esc_html_e( 'Uptime history', 'service-status-manager' ); ?></th>
 				<td>
-					<label><input type="checkbox" name="show_uptime_history" value="1" <?php checked( ! isset( $page_settings['show_uptime_history'] ) || $page_settings['show_uptime_history'] ); ?> /> <?php esc_html_e( 'Show the uptime history section', 'service-status-manager' ); ?></label>
-					<p class="description"><?php esc_html_e( 'Uptime percentages are calculated purely from monitor checks. If your services do not have automated monitors attached, this section will show little or no data - turn it off here to hide it from visitors.', 'service-status-manager' ); ?></p>
+					<label><input type="checkbox" name="show_uptime_history" value="1" <?php checked( ! isset( $page_settings['show_uptime_history'] ) || $page_settings['show_uptime_history'] ); ?> /> <?php esc_html_e( 'Show uptime history and percentages', 'service-status-manager' ); ?></label>
+					<p class="description"><?php esc_html_e( 'Uptime percentages are calculated purely from monitor checks. If your services do not have automated monitors attached, uptime figures will show little or no data - turn this off to hide the "Uptime history" section further down the page, and the "Overall uptime" figure shown at the top.', 'service-status-manager' ); ?></p>
 				</td></tr>
 		</table>
 

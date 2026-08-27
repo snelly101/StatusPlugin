@@ -100,7 +100,7 @@ $overall_def   = ssm_get_status_definition( $overall );
 		<?php require SSM_PLUGIN_DIR . 'public/templates/subscribe-modal.php'; ?>
 	<?php endif; ?>
 
-	<?php echo $shortcodes->render_summary( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+	<?php echo $shortcodes->render_summary( array_merge( $atts, array( 'show_uptime' => $show_uptime_history ? 'yes' : 'no' ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
 	<div class="ssm-page-section" id="ssm-services">
 		<h2><?php esc_html_e( 'Services', 'service-status-manager' ); ?></h2>

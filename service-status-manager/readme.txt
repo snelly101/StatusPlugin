@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.7.0
+Stable tag: 1.7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.7.1 =
+The "Show uptime history and percentages" toggle added in 1.7.0 only hid the "Uptime history" section further down the page - it now also hides the "Overall uptime: X% (90 days)" line shown in the status hero at the top, since that figure is calculated the same way (from monitor checks) and is equally meaningless without monitors configured.
 
 = 1.7.0 =
 Adds a "Show the uptime history section" toggle under **Service Status > Status Pages** (on by default, matching current behaviour). Uptime percentages are calculated purely from monitor checks, so a status page for services with no automated monitors attached would show an empty or all-blank uptime history section - this lets you hide it entirely if you're not using monitors. Only affects the section auto-included in the full `[service_status_page]` layout; a standalone `[service_status_history]` shortcode placed deliberately elsewhere is unaffected.

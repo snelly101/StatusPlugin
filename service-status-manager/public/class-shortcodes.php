@@ -83,6 +83,7 @@ class Shortcodes {
 				'count'          => 5,
 				'show_monitors'  => 'yes',
 				'show_subscribe' => 'yes',
+				'show_uptime'    => 'yes',
 				'layout'         => 'full',
 				'range'          => 90,
 			),
@@ -118,14 +119,17 @@ class Shortcodes {
 		$atts    = $this->normalize_atts( (array) $atts );
 		$overall = ServiceManager::get_overall_status();
 
-		$services      = ServiceManager::get_services( array( 'show_on_status_page' => 1 ) );
-		$uptime_values = array();
-		foreach ( $services as $service ) {
-			if ( empty( $service->exclude_from_overall ) ) {
-				$uptime_values[] = \ServiceStatusManager\UptimeAggregator::get_service_uptime_percentage( $service->id, 90 );
+		$overall_uptime = null;
+		if ( 'yes' === $atts['show_uptime'] ) {
+			$services      = ServiceManager::get_services( array( 'show_on_status_page' => 1 ) );
+			$uptime_values = array();
+			foreach ( $services as $service ) {
+				if ( empty( $service->exclude_from_overall ) ) {
+					$uptime_values[] = \ServiceStatusManager\UptimeAggregator::get_service_uptime_percentage( $service->id, 90 );
+				}
 			}
+			$overall_uptime = $uptime_values ? array_sum( $uptime_values ) / count( $uptime_values ) : null;
 		}
-		$overall_uptime = $uptime_values ? array_sum( $uptime_values ) / count( $uptime_values ) : null;
 
 		return $this->render(
 			'summary',
