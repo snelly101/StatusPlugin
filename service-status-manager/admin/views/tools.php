@@ -31,11 +31,17 @@ $active_providers[] = __( 'Microsoft Teams (Incoming Webhook)', 'service-status-
 	<h1><?php esc_html_e( 'Tools', 'service-status-manager' ); ?></h1>
 
 	<h2><?php esc_html_e( 'Manual actions', 'service-status-manager' ); ?></h2>
-	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block; margin-right:8px;">
 		<?php wp_nonce_field( 'ssm_run_checks_now' ); ?>
 		<input type="hidden" name="action" value="ssm_run_checks_now" />
 		<?php submit_button( __( 'Run monitor checks now', 'service-status-manager' ), 'secondary', '', false ); ?>
 	</form>
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;">
+		<?php wp_nonce_field( 'ssm_process_notifications_now' ); ?>
+		<input type="hidden" name="action" value="ssm_process_notifications_now" />
+		<?php submit_button( __( 'Process notification queue now', 'service-status-manager' ), 'secondary', '', false ); ?>
+	</form>
+	<p class="description"><?php esc_html_e( 'Notifications (confirmation emails/SMS, incident updates, etc.) are queued and normally sent by WP-Cron or your server cron job within a minute or so. If subscribers report never receiving anything, use this button to process the queue immediately and check the Notifications screen for the outcome - it will show exactly why a message failed (e.g. no SMTP/SMS provider configured) rather than just going quiet.', 'service-status-manager' ); ?></p>
 
 	<h2><?php esc_html_e( 'Server cron / WP-CLI setup', 'service-status-manager' ); ?></h2>
 	<p><?php esc_html_e( 'WordPress Cron (WP-Cron) only runs when your site receives traffic, so it cannot guarantee timely monitor checks on a low-traffic site. For production use, disable WP-Cron\'s HTTP trigger and use either a real system cron job calling the secured endpoint below, or WP-CLI:', 'service-status-manager' ); ?></p>
@@ -59,6 +65,7 @@ $active_providers[] = __( 'Microsoft Teams (Incoming Webhook)', 'service-status-
 			<tr><td><?php esc_html_e( 'Notification queue: pending', 'service-status-manager' ); ?></td><td><?php echo esc_html( $queue_pending ); ?></td></tr>
 			<tr><td><?php esc_html_e( 'Notification queue: failed', 'service-status-manager' ); ?></td><td><?php echo esc_html( $queue_failed ); ?></td></tr>
 			<tr><td><?php esc_html_e( 'Last monitor run', 'service-status-manager' ); ?></td><td><?php echo esc_html( wp_next_scheduled( \ServiceStatusManager\Cron::RUN_MONITOR_CHECKS ) ? ssm_format_datetime( gmdate( 'Y-m-d H:i:s', wp_next_scheduled( \ServiceStatusManager\Cron::RUN_MONITOR_CHECKS ) - MINUTE_IN_SECONDS ) ) : '—' ); ?></td></tr>
+			<tr><td><?php esc_html_e( 'Last notification queue run', 'service-status-manager' ); ?></td><td><?php $last_notif_run = get_option( 'ssm_last_notification_run' ); echo esc_html( $last_notif_run ? ssm_format_datetime( $last_notif_run ) : __( 'Never - check your cron setup below', 'service-status-manager' ) ); ?></td></tr>
 			<tr><td><?php esc_html_e( 'Last aggregation run (hourly)', 'service-status-manager' ); ?></td><td><?php echo esc_html( get_option( 'ssm_last_hourly_aggregate', '—' ) ); ?></td></tr>
 			<tr><td><?php esc_html_e( 'Last cleanup run', 'service-status-manager' ); ?></td><td><?php echo esc_html( get_option( 'ssm_last_cleanup_run', '—' ) ); ?></td></tr>
 			<tr><td><?php esc_html_e( 'Active notification providers', 'service-status-manager' ); ?></td><td><?php echo esc_html( implode( ', ', $active_providers ) ); ?></td></tr>

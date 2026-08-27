@@ -154,6 +154,8 @@ class NotificationQueue {
 			++$processed;
 		}
 
+		update_option( 'ssm_last_notification_run', \ssm_now(), false );
+
 		return $processed;
 	}
 

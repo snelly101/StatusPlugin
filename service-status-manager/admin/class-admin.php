@@ -72,6 +72,7 @@ class Admin {
 			'ssm_save_webhook_in'   => 'handle_save_webhook_in',
 			'ssm_delete_webhook_in' => 'handle_delete_webhook_in',
 			'ssm_run_checks_now'    => 'handle_run_checks_now',
+			'ssm_process_notifications_now' => 'handle_process_notifications_now',
 			'ssm_export_report'     => 'handle_export_report',
 			'ssm_download_logs'     => 'handle_download_logs',
 			'ssm_uninstall_setting' => 'handle_uninstall_setting',
@@ -441,6 +442,19 @@ class Admin {
 		$this->guard( 'ssm_run_checks_now', Capabilities::MANAGE );
 		\ServiceStatusManager\Monitoring\MonitorRunner::run_due_checks( true );
 		$this->redirect_with_notice( 'tools', __( 'Monitor checks triggered.', 'service-status-manager' ) );
+	}
+
+	public function handle_process_notifications_now() {
+		$this->guard( 'ssm_process_notifications_now', Capabilities::MANAGE );
+		$count = \ServiceStatusManager\Notifications\NotificationQueue::process_batch();
+		$this->redirect_with_notice(
+			'tools',
+			sprintf(
+				/* translators: %d: number of notifications processed */
+				_n( 'Processed %d notification.', 'Processed %d notifications.', $count, 'service-status-manager' ),
+				$count
+			)
+		);
 	}
 
 }
