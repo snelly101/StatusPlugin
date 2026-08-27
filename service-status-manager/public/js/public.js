@@ -314,11 +314,30 @@
 			} );
 		} );
 
-		// Step 2: "select all" toggles every service/group/monitor checkbox.
+		// Step 2: "Everything" means "no specific selection", which is what
+		// the backend actually treats as "subscribe to everything" (see
+		// SubscriberManager::get_matching_subscribers()) - it also then
+		// keeps matching newly-added services/monitors automatically.
+		// Ticking every individual box instead would submit an explicit,
+		// fixed list, which stops matching as soon as an incident doesn't
+		// happen to tag one of those exact items (e.g. a quick test
+		// incident with no services attached) - so this disables and
+		// clears the individual boxes rather than checking them.
 		on( modal, 'change', '[data-ssm-select-all]', function ( e, box ) {
 			qsa( '[data-ssm-selectable]', modal ).forEach( function ( cb ) {
-				cb.checked = box.checked;
+				cb.checked = false;
+				cb.disabled = box.checked;
 			} );
+		} );
+
+		// Picking a specific item overrides "Everything".
+		on( modal, 'change', '[data-ssm-selectable]', function ( e, cb ) {
+			if ( cb.checked ) {
+				var selectAll = qs( '[data-ssm-select-all]', modal );
+				if ( selectAll ) {
+					selectAll.checked = false;
+				}
+			}
 		} );
 
 		function goToStep( n ) {

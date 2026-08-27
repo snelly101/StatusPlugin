@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.2.4
+Stable tag: 1.2.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.2.5 =
+Fixes the "Everything" checkbox in the subscribe modal (step 2 - "what to follow"): ticking it used to check every individual service/group/monitor box, which submitted an explicit, fixed list of today's services rather than "no specific selection" - the thing the backend actually treats as "notify me about everything". In practice that meant a subscriber who ticked "Everything" would only get notified about incidents that happened to tag one of those exact services, and never about a general incident with no services tagged (like a quick test incident) - the notifications simply had nothing to match and were never queued. "Everything" now clears and disables the individual boxes instead of ticking them, matching the backend's real "everything" behaviour, including automatically covering services added later. If you subscribed via the modal and ticked "Everything", go to your subscription's "manage" link (from the original confirmation email) and re-save with every individual service/group/monitor box unchecked to fix your existing subscription.
 
 = 1.2.4 =
 Adds detailed Debug-level logging to incident/maintenance notification targeting (why a subscriber was or wasn't matched, and whether a queue row was actually created for each channel), so an "I created an incident but nobody was notified" report can be diagnosed from Service Status > Logs (with Settings > Logging set to Debug) instead of guesswork. No behaviour change to who gets notified, only visibility into the decision. Also fixes a harmless PHP warning when queuing a brand-new incident's initial notification (a null property access in the de-duplication key).
