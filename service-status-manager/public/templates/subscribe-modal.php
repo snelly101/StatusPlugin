@@ -157,6 +157,18 @@ $settings = ssm_get_settings();
 					<button type="submit" class="ssm-button ssm-button-primary" data-ssm-submit hidden><?php esc_html_e( 'Subscribe', 'service-status-manager' ); ?></button>
 				</div>
 			</form>
+
+			<p class="ssm-manage-link">
+				<?php esc_html_e( 'Already subscribed?', 'service-status-manager' ); ?>
+				<a href="#ssm-modal-resend" data-ssm-toggle="resend"><?php esc_html_e( 'Resend my confirmation or management link', 'service-status-manager' ); ?></a>
+			</p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="ssm-modal-resend" class="ssm-resend-form" hidden>
+				<?php wp_nonce_field( 'ssm_resend_confirmation' ); ?>
+				<input type="hidden" name="action" value="ssm_resend_confirmation" />
+				<label for="ssm-modal-resend-email" class="screen-reader-text"><?php esc_html_e( 'Email address', 'service-status-manager' ); ?></label>
+				<input type="email" id="ssm-modal-resend-email" name="email" placeholder="<?php esc_attr_e( 'you@example.com', 'service-status-manager' ); ?>" required />
+				<button type="submit" class="ssm-button"><?php esc_html_e( 'Send link', 'service-status-manager' ); ?></button>
+			</form>
 		</div>
 
 		<div class="ssm-confirmation" data-ssm-confirmation hidden>

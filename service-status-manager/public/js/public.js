@@ -587,7 +587,8 @@
 	function initResendToggle( root ) {
 		on( root, 'click', '[data-ssm-toggle="resend"]', function ( e, toggle ) {
 			e.preventDefault();
-			var form = qs( '#ssm-resend', root );
+			var targetId = toggle.getAttribute( 'href' ) || '#ssm-resend';
+			var form = qs( targetId, root );
 			if ( form ) {
 				form.hidden = ! form.hidden;
 				if ( ! form.hidden ) {

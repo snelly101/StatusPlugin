@@ -41,6 +41,7 @@ class NotificationManager {
 
 		add_action( 'ssm_subscriber_verification_needed', array( __CLASS__, 'on_verification_needed' ), 10, 3 );
 		add_action( 'ssm_subscriber_management_link_requested', array( __CLASS__, 'on_management_link_requested' ), 10, 2 );
+		add_action( 'ssm_subscriber_confirmed', array( __CLASS__, 'on_subscriber_confirmed' ) );
 	}
 
 	/**
@@ -389,6 +390,19 @@ class NotificationManager {
 				'dedup_key'      => 'verify-' . $subscriber_id . '-' . $channel . '-' . substr( md5( $token ), 0, 8 ),
 			)
 		);
+	}
+
+	/**
+	 * Fires once, right after a subscriber's first channel is confirmed
+	 * (subscriber status flips from pending to active) - sends them their
+	 * management link straight away, so they don't have to dig up the
+	 * original confirmation email or use "resend" just to find it.
+	 *
+	 * @param int $subscriber_id Subscriber ID.
+	 */
+	public static function on_subscriber_confirmed( $subscriber_id ) {
+		$token = SubscriberManager::generate_token( $subscriber_id, 'manage', SubscriberManager::TOKEN_TTL_MANAGE );
+		self::on_management_link_requested( $subscriber_id, $token );
 	}
 
 	/**
