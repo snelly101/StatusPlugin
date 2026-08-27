@@ -69,6 +69,16 @@ class NotificationQueue {
 		$wpdb->suppress_errors( false );
 
 		if ( ! $inserted ) {
+			\ssm_log(
+				sprintf(
+					'Notification queue: insert skipped for subscriber #%d, channel %s, event %s (likely a duplicate dedup_key from an earlier attempt, or a DB error: %s).',
+					absint( $args['subscriber_id'] ?? 0 ),
+					$channel,
+					sanitize_key( $args['event_type'] ?? '' ),
+					$wpdb->last_error ? $wpdb->last_error : 'none reported'
+				),
+				'debug'
+			);
 			return false;
 		}
 

@@ -235,6 +235,7 @@ class SubscriberManager {
 	 */
 	public static function resend_confirmation( $email ) {
 		if ( ! is_email( $email ) ) {
+			ssm_log( 'Resend/manage-link request: submitted value was not a valid email address.', 'debug' );
 			return 0;
 		}
 
@@ -244,6 +245,7 @@ class SubscriberManager {
 		$id    = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE email_hash = %s", $hash ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		if ( ! $id ) {
+			ssm_log( 'Resend/manage-link request: no subscriber found with that email address.', 'debug' );
 			return 0;
 		}
 
@@ -253,10 +255,12 @@ class SubscriberManager {
 		if ( '1' === $verified || 1 === (int) $verified ) {
 			// Already verified - send a management link instead of a confirmation link.
 			$token = self::generate_token( $id, 'manage', self::TOKEN_TTL_MANAGE );
+			ssm_log( sprintf( 'Resend/manage-link request: subscriber #%d matched (email already verified) - queuing management link.', $id ), 'debug' );
 			do_action( 'ssm_subscriber_management_link_requested', (int) $id, $token );
 			return (int) $id;
 		}
 
+		ssm_log( sprintf( 'Resend/manage-link request: subscriber #%d matched (email not yet verified) - queuing a confirmation link instead.', $id ), 'debug' );
 		self::send_verification( (int) $id, 'email' );
 
 		return (int) $id;

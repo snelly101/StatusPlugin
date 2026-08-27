@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.3.1
+Stable tag: 1.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.3.2 =
+Adds debug logging to the "resend confirmation/management link" flow and to the notification queue's insert step, so a "I asked to resend and nothing happened, no row even appears in the queue" report can be pinned down precisely (invalid input, no subscriber matched that email address, a duplicate/DB error on insert, etc.) via Service Status > Logs with Settings > Logging set to Debug. No behaviour change, only visibility.
 
 = 1.3.1 =
 The "resend my confirmation or management link" request (and confirming a channel for the first time, which can also queue a management-link email) didn't get the same "send immediately" treatment added in 1.2.3 for new subscriptions - it was only ever sent via the best-effort background trigger or the next cron tick, so on a host where that background trigger doesn't run promptly, the email could sit in the queue for a while with no obvious sign anything was wrong. Both now send synchronously, the same way subscribing already does.
