@@ -144,6 +144,19 @@
 	box-sizing: border-box;
 }
 
+/* Several components below set an explicit `display` on elements that
+   are also toggled via the plain HTML `hidden` attribute (the subscribe
+   wizard's Back/Next/Subscribe buttons, the resend-link mini-form,
+   destination fields, etc.). Author CSS - even without !important -
+   always outranks the browser's built-in `[hidden] { display: none }`
+   rule, since that rule lives in the lowest-priority "user agent"
+   origin; an explicit `display: inline-flex` etc. elsewhere in this
+   file would otherwise make a "hidden" element visible anyway. This
+   restores native hidden-attribute behaviour everywhere in scope. */
+.ssm-status-page [hidden] {
+	display: none !important;
+}
+
 .ssm-status-page {
 	position: relative;
 	isolation: isolate;
