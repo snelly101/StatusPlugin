@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.4.1 =
+SMS notifications now carry the same extra detail as the 1.4.0 email improvements, within SMS length limits: severity and status (incidents) or scheduled window (maintenance), plus the affected service names, ahead of the link. The most important part (what happened) is always first, so if a message is long enough to hit your configured SMS length limit, it's the affected-services list that gets trimmed rather than the headline.
 
 = 1.4.0 =
 Notification emails now show far more detail. Incident/maintenance payloads already carried severity, status, affected services, and a status-page link, but the email only ever rendered the raw update message and threw the rest away. Emails now show a severity badge, status label, the list of affected services, a maintenance's scheduled start/end window, an incident's start time, and a "View on status page" button - all above the message text - and the plain-text version (used by mail clients that prefer it) mirrors the same information plus the manage-subscription/unsubscribe links, which previously only appeared in the HTML version.

@@ -106,6 +106,14 @@ class NotificationManager {
 		$page = StatusPageManager::get_page_by_slug( 'main' );
 		$url  = $page ? trailingslashit( home_url() ) . '?ssm_incident=' . $incident->slug : home_url( '/' );
 
+		$sms_summary = self::build_sms_summary(
+			array(
+				sprintf( '%s: %s', ucfirst( $incident->severity ), wp_strip_all_tags( $incident->title ) ),
+				ucfirst( $incident->status ),
+				$services ? sprintf( __( 'Services: %s', 'service-status-manager' ), implode( ', ', wp_list_pluck( $services, 'name' ) ) ) : '',
+			)
+		);
+
 		foreach ( $subscribers as $subscriber ) {
 			$channels = self::active_channels( $subscriber->id );
 
@@ -119,7 +127,7 @@ class NotificationManager {
 					'subject'           => $prefix . $incident->title,
 					'body_html'         => wpautop( wp_kses_post( $update->message ?? $incident->description ) ),
 					'body_text'         => wp_strip_all_tags( $update->message ?? $incident->description ),
-					'sms_summary'       => sprintf( '%s: %s', ucfirst( $incident->severity ), wp_strip_all_tags( $incident->title ) ),
+					'sms_summary'       => $sms_summary,
 					'severity'          => $incident->severity,
 					'status_label'      => ucfirst( $incident->status ),
 					'affected_services' => implode( ', ', wp_list_pluck( $services, 'name' ) ),
@@ -145,6 +153,20 @@ class NotificationManager {
 				ssm_log( sprintf( 'Incident #%d (%s): queue row %s for subscriber #%d via %s.', $incident->id, $event, $queued_id ? '#' . $queued_id : 'NOT created (duplicate dedup_key)', $subscriber->id, $channel ), 'debug' );
 			}
 		}
+	}
+
+	/**
+	 * Joins non-empty parts into a single SMS summary line. Kept as a flat
+	 * list of parts (rather than building one long sprintf) so
+	 * SmsProvider::build_text()'s existing truncation still cuts off the
+	 * least important detail first, since the most important part (what
+	 * happened) is always placed first.
+	 *
+	 * @param string[] $parts Ordered candidate parts, most important first.
+	 * @return string
+	 */
+	private static function build_sms_summary( array $parts ) {
+		return implode( ' | ', array_filter( array_map( 'trim', $parts ) ) );
 	}
 
 	/**
@@ -238,21 +260,31 @@ class NotificationManager {
 		$page = StatusPageManager::get_page_by_slug( 'main' );
 		$url  = $page ? trailingslashit( home_url() ) : home_url( '/' );
 
+		$schedule_label = sprintf(
+			/* translators: 1: start date/time, 2: end date/time */
+			__( '%1$s to %2$s', 'service-status-manager' ),
+			ssm_format_datetime( $maintenance->scheduled_start ),
+			ssm_format_datetime( $maintenance->scheduled_end )
+		);
+
+		$sms_summary = self::build_sms_summary(
+			array(
+				sprintf( '%s: %s', $status_labels[ $event ] ?? '', wp_strip_all_tags( $maintenance->title ) ),
+				$schedule_label,
+				$services ? sprintf( __( 'Services: %s', 'service-status-manager' ), implode( ', ', wp_list_pluck( $services, 'name' ) ) ) : '',
+			)
+		);
+
 		foreach ( $subscribers as $subscriber ) {
 			foreach ( self::active_channels( $subscriber->id ) as $channel ) {
 				$payload = array(
 					'subject'           => $prefix . $maintenance->title,
 					'body_html'         => wpautop( wp_kses_post( $maintenance->description ) ),
 					'body_text'         => wp_strip_all_tags( $maintenance->description ),
-					'sms_summary'       => sprintf( '%s (%s - %s)', wp_strip_all_tags( $maintenance->title ), ssm_format_datetime( $maintenance->scheduled_start ), ssm_format_datetime( $maintenance->scheduled_end ) ),
+					'sms_summary'       => $sms_summary,
 					'severity'          => 'informational',
 					'status_label'      => $status_labels[ $event ] ?? '',
-					'schedule_label'    => sprintf(
-						/* translators: 1: start date/time, 2: end date/time */
-						__( '%1$s to %2$s', 'service-status-manager' ),
-						ssm_format_datetime( $maintenance->scheduled_start ),
-						ssm_format_datetime( $maintenance->scheduled_end )
-					),
+					'schedule_label'    => $schedule_label,
 					'affected_services' => implode( ', ', wp_list_pluck( $services, 'name' ) ),
 					'url'               => $url,
 					'manage_url'        => self::manage_url( $subscriber->id ),
