@@ -220,8 +220,9 @@ if ( ! function_exists( __NAMESPACE__ . '\\ssm_admin_monitor_sparkline' ) ) {
 						<option value="manual" <?php selected( $editing->type ?? 'manual', 'manual' ); ?>><?php esc_html_e( 'Manual', 'service-status-manager' ); ?></option>
 						<option value="http" <?php selected( $editing->type ?? '', 'http' ); ?>><?php esc_html_e( 'HTTP / HTTPS', 'service-status-manager' ); ?></option>
 						<option value="tcp" <?php selected( $editing->type ?? '', 'tcp' ); ?>><?php esc_html_e( 'TCP Port', 'service-status-manager' ); ?></option>
+						<option value="ping" <?php selected( $editing->type ?? '', 'ping' ); ?>><?php esc_html_e( 'Ping', 'service-status-manager' ); ?></option>
 					</select>
-					<p class="description"><?php esc_html_e( 'Additional monitor types (Ping, DNS, SMTP, Microsoft 365, API, NinjaOne, PRTG, Auvik, Veeam, WatchGuard, webhook) can be added via the ssm_monitor_provider_types filter.', 'service-status-manager' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Additional monitor types (DNS, SMTP, Microsoft 365, API, NinjaOne, PRTG, Auvik, Veeam, WatchGuard, webhook) can be added via the ssm_monitor_provider_types filter.', 'service-status-manager' ); ?></p>
 				</td>
 			</tr>
 
@@ -296,6 +297,18 @@ if ( ! function_exists( __NAMESPACE__ . '\\ssm_admin_monitor_sparkline' ) ) {
 			</tr>
 			</tbody>
 
+			<tbody id="ssm-fields-ping" class="ssm-monitor-type-fields">
+			<tr>
+				<th><label for="ssm-m-ping-host"><?php esc_html_e( 'Hostname or IP address', 'service-status-manager' ); ?></label></th>
+				<td><input type="text" id="ssm-m-ping-host" name="ping_host" class="regular-text" value="<?php echo esc_attr( 'ping' === ( $editing->type ?? '' ) ? ( $editing->settings['host'] ?? '' ) : '' ); ?>" />
+				<p class="description"><?php esc_html_e( 'PHP on typical WordPress hosting cannot send real ICMP ping packets, so this checks whether the host accepts a connection on a common port (80/443) instead - a reliable substitute that works without special server permissions. To check one specific port, use a TCP Port monitor instead.', 'service-status-manager' ); ?></p></td>
+			</tr>
+			<tr>
+				<th><?php esc_html_e( 'Options', 'service-status-manager' ); ?></th>
+				<td><label><input type="checkbox" name="allow_internal" value="1" <?php checked( $editing->settings['allow_internal'] ?? false, 1 ); ?> /> <?php esc_html_e( 'Allow monitoring internal/private addresses (security risk)', 'service-status-manager' ); ?></label></td>
+			</tr>
+			</tbody>
+
 			<tr>
 				<th><label for="ssm-m-frequency"><?php esc_html_e( 'Check frequency (seconds)', 'service-status-manager' ); ?></label></th>
 				<td><input type="number" id="ssm-m-frequency" name="check_frequency" min="60" value="<?php echo esc_attr( $editing->check_frequency ?? 300 ); ?>" />
@@ -350,6 +363,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\ssm_admin_monitor_sparkline' ) ) {
 	function ssmToggleMonitorFields( type ) {
 		document.getElementById( 'ssm-fields-http' ).style.display = ( type === 'http' ) ? '' : 'none';
 		document.getElementById( 'ssm-fields-tcp' ).style.display = ( type === 'tcp' ) ? '' : 'none';
+		document.getElementById( 'ssm-fields-ping' ).style.display = ( type === 'ping' ) ? '' : 'none';
 	}
 	document.addEventListener( 'DOMContentLoaded', function () {
 		ssmToggleMonitorFields( document.getElementById( 'ssm-m-type' ).value );

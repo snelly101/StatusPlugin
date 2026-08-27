@@ -100,11 +100,14 @@ class MonitorRunner {
 			case 'tcp':
 				$provider = new TcpMonitor();
 				break;
+			case 'ping':
+				$provider = new PingMonitor();
+				break;
 		}
 
 		/**
 		 * Filters the monitor provider instance used for a given type,
-		 * allowing third-party monitor types (Ping, DNS, SMTP, Microsoft
+		 * allowing third-party monitor types (DNS, SMTP, Microsoft
 		 * 365, API, NinjaOne, PRTG, Auvik, Veeam, WatchGuard, webhook, etc.)
 		 * to register themselves.
 		 *

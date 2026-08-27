@@ -27,7 +27,7 @@ class MonitorManager {
 	 * @return string[]
 	 */
 	public static function get_supported_types() {
-		return apply_filters( 'ssm_monitor_provider_types', array( 'manual', 'http', 'tcp' ) );
+		return apply_filters( 'ssm_monitor_provider_types', array( 'manual', 'http', 'tcp', 'ping' ) );
 	}
 
 	/**
@@ -306,6 +306,9 @@ class MonitorManager {
 		} elseif ( 'tcp' === $type ) {
 			$clean['host'] = sanitize_text_field( $settings['host'] ?? '' );
 			$clean['port'] = min( 65535, max( 1, absint( $settings['port'] ?? 443 ) ) );
+			$clean['allow_internal'] = empty( $settings['allow_internal'] ) ? false : true;
+		} elseif ( 'ping' === $type ) {
+			$clean['host'] = sanitize_text_field( $settings['host'] ?? '' );
 			$clean['allow_internal'] = empty( $settings['allow_internal'] ) ? false : true;
 		}
 

@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.5.0
+Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,7 +23,7 @@ Customers can:
 * Subscribe to an entire service, or to individual monitors within it.
 * Choose email, SMS, Microsoft Teams, or a combination of channels.
 
-Administrators get a full WordPress admin area to manage service groups, services, monitors (manual, HTTP/HTTPS, TCP port - with an extensible provider architecture for more), incidents, scheduled maintenance, subscribers, the notification queue, reports, settings, logs, and diagnostic tools.
+Administrators get a full WordPress admin area to manage service groups, services, monitors (manual, HTTP/HTTPS, TCP port, Ping - with an extensible provider architecture for more), incidents, scheduled maintenance, subscribers, the notification queue, reports, settings, logs, and diagnostic tools.
 
 = Design (v1.1.0) =
 
@@ -41,7 +41,7 @@ The public status page uses a self-contained design system - CSS custom properti
 
 * Modern namespaced, object-oriented PHP (PHP 8.1+), organised into `includes/` (core services), `admin/` (wp-admin UI), `public/` (front-end templates/shortcodes), `api/` (REST + webhooks), `monitoring/` (provider-based monitor checks), and `notifications/` (provider-based notification channels).
 * Custom database tables (via `$wpdb`, prepared statements throughout) for everything high-volume or relational - monitor checks, aggregates, incidents, subscribers, the notification queue, and the audit log - rather than storing this as WordPress posts/postmeta.
-* Monitoring and notifications are both provider-based: new monitor types (Ping, DNS, SMTP, Microsoft 365, generic API, NinjaOne, PRTG, Auvik, Veeam, WatchGuard, custom webhooks) and SMS gateways (MessageBird, Vonage, AWS SNS, Esendex, etc.) can be added by implementing an interface and registering via a filter, with no changes to core code.
+* Monitoring and notifications are both provider-based: new monitor types (DNS, SMTP, Microsoft 365, generic API, NinjaOne, PRTG, Auvik, Veeam, WatchGuard, custom webhooks) and SMS gateways (MessageBird, Vonage, AWS SNS, Esendex, etc.) can be added by implementing an interface and registering via a filter, with no changes to core code.
 * WordPress capabilities, not role-name checks, gate every sensitive action; nonces protect every state-changing form and admin-post handler; every write to a custom table goes through a prepared statement.
 
 == Installation ==
@@ -49,7 +49,7 @@ The public status page uses a self-contained design system - CSS custom properti
 1. Upload the `service-status-manager` folder to `/wp-content/plugins/`, or install the zip through Plugins > Add New > Upload Plugin.
 2. Activate the plugin. This creates the plugin's database tables, registers its roles/capabilities, seeds a default "main" status page, and schedules its cron events.
 3. Go to **Service Status > Service Groups** and **Services** to create your services (e.g. "Microsoft 365", "Hosted Email", "Broadband").
-4. Go to **Service Status > Monitors** to add monitors under each service (Manual, HTTP/HTTPS, or TCP Port).
+4. Go to **Service Status > Monitors** to add monitors under each service (Manual, HTTP/HTTPS, TCP Port, or Ping).
 5. Create a WordPress page and add the `[service_status_page]` shortcode, or use the individual shortcodes listed below to build a custom layout.
 6. Go to **Service Status > Settings** to configure your sender email, SMS provider (optional), and data retention preferences.
 7. See "Cron Configuration" below before relying on the plugin in production.
@@ -188,7 +188,7 @@ Built-in tooling: explicit consent capture with timestamp/wording-version/source
 
 * Every admin action: capability check + nonce check + input sanitisation + audit log entry.
 * Every custom-table query uses `$wpdb::prepare()`.
-* HTTP/TCP monitor targets are validated against loopback/private/link-local/reserved/cloud-metadata ranges before every check (not just when saved), with the resolved IP pinned for the actual connection to prevent DNS-rebinding bypass. Internal-address monitoring is opt-in per monitor, or via an explicit administrator-controlled allow-list, and is logged as a warning when used.
+* HTTP/TCP/Ping monitor targets are validated against loopback/private/link-local/reserved/cloud-metadata ranges before every check (not just when saved), with the resolved IP pinned for the actual connection to prevent DNS-rebinding bypass. Internal-address monitoring is opt-in per monitor, or via an explicit administrator-controlled allow-list, and is logged as a warning when used.
 * Confirmation/unsubscribe/management links use cryptographically random tokens; only their SHA-256 hash is stored.
 * SMS/Teams credentials and monitor auth headers are encrypted at rest (AES-256-GCM) and masked everywhere they might otherwise be displayed (logs, audit trail, exports).
 * Public subscription, resend-confirmation, and test-notification endpoints are rate-limited; incoming webhooks require HMAC signatures, timestamp-bounded replay protection, and idempotency keys.
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.6.0 =
+Adds a "Ping" monitor type (Service Status > Monitors > Monitor type). PHP on typical WordPress hosting can't send real ICMP ping packets - that needs raw sockets/root, which shared and managed hosts don't allow, and shelling out to the system `ping` command needs exec()/shell_exec(), which most hosts disable for security - so this checks basic host reachability by attempting a TCP connection to a couple of common ports (80/443 by default, filterable via `ssm_ping_monitor_ports`) and succeeds as soon as one accepts a connection. Just enter a hostname or IP, no port required; to check one specific port instead, use a TCP Port monitor. Goes through the same SSRF validation (loopback/private/link-local/cloud-metadata protection, DNS-rebinding-safe) as the HTTP and TCP monitor types.
 
 = 1.5.0 =
 Resolved incidents on the public status page now collapse their description and full update timeline behind a click/tap toggle by default (matching the existing expandable service rows), instead of every past update always being fully shown - a long-lived status page no longer fills up with historical detail nobody needs at a glance. Active incidents are unaffected and stay fully expanded.

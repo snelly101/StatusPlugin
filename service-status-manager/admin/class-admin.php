@@ -375,6 +375,16 @@ class Admin {
 				'port'           => wp_unslash( $_POST['port'] ?? 443 ),
 				'allow_internal' => ! empty( $_POST['allow_internal'] ),
 			);
+		} elseif ( 'ping' === $type ) {
+			// A distinct POST field name (ping_host, not host) from the TCP
+			// monitor's host field - both tbodies are always present in the
+			// form (only CSS toggles which is visible), so sharing a name
+			// would let the last-in-DOM field silently clobber the other's
+			// value regardless of which type is actually selected.
+			$settings = array(
+				'host'           => wp_unslash( $_POST['ping_host'] ?? '' ),
+				'allow_internal' => ! empty( $_POST['allow_internal'] ),
+			);
 		}
 
 		$data = array(

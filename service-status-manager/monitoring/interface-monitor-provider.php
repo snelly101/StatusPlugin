@@ -2,7 +2,7 @@
 /**
  * Contract every monitor type (built-in or third-party) must implement.
  *
- * Third-party monitor types (Ping, DNS, SMTP, Microsoft 365, generic API,
+ * Third-party monitor types (DNS, SMTP, Microsoft 365, generic API,
  * NinjaOne, PRTG, Auvik, Veeam, WatchGuard, or a custom webhook-based
  * check) register themselves by:
  *
