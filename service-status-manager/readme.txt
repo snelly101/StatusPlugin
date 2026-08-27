@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.2.2
+Stable tag: 1.2.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.2.3 =
+Notifications now go out immediately instead of waiting for the next cron tick. Subscribing sends that subscriber's own confirmation email/SMS synchronously, straight away, before the page even redirects. Every other queued notification (incident/maintenance updates, verification links, etc.) now triggers a non-blocking background request to the plugin's own cron endpoint the moment it's queued, so it's typically sent within a second or two rather than on the next WP-Cron tick - this is best-effort (some hosts block loopback requests), so WP-Cron/real server cron and the "Process notification queue now" tool remain in place as a fallback and continue to work exactly as before.
 
 = 1.2.2 =
 Adds a "Process notification queue now" button under Tools (alongside "Run monitor checks now") and a "Last notification queue run" diagnostic, so an administrator can immediately flush pending confirmation/notification emails and SMS - and see exactly why one failed - without waiting on WP-Cron or setting up real server cron first. No functional change to how notifications are sent, only a manual trigger and better visibility for troubleshooting "I never received anything" reports.

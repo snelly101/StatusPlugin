@@ -68,7 +68,56 @@ class NotificationQueue {
 
 		$wpdb->suppress_errors( false );
 
-		return $inserted ? (int) $wpdb->insert_id : false;
+		if ( ! $inserted ) {
+			return false;
+		}
+
+		self::trigger_immediate_processing();
+
+		return (int) $wpdb->insert_id;
+	}
+
+	/**
+	 * Fires a non-blocking "loopback" request to the plugin's own secured
+	 * cron endpoint immediately after something is queued, so messages
+	 * are usually sent within a second or two instead of waiting for the
+	 * next WP-Cron tick (which only runs on site traffic and can be
+	 * delayed well beyond its nominal one-minute schedule on a
+	 * low-traffic site).
+	 *
+	 * This is best-effort: if the request cannot be made - a host that
+	 * blocks loopback HTTP requests, for example - nothing is lost,
+	 * delivery still happens on the next regular
+	 * Cron::PROCESS_NOTIFICATIONS run, or via the "Process notification
+	 * queue now" tool.
+	 *
+	 * Debounced with a short transient lock so a burst of enqueue() calls
+	 * (e.g. notifying hundreds of subscribers about one incident) fires a
+	 * single loopback request rather than one per message, and never
+	 * blocks the caller (a monitor check, an admin saving an incident, a
+	 * public subscription request) waiting for it to complete.
+	 */
+	private static function trigger_immediate_processing() {
+		if ( get_transient( 'ssm_notify_trigger_lock' ) ) {
+			return;
+		}
+		set_transient( 'ssm_notify_trigger_lock', 1, 3 );
+
+		$token = \ssm_get_setting( 'cron_secret', '' );
+		if ( '' === $token ) {
+			return;
+		}
+
+		$url = add_query_arg( 'token', $token, rest_url( 'service-status-manager/v1/cron/run' ) );
+
+		wp_remote_post(
+			$url,
+			array(
+				'timeout'   => 0.01,
+				'blocking'  => false,
+				'sslverify' => apply_filters( 'https_local_ssl_verify', false ),
+			)
+		);
 	}
 
 	/**
@@ -116,8 +165,12 @@ class NotificationQueue {
 	}
 
 	/**
-	 * Processes a batch of due notifications (pending or retry-scheduled).
-	 * This is the cron/CLI entry point.
+	 * Processes a batch of due notifications (pending or retry-scheduled)
+	 * across the whole queue. This is the cron/CLI/manual-tool entry
+	 * point, and is deliberately the only path that can touch a large
+	 * backlog - callers that only care about one subscriber's own
+	 * messages should use process_for_subscriber() instead, so they
+	 * never end up blocked processing someone else's backlog.
 	 *
 	 * @return int Number of notifications processed.
 	 */
@@ -135,11 +188,61 @@ class NotificationQueue {
 			)
 		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
+		$processed = self::process_rows( $rows );
+
+		update_option( 'ssm_last_notification_run', \ssm_now(), false );
+
+		return $processed;
+	}
+
+	/**
+	 * Processes only the due notifications belonging to a single
+	 * subscriber, bounded to a small limit. Used to send a brand-new
+	 * subscriber's confirmation message(s) immediately after they submit
+	 * the subscription form, without risking a slow request if a large,
+	 * unrelated backlog (e.g. a major incident notifying thousands of
+	 * other subscribers) happens to be sitting in the shared queue at the
+	 * same time.
+	 *
+	 * @param int $subscriber_id Subscriber ID.
+	 * @param int $limit         Safety cap on rows processed (a real
+	 *                           subscriber never has more than a
+	 *                           handful of channels).
+	 * @return int Number of notifications processed.
+	 */
+	public static function process_for_subscriber( $subscriber_id, $limit = 10 ) {
+		global $wpdb;
+		$table = \ssm_table( 'notification_queue' );
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$table} WHERE subscriber_id = %d AND status IN ('pending','retry_scheduled') AND next_attempt_at <= %s ORDER BY id ASC LIMIT %d",
+				absint( $subscriber_id ),
+				\ssm_now(),
+				max( 1, absint( $limit ) )
+			)
+		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		return self::process_rows( $rows );
+	}
+
+	/**
+	 * Claims and dispatches a set of already-selected queue rows. Shared
+	 * by process_batch() and process_for_subscriber().
+	 *
+	 * @param array $rows Queue rows to process.
+	 * @return int Number actually processed.
+	 */
+	private static function process_rows( array $rows ) {
+		global $wpdb;
+		$table = \ssm_table( 'notification_queue' );
+
 		$processed = 0;
 
 		foreach ( $rows as $row ) {
-			// Claim the row atomically so a second, overlapping cron run
-			// cannot pick up (and double-send) the same notification.
+			// Claim the row atomically so a second, overlapping run (cron,
+			// the immediate-processing trigger, and a manual "process now"
+			// click can all race) cannot pick up and double-send it.
 			$claimed = $wpdb->update(
 				$table,
 				array( 'status' => 'processing' ),
@@ -153,8 +256,6 @@ class NotificationQueue {
 			self::dispatch_row( $row );
 			++$processed;
 		}
-
-		update_option( 'ssm_last_notification_run', \ssm_now(), false );
 
 		return $processed;
 	}

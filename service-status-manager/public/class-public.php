@@ -13,6 +13,7 @@ use ServiceStatusManager\SubscriberManager;
 use ServiceStatusManager\RateLimiter;
 use ServiceStatusManager\StatusPageManager;
 use ServiceStatusManager\Capabilities;
+use ServiceStatusManager\Notifications\NotificationQueue;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -197,6 +198,16 @@ class PublicController {
 		}
 
 		$result = SubscriberManager::handle_public_subscription( wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+
+		if ( ! is_wp_error( $result ) && ! empty( $result ) ) {
+			// Send this subscriber's confirmation message(s) straight away
+			// rather than waiting for the next cron tick. Scoped to just
+			// this subscriber's own rows (never more than a handful) so it
+			// can never end up blocked processing someone else's backlog -
+			// unlike bulk incident/maintenance notifications, which stay
+			// purely queue-and-cron/async to avoid blocking an admin request.
+			NotificationQueue::process_for_subscriber( $result );
+		}
 
 		if ( $is_ajax ) {
 			if ( is_wp_error( $result ) ) {

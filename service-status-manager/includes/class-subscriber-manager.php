@@ -34,12 +34,19 @@ class SubscriberManager {
 	 * supplied contact details were already registered.
 	 *
 	 * @param array $post Raw, unslashed $_POST data.
-	 * @return true|\WP_Error
+	 * @return int|\WP_Error Subscriber ID on success (0 for the silent
+	 *                        honeypot/bot case - still not a WP_Error, so
+	 *                        the caller shows the same generic success
+	 *                        response, but there is no real subscriber to
+	 *                        send anything to).
 	 */
 	public static function handle_public_subscription( array $post ) {
-		// Honeypot: a real visitor never fills in this hidden field.
+		// Honeypot: a real visitor never fills in this hidden field. Return
+		// a falsy-but-not-WP_Error value so the response looks identical to
+		// a genuine signup, without a subscriber ID that would cause the
+		// caller to try sending a confirmation for a nonexistent record.
 		if ( ! empty( $post['website'] ) ) {
-			return true;
+			return 0;
 		}
 
 		if ( empty( $post['consent'] ) ) {
@@ -103,7 +110,7 @@ class SubscriberManager {
 
 		AuditLog::record( 'subscriber_public_signup', 'subscriber', $subscriber_id, null, array( 'channels' => $channels ) );
 
-		return true;
+		return $subscriber_id;
 	}
 
 	/**
