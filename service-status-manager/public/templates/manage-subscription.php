@@ -24,6 +24,12 @@ $services   = ServiceManager::get_services( array( 'show_on_status_page' => 1 ) 
 $selected_groups   = wp_list_pluck( array_filter( $selections, fn( $s ) => 'group' === $s->scope_type ), 'scope_id' );
 $selected_services = wp_list_pluck( array_filter( $selections, fn( $s ) => 'service' === $s->scope_type ), 'scope_id' );
 $selected_monitors = wp_list_pluck( array_filter( $selections, fn( $s ) => 'monitor' === $s->scope_type ), 'scope_id' );
+
+// No selections at all is what the backend treats as "notify me about
+// everything" (see SubscriberManager::get_matching_subscribers()), so
+// reflect that as a single "Everything" toggle rather than leaving every
+// box simply unchecked, which reads as "notify me about nothing".
+$following_everything = empty( $selected_groups ) && empty( $selected_services ) && empty( $selected_monitors );
 ?>
 <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ssm-subscribe-form ssm-manage-form">
 	<?php wp_nonce_field( 'ssm_update_subscription' ); ?>
@@ -36,11 +42,19 @@ $selected_monitors = wp_list_pluck( array_filter( $selections, fn( $s ) => 'moni
 		<input type="text" id="ssm-manage-name" name="name" value="<?php echo esc_attr( $subscriber->name ); ?>" />
 	</div>
 
+	<div class="ssm-form-row">
+		<label class="ssm-checkbox-row">
+			<input type="checkbox" data-ssm-select-all <?php checked( $following_everything ); ?> />
+			<strong><?php esc_html_e( 'Everything', 'service-status-manager' ); ?></strong>
+		</label>
+		<p class="ssm-uptime-range-label"><?php esc_html_e( 'Leave this ticked to be notified about all current and future services. Untick it to choose specific groups/services/monitors below.', 'service-status-manager' ); ?></p>
+	</div>
+
 	<fieldset class="ssm-form-row">
 		<legend><?php esc_html_e( 'Service groups', 'service-status-manager' ); ?></legend>
 		<?php foreach ( $groups as $group ) : ?>
 			<label class="ssm-checkbox-row">
-				<input type="checkbox" name="groups[]" value="<?php echo esc_attr( $group->id ); ?>" <?php checked( in_array( (int) $group->id, array_map( 'intval', $selected_groups ), true ) ); ?> />
+				<input type="checkbox" name="groups[]" value="<?php echo esc_attr( $group->id ); ?>" data-ssm-selectable <?php checked( in_array( (int) $group->id, array_map( 'intval', $selected_groups ), true ) ); ?> <?php disabled( $following_everything ); ?> />
 				<?php echo esc_html( $group->name ); ?>
 			</label>
 		<?php endforeach; ?>
@@ -50,12 +64,12 @@ $selected_monitors = wp_list_pluck( array_filter( $selections, fn( $s ) => 'moni
 		<legend><?php esc_html_e( 'Services', 'service-status-manager' ); ?></legend>
 		<?php foreach ( $services as $service ) : if ( ! $service->allow_subscriptions ) { continue; } ?>
 			<label class="ssm-checkbox-row">
-				<input type="checkbox" name="services[]" value="<?php echo esc_attr( $service->id ); ?>" <?php checked( in_array( (int) $service->id, array_map( 'intval', $selected_services ), true ) ); ?> />
+				<input type="checkbox" name="services[]" value="<?php echo esc_attr( $service->id ); ?>" data-ssm-selectable <?php checked( in_array( (int) $service->id, array_map( 'intval', $selected_services ), true ) ); ?> <?php disabled( $following_everything ); ?> />
 				<?php echo esc_html( $service->name ); ?>
 			</label>
 			<?php foreach ( MonitorManager::get_monitors_for_service( $service->id ) as $monitor ) : if ( ! $monitor->is_public ) { continue; } ?>
 				<label class="ssm-checkbox-row ssm-checkbox-row--indent">
-					<input type="checkbox" name="monitors[]" value="<?php echo esc_attr( $monitor->id ); ?>" <?php checked( in_array( (int) $monitor->id, array_map( 'intval', $selected_monitors ), true ) ); ?> />
+					<input type="checkbox" name="monitors[]" value="<?php echo esc_attr( $monitor->id ); ?>" data-ssm-selectable <?php checked( in_array( (int) $monitor->id, array_map( 'intval', $selected_monitors ), true ) ); ?> <?php disabled( $following_everything ); ?> />
 					<?php echo esc_html( $monitor->name ); ?>
 				</label>
 			<?php endforeach; ?>

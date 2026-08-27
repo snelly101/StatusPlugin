@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.3.2
+Stable tag: 1.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.3.3 =
+The "manage subscription" page had no "Everything" option - just a plain checklist of services/groups/monitors, all unchecked by default - which reads as "notify me about nothing" even though the backend actually treats no selections as "notify me about everything". That ambiguity made it easy to end up re-ticking specific items (putting the subscription right back into a fixed, narrower list that stops matching incidents which don't happen to tag one of those exact items) when the intent was the opposite. The manage page now has the same explicit "Everything" toggle as the subscribe modal: ticking it clears and disables the individual boxes, and picking a specific item unticks it, so it's unambiguous which state you're in and saving does what it looks like it will do.
 
 = 1.3.2 =
 Adds debug logging to the "resend confirmation/management link" flow and to the notification queue's insert step, so a "I asked to resend and nothing happened, no row even appears in the queue" report can be pinned down precisely (invalid input, no subscriber matched that email address, a duplicate/DB error on insert, etc.) via Service Status > Logs with Settings > Logging set to Debug. No behaviour change, only visibility.
