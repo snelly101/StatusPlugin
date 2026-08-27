@@ -1,7 +1,8 @@
 <?php
 /**
- * Template: the full [service_status_page] output - branding header,
- * summary, services, incidents, maintenance and a subscribe call-to-action.
+ * Template: the full [service_status_page] output - optional sticky
+ * header, hero, services, subscribe call-to-action, incidents,
+ * maintenance and uptime history.
  *
  * Expects: $atts.
  *
@@ -9,16 +10,22 @@
  */
 
 use ServiceStatusManager\StatusPageManager;
+use ServiceStatusManager\ServiceManager;
 use ServiceStatusManager\Publicweb\Shortcodes;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$page       = StatusPageManager::get_page_by_slug( 'main' );
-$shortcodes = new Shortcodes();
+$page          = StatusPageManager::get_page_by_slug( 'main' );
+$shortcodes    = new Shortcodes();
+$page_settings = $page ? ( json_decode( (string) $page->settings, true ) ?: array() ) : array();
+$show_header   = ! empty( $page_settings['show_header'] );
+$theme_default = in_array( $page_settings['theme_default'] ?? 'system', array( 'light', 'dark' ), true ) ? $page_settings['theme_default'] : 'auto';
+$overall       = ServiceManager::get_overall_status();
+$overall_def   = ssm_get_status_definition( $overall );
 ?>
-<div class="ssm-status-page" data-ssm-theme="auto">
+<div class="ssm-status-page" data-ssm-theme="<?php echo esc_attr( $theme_default ); ?>" data-ssm-theme-preference="<?php echo esc_attr( $page_settings['theme_default'] ?? 'system' ); ?>">
 	<?php if ( $page ) : ?>
 		<?php if ( $page->primary_color || $page->secondary_color ) : ?>
 			<style>
@@ -32,9 +39,42 @@ $shortcodes = new Shortcodes();
 		<?php if ( ! empty( $page->custom_css ) ) : ?>
 			<style><?php echo wp_strip_all_tags( $page->custom_css ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></style>
 		<?php endif; ?>
+	<?php endif; ?>
 
+	<?php if ( $show_header ) : ?>
+		<header class="ssm-site-header" data-ssm-header>
+			<a class="ssm-site-header-brand" href="#ssm-hero-status">
+				<?php if ( $page && $page->logo_url ) : ?>
+					<img src="<?php echo esc_url( $page->logo_url ); ?>" alt="" class="ssm-site-header-logo" />
+				<?php endif; ?>
+				<span><?php echo esc_html( $page ? ( $page->page_title ?: $page->name ) : get_bloginfo( 'name' ) ); ?></span>
+			</a>
+			<nav aria-label="<?php esc_attr_e( 'Status page sections', 'service-status-manager' ); ?>">
+				<ul class="ssm-site-header-nav">
+					<li><a href="#ssm-services"><?php esc_html_e( 'Status', 'service-status-manager' ); ?></a></li>
+					<li><a href="#ssm-incidents"><?php esc_html_e( 'Incidents', 'service-status-manager' ); ?></a></li>
+					<li><a href="#ssm-maintenance"><?php esc_html_e( 'Maintenance', 'service-status-manager' ); ?></a></li>
+					<li><a href="#" data-ssm-open-modal="subscribe"><?php esc_html_e( 'Subscribe', 'service-status-manager' ); ?></a></li>
+				</ul>
+			</nav>
+			<span class="ssm-site-header-status">
+				<span class="ssm-status-pill <?php echo esc_attr( $overall_def['css_class'] ); ?>" data-ssm-live="status-pill">
+					<?php echo esc_html( $overall_def['label'] ); ?>
+				</span>
+			</span>
+			<button type="button" class="ssm-theme-toggle" data-ssm-theme-toggle aria-label="<?php esc_attr_e( 'Toggle dark mode', 'service-status-manager' ); ?>">
+				<?php echo ssm_icon( 'moon', 'ssm-theme-icon-dark' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				<?php echo ssm_icon( 'sun', 'ssm-theme-icon-light' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			</button>
+			<button type="button" class="ssm-site-header-toggle" data-ssm-nav-toggle aria-label="<?php esc_attr_e( 'Toggle menu', 'service-status-manager' ); ?>" aria-expanded="false">
+				<?php echo ssm_icon( 'chevron-down' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			</button>
+		</header>
+	<?php endif; ?>
+
+	<?php if ( $page ) : ?>
 		<header class="ssm-page-header">
-			<?php if ( $page->logo_url ) : ?>
+			<?php if ( ! $show_header && $page->logo_url ) : ?>
 				<img src="<?php echo esc_url( $page->logo_url ); ?>" alt="<?php echo esc_attr( $page->name ); ?>" class="ssm-page-logo" />
 			<?php endif; ?>
 			<h1 class="ssm-page-title"><?php echo esc_html( $page->page_title ?: $page->name ); ?></h1>
@@ -46,33 +86,41 @@ $shortcodes = new Shortcodes();
 
 	<?php echo $shortcodes->render_summary( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
-	<div class="ssm-page-section">
+	<div class="ssm-page-section" id="ssm-services">
 		<h2><?php esc_html_e( 'Services', 'service-status-manager' ); ?></h2>
 		<?php echo $shortcodes->render_services( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 	</div>
 
 	<?php if ( 'yes' === $atts['show_subscribe'] ) : ?>
-		<div class="ssm-page-section ssm-page-subscribe-cta">
-			<details class="ssm-subscribe-toggle">
-				<summary class="ssm-button ssm-button-primary"><?php esc_html_e( 'Get notified', 'service-status-manager' ); ?></summary>
-				<div class="ssm-subscribe-toggle-content">
-					<?php echo $shortcodes->render_subscribe( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				</div>
-			</details>
+		<div class="ssm-page-section ssm-page-subscribe-cta" id="ssm-subscribe">
+			<div class="ssm-card ssm-subscribe-cta-inner">
+				<h2><?php esc_html_e( 'Get status updates', 'service-status-manager' ); ?></h2>
+				<p><?php esc_html_e( 'Choose how you want to hear about incidents and maintenance affecting the services you care about.', 'service-status-manager' ); ?></p>
+				<button type="button" class="ssm-button ssm-button-primary" data-ssm-open-modal="subscribe">
+					<?php echo ssm_icon( 'mail' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					<?php esc_html_e( 'Get status updates', 'service-status-manager' ); ?>
+				</button>
+				<noscript>
+					<div style="margin-top:24px; text-align:left;">
+						<?php echo $shortcodes->render_subscribe( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					</div>
+				</noscript>
+			</div>
 		</div>
+		<?php require SSM_PLUGIN_DIR . 'public/templates/subscribe-modal.php'; ?>
 	<?php endif; ?>
 
-	<div class="ssm-page-section">
+	<div class="ssm-page-section" id="ssm-incidents">
 		<h2><?php esc_html_e( 'Incident history', 'service-status-manager' ); ?></h2>
 		<?php echo $shortcodes->render_incidents( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 	</div>
 
-	<div class="ssm-page-section">
+	<div class="ssm-page-section" id="ssm-maintenance">
 		<h2><?php esc_html_e( 'Scheduled maintenance', 'service-status-manager' ); ?></h2>
 		<?php echo $shortcodes->render_maintenance( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 	</div>
 
-	<div class="ssm-page-section">
+	<div class="ssm-page-section" id="ssm-history">
 		<h2><?php esc_html_e( 'Uptime history', 'service-status-manager' ); ?></h2>
 		<?php echo $shortcodes->render_history( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 	</div>
@@ -84,4 +132,6 @@ $shortcodes = new Shortcodes();
 			<?php if ( $page->terms_url ) : ?><a href="<?php echo esc_url( $page->terms_url ); ?>"><?php esc_html_e( 'Terms', 'service-status-manager' ); ?></a><?php endif; ?>
 		</footer>
 	<?php endif; ?>
+
+	<div class="ssm-toast-region" data-ssm-toast-region aria-live="polite"></div>
 </div>

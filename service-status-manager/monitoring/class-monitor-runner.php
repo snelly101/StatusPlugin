@@ -150,12 +150,17 @@ class MonitorRunner {
 	private static function record_check( $monitor, CheckResult $result ) {
 		global $wpdb;
 
+		$check_result = 'down';
+		if ( $result->success ) {
+			$check_result = 'operational' === self::response_time_state( $monitor, $result ) ? 'up' : 'degraded';
+		}
+
 		$wpdb->insert(
 			\ssm_table( 'monitor_checks' ),
 			array(
 				'monitor_id'       => $monitor->id,
 				'checked_at'       => \ssm_now(),
-				'result'           => $result->success ? 'up' : 'down',
+				'result'           => $check_result,
 				'response_time_ms' => $result->response_time_ms,
 				'http_status'      => $result->http_status,
 				'error_message'    => $result->error_message,

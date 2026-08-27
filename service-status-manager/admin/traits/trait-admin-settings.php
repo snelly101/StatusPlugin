@@ -92,6 +92,11 @@ trait AdminSettingsTrait {
 			'custom_css'            => wp_unslash( $_POST['custom_css'] ?? '' ),
 			'included_groups'       => array_map( 'absint', (array) ( $_POST['included_groups'] ?? array() ) ),
 			'included_services'     => array_map( 'absint', (array) ( $_POST['included_services'] ?? array() ) ),
+			'settings'              => array(
+				'show_header'           => ! empty( $_POST['show_header'] ),
+				'live_refresh_interval' => absint( wp_unslash( $_POST['live_refresh_interval'] ?? 0 ) ),
+				'theme_default'         => in_array( $_POST['theme_default'] ?? 'system', array( 'system', 'light', 'dark' ), true ) ? $_POST['theme_default'] : 'system',
+			),
 		);
 
 		if ( ! empty( $_POST['password'] ) ) {

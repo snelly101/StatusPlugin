@@ -22,6 +22,7 @@ $services = ServiceManager::get_services();
 
 $included_groups   = $editing ? ( json_decode( (string) $editing->included_groups, true ) ?: array() ) : array();
 $included_services = $editing ? ( json_decode( (string) $editing->included_services, true ) ?: array() ) : array();
+$page_settings      = $editing ? ( json_decode( (string) $editing->settings, true ) ?: array() ) : array();
 ?>
 <div class="wrap ssm-wrap">
 	<h1><?php esc_html_e( 'Status Pages', 'service-status-manager' ); ?></h1>
@@ -100,6 +101,25 @@ $included_services = $editing ? ( json_decode( (string) $editing->included_servi
 			<tr><th><label for="ssm-p-css"><?php esc_html_e( 'Custom CSS', 'service-status-manager' ); ?></label></th>
 				<td><textarea id="ssm-p-css" name="custom_css" rows="6" class="large-text code"><?php echo esc_textarea( $editing->custom_css ?? '' ); ?></textarea>
 				<p class="description"><?php esc_html_e( 'Restricted to administrators. Applied to the public status page only.', 'service-status-manager' ); ?></p></td></tr>
+			<tr><th><?php esc_html_e( 'Dedicated header', 'service-status-manager' ); ?></th>
+				<td>
+					<label><input type="checkbox" name="show_header" value="1" <?php checked( ! empty( $page_settings['show_header'] ) ); ?> /> <?php esc_html_e( 'Show a sticky header (logo, section links, live status) above the status page', 'service-status-manager' ); ?></label>
+					<p class="description"><?php esc_html_e( 'Leave unchecked if your theme already provides site navigation and you do not want a second header.', 'service-status-manager' ); ?></p>
+				</td></tr>
+			<tr><th><label for="ssm-p-theme"><?php esc_html_e( 'Default appearance', 'service-status-manager' ); ?></label></th>
+				<td>
+					<select id="ssm-p-theme" name="theme_default">
+						<option value="system" <?php selected( $page_settings['theme_default'] ?? 'system', 'system' ); ?>><?php esc_html_e( 'Match visitor\'s system setting', 'service-status-manager' ); ?></option>
+						<option value="light" <?php selected( $page_settings['theme_default'] ?? '', 'light' ); ?>><?php esc_html_e( 'Always light', 'service-status-manager' ); ?></option>
+						<option value="dark" <?php selected( $page_settings['theme_default'] ?? '', 'dark' ); ?>><?php esc_html_e( 'Always dark', 'service-status-manager' ); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e( 'Visitors can still switch manually using the theme toggle; this only sets the default.', 'service-status-manager' ); ?></p>
+				</td></tr>
+			<tr><th><label for="ssm-p-refresh"><?php esc_html_e( 'Live refresh interval', 'service-status-manager' ); ?></label></th>
+				<td>
+					<input type="number" id="ssm-p-refresh" name="live_refresh_interval" value="<?php echo esc_attr( $page_settings['live_refresh_interval'] ?? 60 ); ?>" min="0" step="5" style="width:100px;" /> <?php esc_html_e( 'seconds', 'service-status-manager' ); ?>
+					<p class="description"><?php esc_html_e( 'How often the page checks for status changes in the background, using the existing public REST API (no page reload). Set to 0 to disable live refresh.', 'service-status-manager' ); ?></p>
+				</td></tr>
 		</table>
 
 		<?php submit_button( $editing ? __( 'Save Status Page', 'service-status-manager' ) : __( 'Add Status Page', 'service-status-manager' ) ); ?>

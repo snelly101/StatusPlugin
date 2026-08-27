@@ -61,12 +61,28 @@ class PublicController {
 	public function enqueue_assets() {
 		wp_enqueue_style( 'ssm-public', SSM_PLUGIN_URL . 'public/css/public.css', array(), SSM_VERSION );
 		wp_enqueue_script( 'ssm-public', SSM_PLUGIN_URL . 'public/js/public.js', array(), SSM_VERSION, true );
+
+		$page            = StatusPageManager::get_page_by_slug( 'main' );
+		$page_settings   = $page ? ( json_decode( (string) $page->settings, true ) ?: array() ) : array();
+		$refresh_interval = isset( $page_settings['live_refresh_interval'] ) ? absint( $page_settings['live_refresh_interval'] ) : 60;
+
 		wp_localize_script(
 			'ssm-public',
 			'ssmPublic',
 			array(
-				'restUrl' => esc_url_raw( rest_url( 'service-status-manager/v1' ) ),
-				'nonce'   => wp_create_nonce( 'wp_rest' ),
+				'restUrl'         => esc_url_raw( rest_url( 'service-status-manager/v1' ) ),
+				'ajaxUrl'         => admin_url( 'admin-post.php' ),
+				'nonce'           => wp_create_nonce( 'wp_rest' ),
+				'subscribeNonce'  => wp_create_nonce( 'ssm_public_subscribe' ),
+				'refreshInterval' => $refresh_interval,
+				'themeDefault'    => $page_settings['theme_default'] ?? 'system',
+				'i18n'            => array(
+					'subscribed'      => __( 'Thank you - please check your inbox (or other selected channel) to confirm your subscription.', 'service-status-manager' ),
+					'subscribeError'  => __( 'We could not process your subscription. Please check your details and try again.', 'service-status-manager' ),
+					'selectChannel'   => __( 'Please select at least one notification channel.', 'service-status-manager' ),
+					'enterDestination' => __( 'Please fill in the highlighted field.', 'service-status-manager' ),
+					'consentRequired' => __( 'Please confirm your consent to continue.', 'service-status-manager' ),
+				),
 			)
 		);
 	}
@@ -160,15 +176,34 @@ class PublicController {
 
 	/**
 	 * Handles the public subscription form submission.
+	 *
+	 * Supports two response modes so the same handler serves both the
+	 * standalone [service_status_subscribe] form (a normal POST + redirect,
+	 * fully functional without JavaScript) and the redesigned subscribe
+	 * modal/wizard, which submits the identical fields via fetch() with
+	 * `ssm_ajax=1` and expects a JSON response so it can show an in-modal
+	 * confirmation step without leaving the page.
 	 */
 	public function handle_subscribe() {
 		check_admin_referer( 'ssm_public_subscribe' );
 
+		$is_ajax = ! empty( $_POST['ssm_ajax'] );
+
 		if ( ! RateLimiter::allow( 'subscribe_' . RateLimiter::client_fingerprint(), 5, 10 * MINUTE_IN_SECONDS ) ) {
+			if ( $is_ajax ) {
+				wp_send_json_error( array( 'message' => __( 'Too many attempts. Please try again later.', 'service-status-manager' ) ), 429 );
+			}
 			wp_die( esc_html__( 'Too many attempts. Please try again later.', 'service-status-manager' ), '', array( 'response' => 429 ) );
 		}
 
 		$result = SubscriberManager::handle_public_subscription( wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+
+		if ( $is_ajax ) {
+			if ( is_wp_error( $result ) ) {
+				wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+			}
+			wp_send_json_success( array( 'message' => __( 'Thank you - please check your inbox (or other selected channel) to confirm your subscription.', 'service-status-manager' ) ) );
+		}
 
 		$redirect = wp_get_referer() ? wp_get_referer() : home_url( '/' );
 		$redirect = add_query_arg( 'ssm_subscribed', is_wp_error( $result ) ? 'error' : '1', $redirect );

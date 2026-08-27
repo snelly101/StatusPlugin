@@ -149,6 +149,7 @@ class Database {
 			period_start DATETIME NOT NULL,
 			checks_total INT UNSIGNED NOT NULL DEFAULT 0,
 			checks_up INT UNSIGNED NOT NULL DEFAULT 0,
+			checks_degraded INT UNSIGNED NOT NULL DEFAULT 0,
 			uptime_pct DECIMAL(7,4) NOT NULL DEFAULT 0,
 			avg_response_time_ms INT UNSIGNED DEFAULT NULL,
 			PRIMARY KEY  (id),

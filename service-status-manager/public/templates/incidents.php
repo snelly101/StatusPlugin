@@ -13,32 +13,41 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+$severity_labels = array(
+	'informational' => __( 'Informational', 'service-status-manager' ),
+	'minor'         => __( 'Minor', 'service-status-manager' ),
+	'major'         => __( 'Major', 'service-status-manager' ),
+	'critical'      => __( 'Critical', 'service-status-manager' ),
+);
+$status_labels = array(
+	'investigating' => __( 'Investigating', 'service-status-manager' ),
+	'identified'    => __( 'Identified', 'service-status-manager' ),
+	'monitoring'    => __( 'Monitoring', 'service-status-manager' ),
+	'resolved'      => __( 'Resolved', 'service-status-manager' ),
+);
+$severity_status_class = array(
+	'informational' => 'ssm-status-degraded',
+	'minor'         => 'ssm-status-degraded',
+	'major'         => 'ssm-status-partial-outage',
+	'critical'      => 'ssm-status-major-outage',
+);
+
 /**
  * Renders a single incident card with its public update timeline.
  *
  * @param object $incident Incident row.
  */
-$render_incident = function ( $incident ) {
-	$severity_labels = array(
-		'informational' => __( 'Informational', 'service-status-manager' ),
-		'minor'         => __( 'Minor', 'service-status-manager' ),
-		'major'         => __( 'Major', 'service-status-manager' ),
-		'critical'      => __( 'Critical', 'service-status-manager' ),
-	);
-	$status_labels = array(
-		'investigating' => __( 'Investigating', 'service-status-manager' ),
-		'identified'    => __( 'Identified', 'service-status-manager' ),
-		'monitoring'    => __( 'Monitoring', 'service-status-manager' ),
-		'resolved'      => __( 'Resolved', 'service-status-manager' ),
-	);
-	$updates  = IncidentManager::get_public_updates( $incident->id );
-	$services = IncidentManager::get_services_for_incident( $incident->id );
+$render_incident = function ( $incident ) use ( $severity_labels, $status_labels, $severity_status_class ) {
+	$updates       = IncidentManager::get_public_updates( $incident->id );
+	$services      = IncidentManager::get_services_for_incident( $incident->id );
+	$is_resolved   = 'resolved' === $incident->status;
+	$severity_class = $severity_status_class[ $incident->severity ] ?? 'ssm-status-unknown';
 	?>
-	<article class="ssm-incident ssm-incident--<?php echo esc_attr( $incident->severity ); ?> <?php echo $incident->is_pinned ? 'ssm-incident--pinned' : ''; ?>">
+	<article class="ssm-card ssm-incident <?php echo esc_attr( $severity_class ); ?> <?php echo $is_resolved ? 'ssm-incident--resolved' : ''; ?> <?php echo $incident->is_pinned ? 'ssm-incident--pinned' : ''; ?>">
 		<header class="ssm-incident-header">
 			<h4 class="ssm-incident-title"><?php echo esc_html( $incident->title ); ?></h4>
-			<span class="ssm-badge ssm-badge--severity-<?php echo esc_attr( $incident->severity ); ?>"><?php echo esc_html( $severity_labels[ $incident->severity ] ?? $incident->severity ); ?></span>
-			<span class="ssm-badge ssm-badge--status-<?php echo esc_attr( $incident->status ); ?>"><?php echo esc_html( $status_labels[ $incident->status ] ?? $incident->status ); ?></span>
+			<span class="ssm-status-pill <?php echo esc_attr( $severity_class ); ?>"><?php echo esc_html( $severity_labels[ $incident->severity ] ?? $incident->severity ); ?></span>
+			<span class="ssm-status-pill <?php echo $is_resolved ? 'ssm-status-operational' : esc_attr( $severity_class ); ?>"><?php echo esc_html( $status_labels[ $incident->status ] ?? $incident->status ); ?></span>
 		</header>
 
 		<?php if ( ! empty( $services ) ) : ?>
@@ -70,10 +79,14 @@ $render_incident = function ( $incident ) {
 ?>
 <div class="ssm-incidents">
 	<?php if ( ! empty( $active_incidents ) ) : ?>
-		<h3><?php esc_html_e( 'Active incidents', 'service-status-manager' ); ?></h3>
 		<?php foreach ( $active_incidents as $incident ) : $render_incident( $incident ); endforeach; ?>
 	<?php else : ?>
-		<p class="ssm-no-incidents"><?php esc_html_e( 'There are no active incidents.', 'service-status-manager' ); ?></p>
+		<?php
+		$empty_icon  = 'check-circle';
+		$empty_title = __( 'No incidents reported', 'service-status-manager' );
+		$empty_desc  = __( 'Everything has been running smoothly.', 'service-status-manager' );
+		require SSM_PLUGIN_DIR . 'public/templates/parts/empty-state.php';
+		?>
 	<?php endif; ?>
 
 	<?php if ( ! empty( $resolved_incidents ) ) : ?>

@@ -8,6 +8,15 @@
  * checked every minute for years - see Cleanup for how the raw rows this
  * class consumes are eventually pruned once they have been aggregated.
  *
+ * Each check is recorded as one of three results (see
+ * Monitoring\MonitorRunner::record_check()): "up" (healthy), "degraded"
+ * (succeeded but crossed the monitor's response-time warning/critical
+ * threshold), or "down" (failed). Aggregates track "up" and "degraded"
+ * counts separately so the public uptime bars/tooltips can distinguish a
+ * slow-but-available day from a fully down one, while the headline
+ * uptime percentage treats degraded time as still available (the
+ * convention most status-page products use).
+ *
  * @package ServiceStatusManager
  */
 
@@ -37,6 +46,7 @@ class UptimeAggregator {
 				"SELECT monitor_id,
 					COUNT(*) AS checks_total,
 					SUM(CASE WHEN result = 'up' THEN 1 ELSE 0 END) AS checks_up,
+					SUM(CASE WHEN result = 'degraded' THEN 1 ELSE 0 END) AS checks_degraded,
 					AVG(response_time_ms) AS avg_response_time_ms
 				FROM {$checks_table}
 				WHERE checked_at >= %s AND checked_at < %s
@@ -47,9 +57,19 @@ class UptimeAggregator {
 		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		foreach ( $rows as $row ) {
-			$uptime_pct = $row->checks_total > 0 ? round( ( $row->checks_up / $row->checks_total ) * 100, 4 ) : 0;
+			$uptime_pct = self::calculate_uptime_pct( $row->checks_total, $row->checks_up, $row->checks_degraded );
 
-			self::upsert_aggregate( $agg_table, $row->monitor_id, 'hour', $period_start, (int) $row->checks_total, (int) $row->checks_up, $uptime_pct, $row->avg_response_time_ms ? (int) round( $row->avg_response_time_ms ) : null );
+			self::upsert_aggregate(
+				$agg_table,
+				$row->monitor_id,
+				'hour',
+				$period_start,
+				(int) $row->checks_total,
+				(int) $row->checks_up,
+				(int) $row->checks_degraded,
+				$uptime_pct,
+				$row->avg_response_time_ms ? (int) round( $row->avg_response_time_ms ) : null
+			);
 		}
 
 		update_option( 'ssm_last_hourly_aggregate', ssm_now(), false );
@@ -73,6 +93,7 @@ class UptimeAggregator {
 				"SELECT monitor_id,
 					SUM(checks_total) AS checks_total,
 					SUM(checks_up) AS checks_up,
+					SUM(checks_degraded) AS checks_degraded,
 					AVG(avg_response_time_ms) AS avg_response_time_ms
 				FROM {$agg_table}
 				WHERE period_type = 'hour' AND period_start >= %s AND period_start < %s
@@ -83,11 +104,32 @@ class UptimeAggregator {
 		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		foreach ( $rows as $row ) {
-			$uptime_pct = $row->checks_total > 0 ? round( ( $row->checks_up / $row->checks_total ) * 100, 4 ) : 0;
-			self::upsert_aggregate( $agg_table, $row->monitor_id, 'day', $period_start, (int) $row->checks_total, (int) $row->checks_up, $uptime_pct, $row->avg_response_time_ms ? (int) round( $row->avg_response_time_ms ) : null );
+			$uptime_pct = self::calculate_uptime_pct( $row->checks_total, $row->checks_up, $row->checks_degraded );
+
+			self::upsert_aggregate(
+				$agg_table,
+				$row->monitor_id,
+				'day',
+				$period_start,
+				(int) $row->checks_total,
+				(int) $row->checks_up,
+				(int) $row->checks_degraded,
+				$uptime_pct,
+				$row->avg_response_time_ms ? (int) round( $row->avg_response_time_ms ) : null
+			);
 		}
 
 		update_option( 'ssm_last_daily_aggregate', ssm_now(), false );
+	}
+
+	/**
+	 * @param int $total     Total checks.
+	 * @param int $up        Fully healthy checks.
+	 * @param int $degraded  Slow-but-successful checks.
+	 * @return float
+	 */
+	private static function calculate_uptime_pct( $total, $up, $degraded ) {
+		return $total > 0 ? round( ( ( $up + $degraded ) / $total ) * 100, 4 ) : 0;
 	}
 
 	/**
@@ -98,23 +140,25 @@ class UptimeAggregator {
 	 * @param string   $period_type          "hour" or "day".
 	 * @param string   $period_start         Period start (MySQL datetime, UTC).
 	 * @param int      $checks_total         Total checks in the period.
-	 * @param int      $checks_up            Successful checks in the period.
+	 * @param int      $checks_up            Fully healthy checks in the period.
+	 * @param int      $checks_degraded      Slow-but-successful checks in the period.
 	 * @param float    $uptime_pct           Uptime percentage.
 	 * @param int|null $avg_response_time_ms Average response time.
 	 */
-	private static function upsert_aggregate( $table, $monitor_id, $period_type, $period_start, $checks_total, $checks_up, $uptime_pct, $avg_response_time_ms ) {
+	private static function upsert_aggregate( $table, $monitor_id, $period_type, $period_start, $checks_total, $checks_up, $checks_degraded, $uptime_pct, $avg_response_time_ms ) {
 		global $wpdb;
 
 		$wpdb->query( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			$wpdb->prepare(
-				"INSERT INTO {$table} (monitor_id, period_type, period_start, checks_total, checks_up, uptime_pct, avg_response_time_ms)
-				VALUES (%d, %s, %s, %d, %d, %f, %d)
-				ON DUPLICATE KEY UPDATE checks_total = VALUES(checks_total), checks_up = VALUES(checks_up), uptime_pct = VALUES(uptime_pct), avg_response_time_ms = VALUES(avg_response_time_ms)",
+				"INSERT INTO {$table} (monitor_id, period_type, period_start, checks_total, checks_up, checks_degraded, uptime_pct, avg_response_time_ms)
+				VALUES (%d, %s, %s, %d, %d, %d, %f, %d)
+				ON DUPLICATE KEY UPDATE checks_total = VALUES(checks_total), checks_up = VALUES(checks_up), checks_degraded = VALUES(checks_degraded), uptime_pct = VALUES(uptime_pct), avg_response_time_ms = VALUES(avg_response_time_ms)",
 				$monitor_id,
 				$period_type,
 				$period_start,
 				$checks_total,
 				$checks_up,
+				$checks_degraded,
 				$uptime_pct,
 				$avg_response_time_ms
 			)
@@ -124,21 +168,28 @@ class UptimeAggregator {
 	/**
 	 * Returns a day-by-day uptime history for a monitor, oldest first,
 	 * with gaps (days without any recorded checks) represented as null so
-	 * the front end can render them distinctly from "100% up".
+	 * the front end can render them distinctly from "100% up". Each day
+	 * also carries an estimated degraded/down minute count (checks in
+	 * that state x the monitor's check frequency - an approximation, not
+	 * a literal per-second measurement) and the number of incidents whose
+	 * window overlapped that day, for the uptime bar tooltip.
 	 *
 	 * @param int $monitor_id Monitor ID.
 	 * @param int $days       Number of days of history to return.
-	 * @return array<int,array{date:string,uptime_pct:float|null}>
+	 * @return array<int,array{date:string,uptime_pct:float|null,degraded_minutes:int,down_minutes:int,incidents:int}>
 	 */
 	public static function get_daily_history( $monitor_id, $days = 90 ) {
 		global $wpdb;
 		$table = ssm_table( 'monitor_aggregates' );
 
+		$monitor        = MonitorManager::get_monitor( $monitor_id );
+		$frequency_mins = $monitor ? max( 1, (int) round( $monitor->check_frequency / 60 ) ) : 5;
+
 		$since = gmdate( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
 
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT period_start, uptime_pct FROM {$table} WHERE monitor_id = %d AND period_type = 'day' AND period_start >= %s ORDER BY period_start ASC",
+				"SELECT period_start, checks_total, checks_up, checks_degraded, uptime_pct FROM {$table} WHERE monitor_id = %d AND period_type = 'day' AND period_start >= %s ORDER BY period_start ASC",
 				absint( $monitor_id ),
 				$since
 			)
@@ -146,15 +197,26 @@ class UptimeAggregator {
 
 		$by_date = array();
 		foreach ( $rows as $row ) {
-			$by_date[ gmdate( 'Y-m-d', strtotime( $row->period_start ) ) ] = (float) $row->uptime_pct;
+			$down_checks = max( 0, (int) $row->checks_total - (int) $row->checks_up - (int) $row->checks_degraded );
+
+			$by_date[ gmdate( 'Y-m-d', strtotime( $row->period_start ) ) ] = array(
+				'uptime_pct'       => (float) $row->uptime_pct,
+				'degraded_minutes' => (int) $row->checks_degraded * $frequency_mins,
+				'down_minutes'     => $down_checks * $frequency_mins,
+			);
 		}
 
 		$history = array();
 		for ( $i = $days - 1; $i >= 0; $i-- ) {
-			$date      = gmdate( 'Y-m-d', strtotime( "-{$i} days" ) );
+			$date = gmdate( 'Y-m-d', strtotime( "-{$i} days" ) );
+			$data = $by_date[ $date ] ?? null;
+
 			$history[] = array(
-				'date'       => $date,
-				'uptime_pct' => $by_date[ $date ] ?? null,
+				'date'             => $date,
+				'uptime_pct'       => $data['uptime_pct'] ?? null,
+				'degraded_minutes' => $data['degraded_minutes'] ?? 0,
+				'down_minutes'     => $data['down_minutes'] ?? 0,
+				'incidents'        => self::get_incident_count_for_monitor_day( $monitor_id, $date ),
 			);
 		}
 
@@ -162,8 +224,29 @@ class UptimeAggregator {
 	}
 
 	/**
+	 * Counts incidents linked to a monitor whose active window overlapped
+	 * a given day.
+	 *
+	 * @param int    $monitor_id Monitor ID.
+	 * @param string $date       Date in Y-m-d format (site's aggregation is UTC-based).
+	 * @return int
+	 */
+	private static function get_incident_count_for_monitor_day( $monitor_id, $date ) {
+		global $wpdb;
+
+		$day_start = $date . ' 00:00:00';
+		$day_end   = $date . ' 23:59:59';
+
+		$sql = 'SELECT COUNT(*) FROM ' . ssm_table( 'incidents' ) . ' i
+			INNER JOIN ' . ssm_table( 'incident_monitors' ) . ' im ON im.incident_id = i.id
+			WHERE im.monitor_id = %d AND i.starts_at <= %s AND (i.ends_at IS NULL OR i.ends_at >= %s)';
+
+		return (int) $wpdb->get_var( $wpdb->prepare( $sql, absint( $monitor_id ), $day_end, $day_start ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/**
 	 * Calculates a single monitor's overall uptime percentage across a
-	 * date range, weighted by the number of checks in each day.
+	 * date range (treating degraded checks as still available).
 	 *
 	 * @param int $monitor_id Monitor ID.
 	 * @param int $days       Number of days.
@@ -176,7 +259,7 @@ class UptimeAggregator {
 
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT SUM(checks_total) AS total, SUM(checks_up) AS up FROM {$table} WHERE monitor_id = %d AND period_type = 'day' AND period_start >= %s",
+				"SELECT SUM(checks_total) AS total, SUM(checks_up) AS up, SUM(checks_degraded) AS degraded FROM {$table} WHERE monitor_id = %d AND period_type = 'day' AND period_start >= %s",
 				absint( $monitor_id ),
 				$since
 			)
@@ -186,7 +269,7 @@ class UptimeAggregator {
 			return 100.0;
 		}
 
-		return round( ( $row->up / $row->total ) * 100, 2 );
+		return round( ( ( $row->up + $row->degraded ) / $row->total ) * 100, 2 );
 	}
 
 	/**

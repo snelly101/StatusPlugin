@@ -14,10 +14,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $status_labels = array(
-	'scheduled'  => __( 'Scheduled', 'service-status-manager' ),
+	'scheduled'   => __( 'Scheduled', 'service-status-manager' ),
 	'in_progress' => __( 'In Progress', 'service-status-manager' ),
-	'completed'  => __( 'Completed', 'service-status-manager' ),
-	'cancelled'  => __( 'Cancelled', 'service-status-manager' ),
+	'completed'   => __( 'Completed', 'service-status-manager' ),
+	'cancelled'   => __( 'Cancelled', 'service-status-manager' ),
 );
 
 /**
@@ -28,10 +28,11 @@ $status_labels = array(
 $render_event = function ( $event ) use ( $status_labels ) {
 	$services = MaintenanceManager::get_services_for_maintenance( $event->id );
 	?>
-	<article class="ssm-maintenance ssm-maintenance--<?php echo esc_attr( $event->status ); ?>">
+	<article class="ssm-card ssm-maintenance">
 		<header class="ssm-maintenance-header">
+			<span class="ssm-icon" aria-hidden="true"><?php echo ssm_icon( 'calendar' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
 			<h4><?php echo esc_html( $event->title ); ?></h4>
-			<span class="ssm-badge ssm-badge--maintenance-<?php echo esc_attr( $event->status ); ?>"><?php echo esc_html( $status_labels[ $event->status ] ?? $event->status ); ?></span>
+			<span class="ssm-status-pill ssm-status-maintenance"><?php echo esc_html( $status_labels[ $event->status ] ?? $event->status ); ?></span>
 		</header>
 		<p class="ssm-maintenance-window">
 			<?php
@@ -42,6 +43,9 @@ $render_event = function ( $event ) use ( $status_labels ) {
 				esc_html( ssm_format_datetime( $event->scheduled_end ) )
 			);
 			?>
+			<?php if ( 'none' !== $event->impact ) : ?>
+				&middot; <?php esc_html_e( 'Expected impact:', 'service-status-manager' ); ?> <?php echo esc_html( ucfirst( $event->impact ) ); ?>
+			<?php endif; ?>
 		</p>
 		<?php if ( ! empty( $services ) ) : ?>
 			<p class="ssm-maintenance-services">
@@ -58,10 +62,14 @@ $render_event = function ( $event ) use ( $status_labels ) {
 ?>
 <div class="ssm-maintenance-list">
 	<?php if ( ! empty( $upcoming_maintenance ) ) : ?>
-		<h3><?php esc_html_e( 'Scheduled maintenance', 'service-status-manager' ); ?></h3>
 		<?php foreach ( $upcoming_maintenance as $event ) : $render_event( $event ); endforeach; ?>
 	<?php else : ?>
-		<p class="ssm-no-maintenance"><?php esc_html_e( 'No scheduled maintenance.', 'service-status-manager' ); ?></p>
+		<?php
+		$empty_icon  = 'calendar';
+		$empty_title = __( 'No scheduled maintenance', 'service-status-manager' );
+		$empty_desc  = __( 'Nothing planned at the moment - check back later.', 'service-status-manager' );
+		require SSM_PLUGIN_DIR . 'public/templates/parts/empty-state.php';
+		?>
 	<?php endif; ?>
 
 	<?php if ( ! empty( $past_maintenance ) ) : ?>

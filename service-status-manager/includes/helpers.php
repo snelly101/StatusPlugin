@@ -358,3 +358,66 @@ function ssm_mask_secrets_array( array $data ) {
 
 	return $data;
 }
+
+/**
+ * Renders a small, self-authored inline SVG icon (no external icon
+ * library dependency). Used throughout the redesigned public status
+ * page and admin screens for consistent, lightweight iconography that
+ * inherits colour from CSS (`currentColor`) and scales cleanly.
+ *
+ * @param string $name    Icon name.
+ * @param string $classes Optional extra CSS classes.
+ * @return string Raw SVG markup (already safe - no user input reaches this).
+ */
+function ssm_icon( $name, $classes = '' ) {
+	$paths = array(
+		'check-circle'   => '<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.4 2.4L16 9.8"/>',
+		'alert-triangle'  => '<path d="M12 3.5l9.5 16.5H2.5L12 3.5z" stroke-linejoin="round"/><path d="M12 9.5v4.5"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/>',
+		'alert-octagon'  => '<path d="M8 3h8l5 5v8l-5 5H8l-5-5V8l5-5z" stroke-linejoin="round"/><path d="M12 8v5"/><circle cx="12" cy="16" r="0.9" fill="currentColor" stroke="none"/>',
+		'tool'           => '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v1.6M12 14.4V16M8 12h1.6M14.4 12H16"/>',
+		'help-circle'    => '<circle cx="12" cy="12" r="9"/><path d="M9.3 9.6a2.7 2.7 0 1 1 3.9 2.4c-.9.5-1.2 1-1.2 2"/><circle cx="12" cy="16.7" r="0.9" fill="currentColor" stroke="none"/>',
+		'mail'           => '<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 6.5L12 13l8.5-6.5"/>',
+		'message-square' => '<path d="M4 5.5h16a1 1 0 0 1 1 1V15a1 1 0 0 1-1 1H9l-4.2 3.3a.6.6 0 0 1-1-.5V16H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1z"/>',
+		'smartphone'     => '<rect x="6.5" y="2.5" width="11" height="19" rx="2"/><path d="M10.5 18.3h3"/>',
+		'chevron-down'   => '<path d="M6 9l6 6 6-6"/>',
+		'x'              => '<path d="M6 6l12 12M18 6L6 18"/>',
+		'server'         => '<rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><circle cx="7" cy="7.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="7" cy="16.5" r="0.9" fill="currentColor" stroke="none"/>',
+		'clock'          => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.5 2"/>',
+		'calendar'       => '<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
+		'inbox'          => '<path d="M3.5 12h5l1.5 3h4l1.5-3h5" /><path d="M3.5 12L5.5 5h13l2 7v6a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3.5 18v-6z"/>',
+		'users'          => '<circle cx="9" cy="8.5" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5"/><circle cx="17" cy="9.5" r="2.3"/><path d="M15.5 14.2c2.4.4 4 1.9 4.5 4.3"/>',
+		'moon'           => '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>',
+		'sun'            => '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/>',
+	);
+
+	if ( ! isset( $paths[ $name ] ) ) {
+		return '';
+	}
+
+	$class_attr = 'ssm-icon' . ( $classes ? ' ' . $classes : '' );
+
+	return sprintf(
+		'<svg class="%s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">%s</svg>',
+		esc_attr( $class_attr ),
+		$paths[ $name ] // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed, hand-authored SVG path data, no user input.
+	);
+}
+
+/**
+ * Maps a status slug to the icon name used in the hero/pills.
+ *
+ * @param string $status Status slug.
+ * @return string
+ */
+function ssm_status_icon_name( $status ) {
+	$map = array(
+		'operational'    => 'check-circle',
+		'degraded'       => 'alert-triangle',
+		'partial_outage' => 'alert-triangle',
+		'major_outage'   => 'alert-octagon',
+		'maintenance'    => 'tool',
+		'unknown'        => 'help-circle',
+	);
+
+	return $map[ $status ] ?? 'help-circle';
+}
