@@ -58,6 +58,7 @@ class Plugin {
 
 		Privacy::register();
 		NotificationManager::register();
+		Smtp::register();
 
 		add_action( Cron::RUN_MONITOR_CHECKS, array( MonitorRunner::class, 'run_due_checks' ) );
 		add_action( Cron::PROCESS_NOTIFICATIONS, array( NotificationQueue::class, 'process_batch' ) );

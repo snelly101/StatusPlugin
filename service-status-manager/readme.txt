@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -79,7 +79,14 @@ Available WP-CLI commands: `run-checks [--all]`, `process-notifications`, `aggre
 
 == Email Setup ==
 
-Email notifications use WordPress' built-in `wp_mail()` - there is no separate SMTP transport to configure. If you already use an SMTP plugin (WP Mail SMTP, Post SMTP, etc.), it continues to control actual delivery; Service Status Manager only ever calls `wp_mail()`. Set your sender name/address under **Settings > General**. Emails are sent as HTML with an automatic plain-text alternative.
+Email notifications use WordPress' built-in `wp_mail()`. Set your sender name/address under **Settings > General**; emails are sent as HTML with an automatic plain-text alternative.
+
+By default no SMTP transport is configured, so delivery depends on your host's mail setup. Two ways to route mail through a real SMTP server:
+
+* **Built in**: enable "SMTP relay" under **Settings > Outgoing Mail (SMTP)** and enter your host/port/encryption/credentials. This affects every outgoing email on the site (not just this plugin's), the same way a dedicated SMTP plugin would - do not enable both at once, they will conflict for the same `phpmailer_init` hook.
+* **A separate SMTP plugin** (WP Mail SMTP, Post SMTP, etc.) - leave this plugin's SMTP relay disabled and the other plugin's configuration is used instead, since Service Status Manager only ever calls `wp_mail()`.
+
+Either way, send a test message from **Notifications > Send a test notification** (Email channel) to confirm delivery.
 
 == SMS Provider Setup ==
 
@@ -223,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.2.0 =
+Adds an optional built-in SMTP relay (Settings > Outgoing Mail) so outgoing email can be routed through a specific mail server without a separate SMTP plugin. Moves the public status page's "Get status updates" button to the top of the page (just under the hero) with a brighter, higher-contrast style.
 
 = 1.1.0 =
 Complete visual/UX redesign of the public status page (design system, dark mode, expandable services, uptime tooltips, subscribe wizard, optional sticky header, live refresh) and a polished admin dashboard/monitors/services screen. Adds a `checks_degraded` column to `monitor_aggregates` (additive migration) so monitor checks distinguish "degraded" from "down".

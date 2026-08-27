@@ -53,6 +53,13 @@ trait AdminSettingsTrait {
 			'log_level'                       => in_array( $post['log_level'] ?? '', array( 'error', 'warning', 'info', 'debug' ), true ) ? $post['log_level'] : 'error',
 			'log_retention_days'              => absint( $post['log_retention_days'] ?? 30 ),
 			'ssrf_allowlist'                  => array_filter( array_map( 'trim', explode( "\n", (string) ( $post['ssrf_allowlist'] ?? '' ) ) ) ),
+			'smtp_enabled'                    => ! empty( $post['smtp_enabled'] ),
+			'smtp_host'                       => sanitize_text_field( $post['smtp_host'] ?? '' ),
+			'smtp_port'                       => absint( $post['smtp_port'] ?? 587 ),
+			'smtp_encryption'                 => in_array( $post['smtp_encryption'] ?? '', array( 'none', 'ssl', 'tls' ), true ) ? $post['smtp_encryption'] : 'tls',
+			'smtp_auth'                       => ! empty( $post['smtp_auth'] ),
+			'smtp_username'                   => sanitize_text_field( $post['smtp_username'] ?? '' ),
+			'smtp_force_from'                 => ! empty( $post['smtp_force_from'] ),
 		);
 
 		if ( ! empty( $post['sms_account_sid'] ) || ! empty( $post['sms_auth_token'] ) ) {
@@ -64,8 +71,18 @@ trait AdminSettingsTrait {
 			$new_settings['sms_credentials_encrypted'] = Encryption::encrypt( wp_json_encode( $credentials ) );
 		}
 
+		if ( ! empty( $post['smtp_password'] ) ) {
+			$new_settings['smtp_password_encrypted'] = Encryption::encrypt( sanitize_text_field( $post['smtp_password'] ) );
+		}
+
 		ssm_update_settings( $new_settings );
-		AuditLog::record( 'settings_updated', 'settings', null, null, array_diff_key( $new_settings, array( 'sms_credentials_encrypted' => '' ) ) );
+		AuditLog::record(
+			'settings_updated',
+			'settings',
+			null,
+			null,
+			array_diff_key( $new_settings, array_flip( array( 'sms_credentials_encrypted', 'smtp_password_encrypted' ) ) )
+		);
 
 		$this->redirect_with_notice( 'settings', __( 'Settings saved.', 'service-status-manager' ) );
 	}

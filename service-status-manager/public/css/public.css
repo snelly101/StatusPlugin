@@ -1103,6 +1103,43 @@
 	margin: 0 auto var(--ssm-sp-5);
 }
 
+/* Top-of-page subscribe CTA: a single bright button, no surrounding
+   card, placed just below the page title/header and above the hero so
+   it's the first thing a visitor can act on. */
+
+.ssm-top-subscribe {
+	display: flex;
+	justify-content: center;
+	margin: 0 0 var(--ssm-sp-5);
+}
+
+.ssm-top-subscribe-noscript {
+	width: 100%;
+	max-width: 480px;
+	margin: var(--ssm-sp-4) auto 0;
+	text-align: left;
+}
+
+.ssm-button-bright {
+	background: linear-gradient(135deg, var(--ssm-primary), color-mix(in srgb, var(--ssm-primary) 55%, #22d3ee));
+	border: none;
+	color: #fff;
+	font-weight: 700;
+	padding: var(--ssm-sp-3) var(--ssm-sp-6);
+	box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--ssm-primary) 65%, transparent), 0 2px 6px -2px color-mix(in srgb, var(--ssm-primary) 45%, transparent);
+}
+
+.ssm-button-bright:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 14px 32px -8px color-mix(in srgb, var(--ssm-primary) 70%, transparent), 0 4px 10px -2px color-mix(in srgb, var(--ssm-primary) 50%, transparent);
+	background: linear-gradient(135deg, var(--ssm-primary-hover), color-mix(in srgb, var(--ssm-primary-hover) 55%, #22d3ee));
+}
+
+.ssm-button-bright:focus-visible {
+	outline-color: var(--ssm-primary);
+	outline-offset: 3px;
+}
+
 .ssm-modal-overlay {
 	position: fixed;
 	inset: 0;

@@ -21,7 +21,8 @@ global $wpdb;
 $webhooks_out = $wpdb->get_results( 'SELECT * FROM ' . ssm_table( 'webhooks_outgoing' ) . ' ORDER BY id DESC' ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 $webhooks_in  = $wpdb->get_results( 'SELECT * FROM ' . ssm_table( 'webhooks_incoming' ) . ' ORDER BY id DESC' ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
-$sms_credentials = json_decode( (string) Encryption::decrypt( $settings['sms_credentials_encrypted'] ), true ) ?: array();
+$sms_credentials  = json_decode( (string) Encryption::decrypt( $settings['sms_credentials_encrypted'] ), true ) ?: array();
+$smtp_password    = Encryption::decrypt( $settings['smtp_password_encrypted'] ?? '' );
 
 $outgoing_events = array(
 	'incident.created', 'incident.updated', 'incident.resolved',
@@ -52,6 +53,40 @@ $outgoing_events = array(
 				<p class="description"><?php esc_html_e( 'Increment this whenever you materially change the privacy notice, so you can identify which wording a subscriber consented to.', 'service-status-manager' ); ?></p></td></tr>
 			<tr><th><?php esc_html_e( 'Retain IP addresses', 'service-status-manager' ); ?></th>
 				<td><label><input type="checkbox" name="retain_ip_addresses" value="1" <?php checked( $settings['retain_ip_addresses'] ); ?> /> <?php esc_html_e( 'Store subscriber/audit-log IP addresses', 'service-status-manager' ); ?></label></td></tr>
+		</table>
+
+		<h2><?php esc_html_e( 'Outgoing Mail (SMTP)', 'service-status-manager' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Optional: route every outgoing email from this site (not just this plugin\'s notifications) through a specific SMTP server, instead of your host\'s default mail transport. Leave disabled if you already use a dedicated SMTP plugin - running both at once will conflict.', 'service-status-manager' ); ?></p>
+		<table class="form-table">
+			<tr><th><?php esc_html_e( 'Enable SMTP relay', 'service-status-manager' ); ?></th>
+				<td><label><input type="checkbox" name="smtp_enabled" value="1" <?php checked( $settings['smtp_enabled'] ); ?> /> <?php esc_html_e( 'Send all site email through the SMTP server configured below', 'service-status-manager' ); ?></label></td></tr>
+			<tr><th><label for="ssm-smtp-host"><?php esc_html_e( 'SMTP host', 'service-status-manager' ); ?></label></th>
+				<td><input type="text" id="ssm-smtp-host" name="smtp_host" class="regular-text" value="<?php echo esc_attr( $settings['smtp_host'] ); ?>" placeholder="smtp.example.com" /></td></tr>
+			<tr><th><label for="ssm-smtp-port"><?php esc_html_e( 'Port', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-smtp-port" name="smtp_port" value="<?php echo esc_attr( $settings['smtp_port'] ); ?>" style="width:100px;" min="1" max="65535" /></td></tr>
+			<tr><th><?php esc_html_e( 'Encryption', 'service-status-manager' ); ?></th>
+				<td>
+					<select name="smtp_encryption">
+						<option value="tls" <?php selected( $settings['smtp_encryption'], 'tls' ); ?>><?php esc_html_e( 'TLS / STARTTLS (recommended, usually port 587)', 'service-status-manager' ); ?></option>
+						<option value="ssl" <?php selected( $settings['smtp_encryption'], 'ssl' ); ?>><?php esc_html_e( 'SSL (usually port 465)', 'service-status-manager' ); ?></option>
+						<option value="none" <?php selected( $settings['smtp_encryption'], 'none' ); ?>><?php esc_html_e( 'None (not recommended)', 'service-status-manager' ); ?></option>
+					</select>
+				</td></tr>
+			<tr><th><?php esc_html_e( 'Authentication', 'service-status-manager' ); ?></th>
+				<td><label><input type="checkbox" name="smtp_auth" value="1" <?php checked( $settings['smtp_auth'] ); ?> /> <?php esc_html_e( 'This server requires a username and password', 'service-status-manager' ); ?></label></td></tr>
+			<tr><th><label for="ssm-smtp-username"><?php esc_html_e( 'Username', 'service-status-manager' ); ?></label></th>
+				<td><input type="text" id="ssm-smtp-username" name="smtp_username" class="regular-text" value="<?php echo esc_attr( $settings['smtp_username'] ); ?>" autocomplete="off" /></td></tr>
+			<tr><th><label for="ssm-smtp-password"><?php esc_html_e( 'Password', 'service-status-manager' ); ?></label></th>
+				<td><input type="password" id="ssm-smtp-password" name="smtp_password" class="regular-text" placeholder="<?php echo esc_attr( $smtp_password ? Encryption::mask( $smtp_password ) : '' ); ?>" autocomplete="new-password" />
+				<p class="description"><?php esc_html_e( 'Leave blank to keep the currently saved password. Never displayed in full after saving.', 'service-status-manager' ); ?></p></td></tr>
+			<tr><th><?php esc_html_e( 'From address', 'service-status-manager' ); ?></th>
+				<td><label><input type="checkbox" name="smtp_force_from" value="1" <?php checked( $settings['smtp_force_from'] ); ?> /> <?php esc_html_e( 'Use the sender name/address above for every site email (recommended - many SMTP servers reject mail whose From address doesn\'t match the authenticated account)', 'service-status-manager' ); ?></label></td></tr>
+			<tr><th><?php esc_html_e( 'Test', 'service-status-manager' ); ?></th>
+				<td><p class="description"><?php echo wp_kses_post( sprintf(
+					/* translators: %s: link to the Notifications page */
+					__( 'Save your changes, then send a test email from the %s screen (choose the Email channel).', 'service-status-manager' ),
+					'<a href="' . esc_url( admin_url( 'admin.php?page=service-status-manager-notifications' ) ) . '">' . esc_html__( 'Notifications', 'service-status-manager' ) . '</a>'
+				) ); ?></p></td></tr>
 		</table>
 
 		<h2><?php esc_html_e( 'Notification Rules', 'service-status-manager' ); ?></h2>

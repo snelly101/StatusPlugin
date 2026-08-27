@@ -84,31 +84,27 @@ $overall_def   = ssm_get_status_definition( $overall );
 		</header>
 	<?php endif; ?>
 
+	<?php if ( 'yes' === $atts['show_subscribe'] ) : ?>
+		<div class="ssm-top-subscribe" id="ssm-subscribe">
+			<button type="button" class="ssm-button ssm-button-bright" data-ssm-open-modal="subscribe">
+				<?php echo ssm_icon( 'mail' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				<?php esc_html_e( 'Get status updates', 'service-status-manager' ); ?>
+			</button>
+			<noscript>
+				<div class="ssm-top-subscribe-noscript">
+					<?php echo $shortcodes->render_subscribe( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				</div>
+			</noscript>
+		</div>
+		<?php require SSM_PLUGIN_DIR . 'public/templates/subscribe-modal.php'; ?>
+	<?php endif; ?>
+
 	<?php echo $shortcodes->render_summary( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
 	<div class="ssm-page-section" id="ssm-services">
 		<h2><?php esc_html_e( 'Services', 'service-status-manager' ); ?></h2>
 		<?php echo $shortcodes->render_services( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 	</div>
-
-	<?php if ( 'yes' === $atts['show_subscribe'] ) : ?>
-		<div class="ssm-page-section ssm-page-subscribe-cta" id="ssm-subscribe">
-			<div class="ssm-card ssm-subscribe-cta-inner">
-				<h2><?php esc_html_e( 'Get status updates', 'service-status-manager' ); ?></h2>
-				<p><?php esc_html_e( 'Choose how you want to hear about incidents and maintenance affecting the services you care about.', 'service-status-manager' ); ?></p>
-				<button type="button" class="ssm-button ssm-button-primary" data-ssm-open-modal="subscribe">
-					<?php echo ssm_icon( 'mail' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-					<?php esc_html_e( 'Get status updates', 'service-status-manager' ); ?>
-				</button>
-				<noscript>
-					<div style="margin-top:24px; text-align:left;">
-						<?php echo $shortcodes->render_subscribe( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-					</div>
-				</noscript>
-			</div>
-		</div>
-		<?php require SSM_PLUGIN_DIR . 'public/templates/subscribe-modal.php'; ?>
-	<?php endif; ?>
 
 	<div class="ssm-page-section" id="ssm-incidents">
 		<h2><?php esc_html_e( 'Incident history', 'service-status-manager' ); ?></h2>
