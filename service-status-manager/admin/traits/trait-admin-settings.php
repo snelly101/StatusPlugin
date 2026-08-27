@@ -113,6 +113,7 @@ trait AdminSettingsTrait {
 				'show_header'           => ! empty( $_POST['show_header'] ),
 				'live_refresh_interval' => absint( wp_unslash( $_POST['live_refresh_interval'] ?? 0 ) ),
 				'theme_default'         => in_array( $_POST['theme_default'] ?? 'system', array( 'system', 'light', 'dark' ), true ) ? $_POST['theme_default'] : 'system',
+				'show_uptime_history'   => ! empty( $_POST['show_uptime_history'] ),
 			),
 		);
 

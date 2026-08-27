@@ -120,6 +120,11 @@ $page_settings      = $editing ? ( json_decode( (string) $editing->settings, tru
 					<input type="number" id="ssm-p-refresh" name="live_refresh_interval" value="<?php echo esc_attr( $page_settings['live_refresh_interval'] ?? 60 ); ?>" min="0" step="5" style="width:100px;" /> <?php esc_html_e( 'seconds', 'service-status-manager' ); ?>
 					<p class="description"><?php esc_html_e( 'How often the page checks for status changes in the background, using the existing public REST API (no page reload). Set to 0 to disable live refresh.', 'service-status-manager' ); ?></p>
 				</td></tr>
+			<tr><th><?php esc_html_e( 'Uptime history', 'service-status-manager' ); ?></th>
+				<td>
+					<label><input type="checkbox" name="show_uptime_history" value="1" <?php checked( ! isset( $page_settings['show_uptime_history'] ) || $page_settings['show_uptime_history'] ); ?> /> <?php esc_html_e( 'Show the uptime history section', 'service-status-manager' ); ?></label>
+					<p class="description"><?php esc_html_e( 'Uptime percentages are calculated purely from monitor checks. If your services do not have automated monitors attached, this section will show little or no data - turn it off here to hide it from visitors.', 'service-status-manager' ); ?></p>
+				</td></tr>
 		</table>
 
 		<?php submit_button( $editing ? __( 'Save Status Page', 'service-status-manager' ) : __( 'Add Status Page', 'service-status-manager' ) ); ?>

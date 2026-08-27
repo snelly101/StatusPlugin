@@ -21,6 +21,7 @@ $page          = StatusPageManager::get_page_by_slug( 'main' );
 $shortcodes    = new Shortcodes();
 $page_settings = $page ? ( json_decode( (string) $page->settings, true ) ?: array() ) : array();
 $show_header   = ! empty( $page_settings['show_header'] );
+$show_uptime_history = ! isset( $page_settings['show_uptime_history'] ) || $page_settings['show_uptime_history'];
 $theme_default = in_array( $page_settings['theme_default'] ?? 'system', array( 'light', 'dark' ), true ) ? $page_settings['theme_default'] : 'auto';
 $overall       = ServiceManager::get_overall_status();
 $overall_def   = ssm_get_status_definition( $overall );
@@ -116,10 +117,12 @@ $overall_def   = ssm_get_status_definition( $overall );
 		<?php echo $shortcodes->render_maintenance( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 	</div>
 
+	<?php if ( $show_uptime_history ) : ?>
 	<div class="ssm-page-section" id="ssm-history">
 		<h2><?php esc_html_e( 'Uptime history', 'service-status-manager' ); ?></h2>
 		<?php echo $shortcodes->render_history( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 	</div>
+	<?php endif; ?>
 
 	<?php if ( $page && ( $page->support_url || $page->privacy_url || $page->terms_url ) ) : ?>
 		<footer class="ssm-page-footer">

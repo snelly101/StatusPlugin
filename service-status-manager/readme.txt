@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.6.1
+Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.7.0 =
+Adds a "Show the uptime history section" toggle under **Service Status > Status Pages** (on by default, matching current behaviour). Uptime percentages are calculated purely from monitor checks, so a status page for services with no automated monitors attached would show an empty or all-blank uptime history section - this lets you hide it entirely if you're not using monitors. Only affects the section auto-included in the full `[service_status_page]` layout; a standalone `[service_status_history]` shortcode placed deliberately elsewhere is unaffected.
 
 = 1.6.1 =
 Fixes several headings/labels on the public status page (the hero title, page title, incident titles, service and monitor names, the modal title, and the uptime-history service/monitor headings) rendering in a low-contrast colour inherited from the active theme instead of the plugin's own text colour - the same class of theme-CSS-bleed-through issue fixed for the subscribe button in 1.2.1, just on a different set of elements this time. These now explicitly set their own colour so they stay readable regardless of what a theme sets globally.
