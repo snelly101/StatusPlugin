@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.2.1 =
+Fixes the top "Get status updates" button rendering in the wrong colours on some themes (a theme's own global button styling was overriding the plugin's, since both had similar CSS specificity) and restyles it to match the rest of the design system (same solid brand-blue button used elsewhere on the page, just larger) instead of a separate gradient look.
 
 = 1.2.0 =
 Adds an optional built-in SMTP relay (Settings > Outgoing Mail) so outgoing email can be routed through a specific mail server without a separate SMTP plugin. Moves the public status page's "Get status updates" button to the top of the page (just under the hero) with a brighter, higher-contrast style.

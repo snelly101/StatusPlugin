@@ -507,71 +507,92 @@
 	flex-shrink: 0;
 }
 
-.ssm-button {
+/*
+ * Buttons are defended with a handful of !important declarations on the
+ * properties (colour, border, background, shadow, text-decoration) most
+ * commonly set by a theme's own global button/link styling. Without
+ * this, a theme rule of equal-or-higher specificity than a single class
+ * selector can silently override just the colour/border while leaving
+ * layout untouched, producing a button that is the right shape in the
+ * wrong colours - exactly the kind of theme bleed the plugin's styles
+ * are supposed to be immune to.
+ */
+
+.ssm-status-page button.ssm-button,
+.ssm-status-page a.ssm-button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	gap: var(--ssm-sp-2);
 	padding: var(--ssm-sp-3) var(--ssm-sp-5);
 	min-height: 44px;
-	border-radius: var(--ssm-r-md);
-	border: 1px solid var(--ssm-border);
-	background: var(--ssm-surface);
-	color: var(--ssm-text);
+	box-sizing: border-box;
+	border-radius: var(--ssm-r-md) !important;
+	border: 1px solid var(--ssm-border) !important;
+	background: var(--ssm-surface) !important;
+	background-image: none !important;
+	color: var(--ssm-text) !important;
 	font-family: var(--ssm-font);
 	font-size: .95rem;
 	font-weight: 600;
+	line-height: 1.2;
 	cursor: pointer;
-	text-decoration: none;
+	text-decoration: none !important;
+	text-transform: none;
+	box-shadow: none;
+	appearance: none;
+	-webkit-appearance: none;
 	transition: background var(--ssm-fast) var(--ssm-ease), border-color var(--ssm-fast) var(--ssm-ease), transform var(--ssm-fast) var(--ssm-ease), box-shadow var(--ssm-fast) var(--ssm-ease);
 }
 
-.ssm-button:hover {
-	border-color: var(--ssm-border-strong);
+.ssm-status-page button.ssm-button:hover,
+.ssm-status-page a.ssm-button:hover {
+	border-color: var(--ssm-border-strong) !important;
 	transform: translateY(-1px);
 }
 
-.ssm-button:active {
+.ssm-status-page button.ssm-button:active,
+.ssm-status-page a.ssm-button:active {
 	transform: translateY(0);
 }
 
-.ssm-button-primary {
-	background: var(--ssm-primary);
-	border-color: var(--ssm-primary);
-	color: #fff;
+.ssm-status-page .ssm-button-primary {
+	background: var(--ssm-primary) !important;
+	border-color: var(--ssm-primary) !important;
+	color: #fff !important;
 	box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--ssm-primary) 55%, transparent);
 }
 
-.ssm-button-primary:hover {
-	background: var(--ssm-primary-hover);
-	border-color: var(--ssm-primary-hover);
+.ssm-status-page .ssm-button-primary:hover {
+	background: var(--ssm-primary-hover) !important;
+	border-color: var(--ssm-primary-hover) !important;
 }
 
-.ssm-button-ghost {
-	background: transparent;
-	border-color: transparent;
+.ssm-status-page .ssm-button-ghost {
+	background: transparent !important;
+	border-color: transparent !important;
 }
 
-.ssm-button-ghost:hover {
-	background: var(--ssm-surface-2);
+.ssm-status-page .ssm-button-ghost:hover {
+	background: var(--ssm-surface-2) !important;
 }
 
-.ssm-button-danger {
-	color: var(--ssm-outage);
-	border-color: color-mix(in srgb, var(--ssm-outage) 40%, var(--ssm-border));
+.ssm-status-page .ssm-button-danger {
+	color: var(--ssm-outage) !important;
+	border-color: color-mix(in srgb, var(--ssm-outage) 40%, var(--ssm-border)) !important;
 }
 
-.ssm-button-danger:hover {
-	background: color-mix(in srgb, var(--ssm-outage) 8%, var(--ssm-surface));
+.ssm-status-page .ssm-button-danger:hover {
+	background: color-mix(in srgb, var(--ssm-outage) 8%, var(--ssm-surface)) !important;
 }
 
-.ssm-button-sm {
+.ssm-status-page .ssm-button-sm {
 	min-height: 36px;
 	padding: var(--ssm-sp-2) var(--ssm-sp-4);
 	font-size: .85rem;
 }
 
-.ssm-button:disabled {
+.ssm-status-page button.ssm-button:disabled {
 	opacity: .55;
 	cursor: not-allowed;
 	transform: none;
@@ -594,29 +615,32 @@
 	padding: 0;
 }
 
-.ssm-form-row input[type="text"],
-.ssm-form-row input[type="email"],
-.ssm-form-row input[type="tel"],
-.ssm-form-row input[type="url"],
-.ssm-form-row input[type="password"],
-.ssm-form-row select {
+.ssm-status-page .ssm-form-row input[type="text"],
+.ssm-status-page .ssm-form-row input[type="email"],
+.ssm-status-page .ssm-form-row input[type="tel"],
+.ssm-status-page .ssm-form-row input[type="url"],
+.ssm-status-page .ssm-form-row input[type="password"],
+.ssm-status-page .ssm-form-row select {
 	width: 100%;
 	max-width: 420px;
 	padding: var(--ssm-sp-3) var(--ssm-sp-4);
 	min-height: 44px;
-	border: 1px solid var(--ssm-border);
+	border: 1px solid var(--ssm-border) !important;
 	border-radius: var(--ssm-r-md);
-	background: var(--ssm-surface);
-	color: var(--ssm-text);
+	background: var(--ssm-surface) !important;
+	color: var(--ssm-text) !important;
 	font-family: var(--ssm-font);
 	font-size: .95rem;
 	margin-bottom: var(--ssm-sp-2);
+	box-shadow: none;
+	appearance: none;
+	-webkit-appearance: none;
 	transition: border-color var(--ssm-fast) var(--ssm-ease), box-shadow var(--ssm-fast) var(--ssm-ease);
 }
 
-.ssm-form-row input:focus,
-.ssm-form-row select:focus {
-	border-color: var(--ssm-primary);
+.ssm-status-page .ssm-form-row input:focus,
+.ssm-status-page .ssm-form-row select:focus {
+	border-color: var(--ssm-primary) !important;
 	box-shadow: 0 0 0 3px var(--ssm-primary-tint);
 	outline: none;
 }
@@ -1120,24 +1144,18 @@
 	text-align: left;
 }
 
-.ssm-button-bright {
-	background: linear-gradient(135deg, var(--ssm-primary), color-mix(in srgb, var(--ssm-primary) 55%, #22d3ee));
-	border: none;
-	color: #fff;
+/*
+ * The top-of-page CTA reuses .ssm-button-primary's exact colours (same
+ * solid brand blue used for every other primary action on the page,
+ * including inside the subscribe modal) so it reads as part of the same
+ * design system rather than a one-off, louder element. .ssm-button-lg
+ * only adds size/weight - no colour of its own.
+ */
+
+.ssm-status-page .ssm-button-lg {
+	padding: var(--ssm-sp-4) var(--ssm-sp-6) !important;
+	font-size: 1rem;
 	font-weight: 700;
-	padding: var(--ssm-sp-3) var(--ssm-sp-6);
-	box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--ssm-primary) 65%, transparent), 0 2px 6px -2px color-mix(in srgb, var(--ssm-primary) 45%, transparent);
-}
-
-.ssm-button-bright:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 14px 32px -8px color-mix(in srgb, var(--ssm-primary) 70%, transparent), 0 4px 10px -2px color-mix(in srgb, var(--ssm-primary) 50%, transparent);
-	background: linear-gradient(135deg, var(--ssm-primary-hover), color-mix(in srgb, var(--ssm-primary-hover) 55%, #22d3ee));
-}
-
-.ssm-button-bright:focus-visible {
-	outline-color: var(--ssm-primary);
-	outline-offset: 3px;
 }
 
 .ssm-modal-overlay {

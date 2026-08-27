@@ -86,7 +86,7 @@ $overall_def   = ssm_get_status_definition( $overall );
 
 	<?php if ( 'yes' === $atts['show_subscribe'] ) : ?>
 		<div class="ssm-top-subscribe" id="ssm-subscribe">
-			<button type="button" class="ssm-button ssm-button-bright" data-ssm-open-modal="subscribe">
+			<button type="button" class="ssm-button ssm-button-primary ssm-button-lg" data-ssm-open-modal="subscribe">
 				<?php echo ssm_icon( 'mail' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 				<?php esc_html_e( 'Get status updates', 'service-status-manager' ); ?>
 			</button>
