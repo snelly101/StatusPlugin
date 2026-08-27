@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.6.0
+Stable tag: 1.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.6.1 =
+Fixes several headings/labels on the public status page (the hero title, page title, incident titles, service and monitor names, the modal title, and the uptime-history service/monitor headings) rendering in a low-contrast colour inherited from the active theme instead of the plugin's own text colour - the same class of theme-CSS-bleed-through issue fixed for the subscribe button in 1.2.1, just on a different set of elements this time. These now explicitly set their own colour so they stay readable regardless of what a theme sets globally.
 
 = 1.6.0 =
 Adds a "Ping" monitor type (Service Status > Monitors > Monitor type). PHP on typical WordPress hosting can't send real ICMP ping packets - that needs raw sockets/root, which shared and managed hosts don't allow, and shelling out to the system `ping` command needs exec()/shell_exec(), which most hosts disable for security - so this checks basic host reachability by attempting a TCP connection to a couple of common ports (80/443 by default, filterable via `ssm_ping_monitor_ports`) and succeeds as soon as one accepts a connection. Just enter a hostname or IP, no port required; to check one specific port instead, use a TCP Port monitor. Goes through the same SSRF validation (loopback/private/link-local/cloud-metadata protection, DNS-rebinding-safe) as the HTTP and TCP monitor types.

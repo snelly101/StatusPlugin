@@ -335,6 +335,7 @@
 	margin: 0 0 var(--ssm-sp-2);
 	font-size: clamp(1.6rem, 1.3rem + 1.2vw, 2rem);
 	font-weight: 700;
+	color: var(--ssm-text) !important;
 }
 
 .ssm-page-intro {
@@ -398,6 +399,7 @@
 	font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.25rem);
 	font-weight: 800;
 	letter-spacing: -.02em;
+	color: var(--ssm-text) !important;
 }
 
 .ssm-hero-desc {
@@ -764,6 +766,7 @@
 	font-size: .98rem;
 	flex: 1;
 	min-width: 0;
+	color: var(--ssm-text) !important;
 }
 
 .ssm-service-expand-icon {
@@ -820,6 +823,7 @@
 .ssm-monitor-name {
 	flex: 1;
 	min-width: 0;
+	color: var(--ssm-text) !important;
 }
 
 .ssm-monitor-meta {
@@ -841,6 +845,7 @@
 	margin: 0 0 var(--ssm-sp-3);
 	font-size: 1rem;
 	font-weight: 700;
+	color: var(--ssm-text) !important;
 }
 
 .ssm-history-monitor {
@@ -1007,6 +1012,7 @@
 	font-weight: 700;
 	flex: 1;
 	min-width: 200px;
+	color: var(--ssm-text) !important;
 }
 
 .ssm-incident-services,
@@ -1263,6 +1269,7 @@
 	margin: 0;
 	font-size: 1.3rem;
 	font-weight: 700;
+	color: var(--ssm-text) !important;
 }
 
 .ssm-step-progress {
