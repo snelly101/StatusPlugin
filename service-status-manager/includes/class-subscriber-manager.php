@@ -223,13 +223,19 @@ class SubscriberManager {
 
 	/**
 	 * Resends a confirmation link for a (possibly non-existent) email
-	 * address. Always succeeds silently from the caller's perspective.
+	 * address. Always responds identically from the HTTP caller's
+	 * perspective regardless of the outcome (see handle_resend_confirmation()
+	 * in PublicController, which shows the same generic message either
+	 * way) so this never reveals whether an address is registered.
 	 *
 	 * @param string $email Email address.
+	 * @return int Subscriber ID the link was queued for, or 0 if the
+	 *             address wasn't valid/registered (only used internally to
+	 *             trigger immediate sending - never exposed to the caller).
 	 */
 	public static function resend_confirmation( $email ) {
 		if ( ! is_email( $email ) ) {
-			return;
+			return 0;
 		}
 
 		global $wpdb;
@@ -238,7 +244,7 @@ class SubscriberManager {
 		$id    = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE email_hash = %s", $hash ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		if ( ! $id ) {
-			return;
+			return 0;
 		}
 
 		$channel_table = ssm_table( 'subscriber_channels' );
@@ -248,10 +254,12 @@ class SubscriberManager {
 			// Already verified - send a management link instead of a confirmation link.
 			$token = self::generate_token( $id, 'manage', self::TOKEN_TTL_MANAGE );
 			do_action( 'ssm_subscriber_management_link_requested', (int) $id, $token );
-			return;
+			return (int) $id;
 		}
 
 		self::send_verification( (int) $id, 'email' );
+
+		return (int) $id;
 	}
 
 	/**

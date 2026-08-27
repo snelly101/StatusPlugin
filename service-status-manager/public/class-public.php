@@ -171,6 +171,14 @@ class PublicController {
 
 		$result = SubscriberManager::handle_token_action( $action, $subscriber_id, $token );
 
+		if ( ! is_wp_error( $result ) && in_array( $action, array( 'confirm', 'teams_verify' ), true ) ) {
+			// Confirming a channel may have just queued a "here is your
+			// management link" message (on first-ever confirmation) - send
+			// it immediately rather than waiting on cron, same reasoning
+			// as the subscribe/resend flows.
+			NotificationQueue::process_for_subscriber( $subscriber_id );
+		}
+
 		require SSM_PLUGIN_DIR . 'public/templates/subscription-result.php';
 		exit;
 	}
@@ -255,7 +263,15 @@ class PublicController {
 			wp_die( esc_html__( 'Too many attempts. Please try again later.', 'service-status-manager' ), '', array( 'response' => 429 ) );
 		}
 
-		SubscriberManager::resend_confirmation( sanitize_email( wp_unslash( $_POST['email'] ?? '' ) ) );
+		$subscriber_id = SubscriberManager::resend_confirmation( sanitize_email( wp_unslash( $_POST['email'] ?? '' ) ) );
+
+		if ( $subscriber_id ) {
+			// Same reasoning as handle_subscribe(): send this subscriber's
+			// own (small, bounded) pending rows immediately rather than
+			// waiting on the best-effort loopback trigger or the next cron
+			// tick, since they're actively waiting on this link right now.
+			NotificationQueue::process_for_subscriber( $subscriber_id );
+		}
 
 		$redirect = wp_get_referer() ? wp_get_referer() : home_url( '/' );
 		wp_safe_redirect( add_query_arg( 'ssm_resent', '1', $redirect ) );
