@@ -1,86 +1,166 @@
-/* Service Status Manager - wp-admin styling */
+/*
+ * Service Status Manager - wp-admin styling.
+ *
+ * Stays native to wp-admin (no reset of WordPress' own chrome, standard
+ * form-table/button/list-table markup untouched) but gives the plugin's
+ * own screens a coherent, more polished visual layer: consistent
+ * spacing/radius/shadow, status colour tokens shared conceptually with
+ * the public stylesheet, and a few small components (stat cards with
+ * icons, filter pills, priority rows, sparklines, an activity timeline).
+ */
 
 .ssm-wrap {
-	max-width: 1200px;
+	--ssm-r-sm: 6px;
+	--ssm-r-md: 10px;
+	--ssm-r-lg: 14px;
+	--ssm-shadow-sm: 0 1px 2px rgba(15, 23, 42, .05);
+	--ssm-shadow-md: 0 4px 14px -6px rgba(15, 23, 42, .12), 0 2px 4px -2px rgba(15, 23, 42, .05);
+	--ssm-border: #e2e8f0;
+	--ssm-text-muted: #64748b;
+	--ssm-surface-2: #f8fafc;
+	max-width: 1240px;
 }
 
-.ssm-status-operational { --ssm-c: #16a34a; }
-.ssm-status-degraded { --ssm-c: #eab308; }
-.ssm-status-partial-outage { --ssm-c: #f97316; }
-.ssm-status-major-outage { --ssm-c: #dc2626; }
-.ssm-status-maintenance { --ssm-c: #2563eb; }
-.ssm-status-unknown { --ssm-c: #6b7280; }
+.ssm-status-operational { --ssm-c: #10b981; --ssm-c-bg: #ecfdf5; }
+.ssm-status-degraded { --ssm-c: #f59e0b; --ssm-c-bg: #fffbeb; }
+.ssm-status-partial-outage { --ssm-c: #f97316; --ssm-c-bg: #fff7ed; }
+.ssm-status-major-outage { --ssm-c: #ef4444; --ssm-c-bg: #fef2f2; }
+.ssm-status-maintenance { --ssm-c: #6366f1; --ssm-c-bg: #eef2ff; }
+.ssm-status-unknown { --ssm-c: #64748b; --ssm-c-bg: #f1f5f9; }
 
 .ssm-overall-banner {
+	position: relative;
+	overflow: hidden;
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 14px 18px;
-	border-radius: 6px;
-	background: #fff;
-	border-left: 5px solid var(--ssm-c, #6b7280);
-	margin: 16px 0;
-	box-shadow: 0 1px 2px rgba(0,0,0,.05);
+	gap: 14px;
+	padding: 18px 22px;
+	border-radius: var(--ssm-r-lg);
+	background: linear-gradient(135deg, var(--ssm-c-bg, #f1f5f9), #fff 65%);
+	border: 1px solid var(--ssm-border);
+	margin: 16px 0 24px;
+	box-shadow: var(--ssm-shadow-sm);
+}
+
+.ssm-overall-banner .ssm-icon {
+	width: 30px;
+	height: 30px;
+	color: var(--ssm-c, #64748b);
+	flex-shrink: 0;
 }
 
 .ssm-status-dot {
-	width: 12px;
-	height: 12px;
+	width: 10px;
+	height: 10px;
 	border-radius: 50%;
 	background: var(--ssm-c, #6b7280);
 	display: inline-block;
+	flex-shrink: 0;
 }
 
 .ssm-badge {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	padding: 2px 10px;
+	padding: 3px 11px;
 	border-radius: 999px;
 	font-size: 12px;
 	font-weight: 600;
-	background: color-mix(in srgb, var(--ssm-c, #6b7280) 15%, white);
-	color: var(--ssm-c, #6b7280);
+	background: var(--ssm-c-bg, #f1f5f9);
+	color: color-mix(in srgb, var(--ssm-c, #64748b) 80%, #0f172a);
 }
 
 .ssm-badge::before {
 	content: "";
-	width: 8px;
-	height: 8px;
+	width: 7px;
+	height: 7px;
 	border-radius: 50%;
 	background: var(--ssm-c, #6b7280);
+	flex-shrink: 0;
 }
+
+/* Dashboard stat grid */
 
 .ssm-stat-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-	gap: 12px;
+	gap: 14px;
 	margin: 20px 0;
 }
 
 .ssm-stat-card {
 	background: #fff;
-	border: 1px solid #dcdcde;
-	border-radius: 6px;
-	padding: 16px;
+	border: 1px solid var(--ssm-border);
+	border-radius: var(--ssm-r-lg);
+	box-shadow: var(--ssm-shadow-sm);
+	padding: 18px;
 	display: flex;
-	flex-direction: column;
+	align-items: flex-start;
+	gap: 12px;
+	transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.ssm-stat-card:hover {
+	box-shadow: var(--ssm-shadow-md);
+	transform: translateY(-1px);
 }
 
 .ssm-stat-card--warn {
-	border-color: #dc2626;
+	border-color: #fecaca;
 	background: #fef2f2;
 }
 
+.ssm-stat-card-icon {
+	width: 38px;
+	height: 38px;
+	border-radius: var(--ssm-r-md);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--ssm-surface-2);
+	color: var(--ssm-text-muted);
+	flex-shrink: 0;
+}
+
+.ssm-stat-card-icon .ssm-icon {
+	width: 20px;
+	height: 20px;
+}
+
+.ssm-stat-card-body {
+	min-width: 0;
+}
+
 .ssm-stat-value {
-	font-size: 28px;
+	font-size: 26px;
 	font-weight: 700;
 	line-height: 1.2;
+	color: #0f172a;
 }
 
 .ssm-stat-label {
-	color: #646970;
+	color: var(--ssm-text-muted);
 	font-size: 13px;
+}
+
+.ssm-dashboard-section {
+	margin: 32px 0;
+}
+
+.ssm-dashboard-section > h2 {
+	font-size: 15px;
+	text-transform: uppercase;
+	letter-spacing: .04em;
+	color: var(--ssm-text-muted);
+	margin-bottom: 12px;
+}
+
+.ssm-dashboard-card {
+	background: #fff;
+	border: 1px solid var(--ssm-border);
+	border-radius: var(--ssm-r-lg);
+	box-shadow: var(--ssm-shadow-sm);
+	padding: 4px 20px;
 }
 
 .ssm-two-col {
@@ -99,25 +179,113 @@
 	flex: 1;
 	min-width: 320px;
 	background: #fff;
-	border: 1px solid #dcdcde;
+	border: 1px solid var(--ssm-border);
 	padding: 0 16px 16px;
-	border-radius: 6px;
+	border-radius: var(--ssm-r-lg);
+	box-shadow: var(--ssm-shadow-sm);
 }
 
+/* Activity timeline */
+
 .ssm-activity-list {
-	background: #fff;
-	border: 1px solid #dcdcde;
-	border-radius: 6px;
-	padding: 12px 16px;
+	list-style: none;
+	margin: 0;
+	padding: 4px 0;
 }
 
 .ssm-activity-list li {
-	padding: 4px 0;
+	position: relative;
+	padding: 10px 0 10px 22px;
 	border-bottom: 1px solid #f0f0f1;
+	font-size: 13px;
+}
+
+.ssm-activity-list li::before {
+	content: "";
+	position: absolute;
+	left: 4px;
+	top: 16px;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: #94a3b8;
 }
 
 .ssm-activity-list li:last-child {
 	border-bottom: none;
+}
+
+.ssm-activity-list code {
+	color: var(--ssm-text-muted);
+	background: none;
+	padding: 0;
+}
+
+/* Filter pills (Monitors screen) */
+
+.ssm-filter-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 12px 0 18px;
+}
+
+.ssm-filter-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 14px;
+	border-radius: 999px;
+	border: 1px solid var(--ssm-border);
+	background: #fff;
+	color: var(--ssm-text-muted);
+	font-size: 13px;
+	font-weight: 500;
+	text-decoration: none;
+	transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.ssm-filter-pill:hover {
+	background: var(--ssm-surface-2);
+	color: #0f172a;
+}
+
+.ssm-filter-pill.ssm-is-active {
+	background: #0f172a;
+	border-color: #0f172a;
+	color: #fff;
+}
+
+.ssm-filter-pill .ssm-count {
+	background: rgba(0, 0, 0, .08);
+	border-radius: 999px;
+	padding: 1px 7px;
+	font-size: 11px;
+}
+
+.ssm-filter-pill.ssm-is-active .ssm-count {
+	background: rgba(255, 255, 255, .2);
+}
+
+/* Monitor rows: failing monitors get a warm left border so they stand
+   out immediately, matching the "failed monitors rise prominently"
+   requirement without needing JS-driven reordering of a wp-list-table. */
+
+.ssm-monitor-priority-row {
+	border-left: 3px solid #ef4444 !important;
+	background: #fef2f2;
+}
+
+.ssm-sparkline {
+	display: block;
+	overflow: visible;
+}
+
+.ssm-icon {
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+	vertical-align: middle;
 }
 
 .ssm-monitor-type-fields {
@@ -137,4 +305,24 @@
 .ssm-checkbox-row-admin {
 	display: inline-block;
 	margin: 2px 0;
+}
+
+.ssm-quick-actions a {
+	margin-right: 4px;
+}
+
+@media (max-width: 782px) {
+	.ssm-stat-grid {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.ssm-two-col {
+		flex-direction: column;
+	}
+
+	.ssm-col-list,
+	.ssm-col-form {
+		min-width: 0;
+		width: 100%;
+	}
 }

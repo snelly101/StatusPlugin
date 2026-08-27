@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,18 @@ Customers can:
 * Choose email, SMS, Microsoft Teams, or a combination of channels.
 
 Administrators get a full WordPress admin area to manage service groups, services, monitors (manual, HTTP/HTTPS, TCP port - with an extensible provider architecture for more), incidents, scheduled maintenance, subscribers, the notification queue, reports, settings, logs, and diagnostic tools.
+
+= Design (v1.1.0) =
+
+The public status page uses a self-contained design system - CSS custom properties for colour/spacing/radius/shadow/motion, all scoped under `.ssm-status-page` so nothing leaks into your theme. Highlights:
+
+* A status hero (icon, title, description, last-checked time, 90-day uptime) that changes background tint/icon/accent per status, never colour alone.
+* An optional sticky header (logo, section links, live status pill, compacts on scroll) - toggle per status page under **Service Status > Status Pages**, since your theme may already provide navigation.
+* Expandable service rows showing per-monitor detail; uptime bars with real tooltips (date, uptime %, incident count, estimated degraded/down minutes).
+* A "Get status updates" button opens a 3-step subscribe wizard (channels -> what to follow -> destination + consent) with an in-page confirmation - the classic inline form is still there as a `<noscript>` fallback, so subscribing never depends on JavaScript.
+* Full dark mode (system-preference aware, plus a manual toggle when the header is enabled) - not just an inverted palette.
+* Optional live status refresh: the hero and header poll the existing public `/status` REST endpoint at an admin-configurable interval (default 60s, 0 disables it) to reflect changes without a page reload.
+* Self-authored inline SVG icons throughout - no external icon library or web font dependency.
 
 = Architecture =
 
@@ -211,6 +223,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.1.0 =
+Complete visual/UX redesign of the public status page (design system, dark mode, expandable services, uptime tooltips, subscribe wizard, optional sticky header, live refresh) and a polished admin dashboard/monitors/services screen. Adds a `checks_degraded` column to `monitor_aggregates` (additive migration) so monitor checks distinguish "degraded" from "down".
 
 = 1.0.0 =
 Initial release.

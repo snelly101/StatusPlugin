@@ -9,6 +9,7 @@ namespace ServiceStatusManager\Admin;
 
 use ServiceStatusManager\ServiceManager;
 use ServiceStatusManager\MonitorManager;
+use ServiceStatusManager\UptimeAggregator;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -19,6 +20,9 @@ $groups   = ServiceManager::get_groups();
 $edit_id  = isset( $_GET['edit'] ) ? absint( $_GET['edit'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 $editing  = $edit_id ? ServiceManager::get_service( $edit_id ) : null;
 $statuses = ssm_get_status_definitions();
+
+global $wpdb;
+$selections_table = ssm_table( 'subscriber_selections' );
 ?>
 <div class="wrap ssm-wrap">
 	<h1><?php esc_html_e( 'Services', 'service-status-manager' ); ?></h1>
@@ -29,28 +33,37 @@ $statuses = ssm_get_status_definitions();
 			<th><?php esc_html_e( 'Group', 'service-status-manager' ); ?></th>
 			<th><?php esc_html_e( 'Status', 'service-status-manager' ); ?></th>
 			<th><?php esc_html_e( 'Mode', 'service-status-manager' ); ?></th>
-			<th><?php esc_html_e( 'Visibility', 'service-status-manager' ); ?></th>
 			<th><?php esc_html_e( 'Monitors', 'service-status-manager' ); ?></th>
-			<th></th>
+			<th><?php esc_html_e( 'Uptime (90d)', 'service-status-manager' ); ?></th>
+			<th><?php esc_html_e( 'Subscribers', 'service-status-manager' ); ?></th>
+			<th><?php esc_html_e( 'Last updated', 'service-status-manager' ); ?></th>
+			<th><?php esc_html_e( 'Actions', 'service-status-manager' ); ?></th>
 		</tr></thead>
 		<tbody>
 		<?php if ( empty( $services ) ) : ?>
-			<tr><td colspan="7"><?php esc_html_e( 'No services yet.', 'service-status-manager' ); ?></td></tr>
+			<tr><td colspan="9"><?php esc_html_e( 'No services yet.', 'service-status-manager' ); ?></td></tr>
 		<?php endif; ?>
 		<?php
 		$group_names = wp_list_pluck( $groups, 'name', 'id' );
 		foreach ( $services as $service ) :
-			$status_def   = ssm_get_status_definition( $service->status );
+			$status_def    = ssm_get_status_definition( $service->status );
 			$monitor_count = count( MonitorManager::get_monitors_for_service( $service->id ) );
+			$uptime        = UptimeAggregator::get_service_uptime_percentage( $service->id, 90 );
+			$subscriber_count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT subscriber_id) FROM {$selections_table} WHERE scope_type = 'service' AND scope_id = %d", $service->id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			?>
 			<tr>
-				<td><a href="<?php echo esc_url( add_query_arg( 'edit', $service->id ) ); ?>"><?php echo esc_html( $service->name ); ?></a></td>
+				<td><a href="<?php echo esc_url( add_query_arg( 'edit', $service->id ) ); ?>"><strong><?php echo esc_html( $service->name ); ?></strong></a></td>
 				<td><?php echo esc_html( $group_names[ $service->group_id ] ?? '—' ); ?></td>
 				<td><span class="ssm-badge <?php echo esc_attr( $status_def['css_class'] ); ?>"><?php echo esc_html( $status_def['label'] ); ?></span></td>
 				<td><?php echo esc_html( ucfirst( $service->status_mode ) ); ?></td>
-				<td><?php echo esc_html( ucfirst( $service->visibility ) ); ?></td>
 				<td><a href="<?php echo esc_url( admin_url( 'admin.php?page=service-status-manager-monitors&service_id=' . $service->id ) ); ?>"><?php echo esc_html( $monitor_count ); ?></a></td>
-				<td>
+				<td><?php echo esc_html( number_format_i18n( $uptime, 2 ) ); ?>%</td>
+				<td><?php echo esc_html( $subscriber_count ); ?></td>
+				<td><?php echo esc_html( ssm_format_datetime( $service->updated_at ) ); ?></td>
+				<td class="ssm-quick-actions">
+					<a href="<?php echo esc_url( add_query_arg( 'edit', $service->id ) ); ?>"><?php esc_html_e( 'Edit', 'service-status-manager' ); ?></a>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=service-status-manager-incidents&action=new' ) ); ?>"><?php esc_html_e( 'Incident', 'service-status-manager' ); ?></a>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=service-status-manager-maintenance&action=new' ) ); ?>"><?php esc_html_e( 'Maintenance', 'service-status-manager' ); ?></a>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline" onsubmit="return confirm('<?php echo esc_js( __( 'Delete this service and all its monitors?', 'service-status-manager' ) ); ?>');">
 						<?php wp_nonce_field( 'ssm_delete_service' ); ?>
 						<input type="hidden" name="action" value="ssm_delete_service" />

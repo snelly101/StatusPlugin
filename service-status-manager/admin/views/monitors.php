@@ -18,6 +18,7 @@ $services       = ServiceManager::get_services();
 $filter_service = isset( $_GET['service_id'] ) ? absint( $_GET['service_id'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 $edit_id        = isset( $_GET['edit'] ) ? absint( $_GET['edit'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 $editing        = $edit_id ? MonitorManager::get_monitor( $edit_id ) : null;
+$status_filter  = sanitize_key( wp_unslash( $_GET['status_filter'] ?? 'all' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 $monitors = array();
 foreach ( $services as $service ) {
@@ -29,9 +30,114 @@ foreach ( $services as $service ) {
 		$monitors[]            = $monitor;
 	}
 }
+
+// Failed monitors rise to the top regardless of sort order elsewhere,
+// so an administrator sees problems immediately without hunting for them.
+usort(
+	$monitors,
+	function ( $a, $b ) {
+		$priority = array( 'major_outage' => 0, 'partial_outage' => 1 );
+		$a_rank   = $priority[ $a->current_state ] ?? 2;
+		$b_rank   = $priority[ $b->current_state ] ?? 2;
+		return $a_rank <=> $b_rank;
+	}
+);
+
+$filter_counts = array(
+	'all'         => count( $monitors ),
+	'operational' => 0,
+	'degraded'    => 0,
+	'failed'      => 0,
+	'paused'      => 0,
+);
+foreach ( $monitors as $monitor ) {
+	if ( ! $monitor->is_active ) {
+		++$filter_counts['paused'];
+	} elseif ( in_array( $monitor->current_state, array( 'major_outage', 'partial_outage' ), true ) ) {
+		++$filter_counts['failed'];
+	} elseif ( 'degraded' === $monitor->current_state ) {
+		++$filter_counts['degraded'];
+	} elseif ( 'operational' === $monitor->current_state ) {
+		++$filter_counts['operational'];
+	}
+}
+
+if ( 'all' !== $status_filter ) {
+	$monitors = array_values(
+		array_filter(
+			$monitors,
+			function ( $monitor ) use ( $status_filter ) {
+				if ( 'paused' === $status_filter ) {
+					return ! $monitor->is_active;
+				}
+				if ( 'failed' === $status_filter ) {
+					return in_array( $monitor->current_state, array( 'major_outage', 'partial_outage' ), true );
+				}
+				return $monitor->current_state === $status_filter;
+			}
+		)
+	);
+}
+
+/**
+ * Builds a tiny inline SVG sparkline from a monitor's recent response
+ * times, giving an at-a-glance trend without a charting library.
+ *
+ * @param int $monitor_id Monitor ID.
+ * @return string
+ */
+if ( ! function_exists( __NAMESPACE__ . '\\ssm_admin_monitor_sparkline' ) ) {
+	function ssm_admin_monitor_sparkline( $monitor_id ) {
+		global $wpdb;
+		$table  = ssm_table( 'monitor_checks' );
+		$points = $wpdb->get_col( $wpdb->prepare( "SELECT response_time_ms FROM {$table} WHERE monitor_id = %d AND response_time_ms IS NOT NULL ORDER BY checked_at DESC LIMIT 20", $monitor_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( count( $points ) < 2 ) {
+			return '';
+		}
+
+		$points = array_reverse( array_map( 'intval', $points ) );
+		$max    = max( max( $points ), 1 );
+		$width  = 100;
+		$height = 24;
+		$step   = $width / ( count( $points ) - 1 );
+
+		$coords = array();
+		foreach ( $points as $i => $value ) {
+			$x        = round( $i * $step, 1 );
+			$y        = round( $height - ( $value / $max * $height ), 1 );
+			$coords[] = "{$x},{$y}";
+		}
+
+		return sprintf(
+			'<svg class="ssm-sparkline" width="%1$d" height="%2$d" viewBox="0 0 %1$d %2$d" preserveAspectRatio="none"><polyline points="%3$s" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>',
+			$width,
+			$height,
+			esc_attr( implode( ' ', $coords ) )
+		);
+	}
+}
 ?>
 <div class="wrap ssm-wrap">
 	<h1><?php esc_html_e( 'Monitors', 'service-status-manager' ); ?></h1>
+
+	<div class="ssm-filter-pills">
+		<?php
+		$filter_labels = array(
+			'all'         => __( 'All', 'service-status-manager' ),
+			'operational' => __( 'Operational', 'service-status-manager' ),
+			'degraded'    => __( 'Degraded', 'service-status-manager' ),
+			'failed'      => __( 'Failed', 'service-status-manager' ),
+			'paused'      => __( 'Paused', 'service-status-manager' ),
+		);
+		foreach ( $filter_labels as $key => $label ) :
+			?>
+			<a href="<?php echo esc_url( add_query_arg( 'status_filter', $key ) ); ?>" class="ssm-filter-pill <?php echo $status_filter === $key ? 'ssm-is-active' : ''; ?>">
+				<?php echo esc_html( $label ); ?>
+				<span class="ssm-count"><?php echo esc_html( $filter_counts[ $key ] ); ?></span>
+			</a>
+		<?php endforeach; ?>
+	</div>
 
 	<table class="wp-list-table widefat fixed striped">
 		<thead><tr>
@@ -41,20 +147,25 @@ foreach ( $services as $service ) {
 			<th><?php esc_html_e( 'State', 'service-status-manager' ); ?></th>
 			<th><?php esc_html_e( 'Last checked', 'service-status-manager' ); ?></th>
 			<th><?php esc_html_e( 'Last response', 'service-status-manager' ); ?></th>
+			<th><?php esc_html_e( 'Trend', 'service-status-manager' ); ?></th>
 			<th></th>
 		</tr></thead>
 		<tbody>
 		<?php if ( empty( $monitors ) ) : ?>
-			<tr><td colspan="7"><?php esc_html_e( 'No monitors yet.', 'service-status-manager' ); ?></td></tr>
+			<tr><td colspan="8"><?php esc_html_e( 'No monitors match this filter.', 'service-status-manager' ); ?></td></tr>
 		<?php endif; ?>
-		<?php foreach ( $monitors as $monitor ) : $state_def = ssm_get_status_definition( $monitor->current_state ); ?>
-			<tr>
+		<?php foreach ( $monitors as $monitor ) :
+			$state_def  = ssm_get_status_definition( $monitor->current_state );
+			$is_failing = in_array( $monitor->current_state, array( 'major_outage', 'partial_outage' ), true );
+			?>
+			<tr class="<?php echo $is_failing ? 'ssm-monitor-priority-row' : ''; ?>">
 				<td><a href="<?php echo esc_url( add_query_arg( 'edit', $monitor->id ) ); ?>"><?php echo esc_html( $monitor->name ); ?></a></td>
 				<td><?php echo esc_html( $monitor->service_name ); ?></td>
 				<td><?php echo esc_html( strtoupper( $monitor->type ) ); ?></td>
 				<td><span class="ssm-badge <?php echo esc_attr( $state_def['css_class'] ); ?>"><?php echo esc_html( $state_def['label'] ); ?></span></td>
 				<td><?php echo $monitor->last_checked_at ? esc_html( ssm_format_datetime( $monitor->last_checked_at ) ) : '—'; ?></td>
 				<td><?php echo null !== $monitor->last_response_time_ms ? esc_html( $monitor->last_response_time_ms ) . ' ms' : '—'; ?></td>
+				<td><?php echo 'manual' !== $monitor->type ? ssm_admin_monitor_sparkline( $monitor->id ) : '—'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td>
 				<td>
 					<?php if ( 'manual' === $monitor->type ) : ?>
 						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
