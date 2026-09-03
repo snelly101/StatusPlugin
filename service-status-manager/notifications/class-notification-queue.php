@@ -19,6 +19,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class NotificationQueue {
 
+	const SLUG_SMTP2GO = 'smtp2go';
+	const SLUG_WP_MAIL  = 'wp_mail';
+
 	/**
 	 * Adds a notification to the queue. Silently deduplicates: if a row
 	 * with the same dedup_key already exists (e.g. from an overlapping
@@ -444,14 +447,122 @@ class NotificationQueue {
 	 * Dispatches a batch of already-claimed rows (from claim_batch()),
 	 * tallying outcomes for the caller's observability (NotificationRuns).
 	 *
-	 * @param object[] $rows Claimed queue rows.
+	 * All rows in one call are expected to share a channel (claim_batch()
+	 * claims per-channel) - when the resolved provider for that channel
+	 * implements ConcurrentSendProviderInterface, the whole batch is sent
+	 * at once via ConcurrentHttpClient instead of one HTTP round trip at a
+	 * time; a provider that doesn't falls back to the serial per-row loop,
+	 * exactly as before.
+	 *
+	 * @param object[] $rows    Claimed queue rows.
+	 * @param string   $channel email|sms|teams - the channel this batch was claimed for.
 	 * @return array{sent:int,failed:int,other:int}
 	 */
-	public static function dispatch_claimed_rows( array $rows ) {
+	public static function dispatch_claimed_rows( array $rows, $channel ) {
 		$tally = array( 'sent' => 0, 'failed' => 0, 'other' => 0 );
+
+		if ( empty( $rows ) ) {
+			return $tally;
+		}
+
+		$provider_slug = self::resolve_provider_slug( $channel );
+		$provider      = self::get_provider( $channel );
+
+		if ( $provider instanceof ConcurrentSendProviderInterface && count( $rows ) > 1 && ! NotificationCircuitBreaker::is_open( $provider_slug ) ) {
+			return self::dispatch_concurrent( $rows, $channel, $provider, $provider_slug );
+		}
 
 		foreach ( $rows as $row ) {
 			$outcome = self::dispatch_row( $row );
+
+			if ( isset( $tally[ $outcome ] ) ) {
+				++$tally[ $outcome ];
+			} else {
+				++$tally['other'];
+			}
+		}
+
+		return $tally;
+	}
+
+	/**
+	 * Concurrent-batch counterpart to dispatch_row(): applies the same
+	 * pre-send gates (breaker was already checked by the caller; monthly/
+	 * per-incident SMS limits, subscription gate, per-provider rate limit
+	 * are checked per row here) to filter the batch down to sendable rows,
+	 * hands the survivors to the provider's send_many() in one call, then
+	 * finalizes each result exactly like the serial path does.
+	 *
+	 * @param object[]                        $rows          Claimed rows, all for $channel.
+	 * @param string                          $channel       email|sms|teams.
+	 * @param ConcurrentSendProviderInterface $provider      Resolved provider (also implements NotificationProviderInterface).
+	 * @param string                          $provider_slug Resolved provider slug.
+	 * @return array{sent:int,failed:int,other:int}
+	 */
+	private static function dispatch_concurrent( array $rows, $channel, $provider, $provider_slug ) {
+		global $wpdb;
+		$table = \ssm_table( 'notification_queue' );
+
+		$tally      = array( 'sent' => 0, 'failed' => 0, 'other' => 0 );
+		$items      = array();
+		$rows_by_id = array();
+		$rate_limit = self::provider_rate_limit( $provider, $provider_slug );
+
+		foreach ( $rows as $row ) {
+			$rows_by_id[ $row->id ] = $row;
+
+			if ( 'sms' === $channel && self::sms_monthly_limit_reached() ) {
+				$wpdb->update( $table, array( 'status' => 'cancelled', 'last_error' => 'Monthly SMS limit reached.' ), array( 'id' => $row->id ) );
+				++$tally['other'];
+				continue;
+			}
+
+			if ( 'sms' === $channel && (int) \ssm_get_setting( 'sms_per_incident_limit', 0 ) > 0 && self::sms_per_incident_limit_reached( $row ) ) {
+				$wpdb->update( $table, array( 'status' => 'cancelled', 'last_error' => 'Per-incident SMS limit reached.' ), array( 'id' => $row->id ) );
+				++$tally['other'];
+				continue;
+			}
+
+			$subscriber = SubscriberManager::get_subscriber( $row->subscriber_id );
+			$gate       = self::gate_check( $subscriber, $channel, $row->event_type );
+
+			if ( true !== $gate ) {
+				$wpdb->update( $table, array( 'status' => 'cancelled', 'last_error' => $gate ), array( 'id' => $row->id ) );
+				++$tally['other'];
+				continue;
+			}
+
+			if ( $rate_limit > 0 && NotificationRateLimiter::reserve_capacity( $provider_slug, $rate_limit, 1 ) < 1 ) {
+				$wpdb->update(
+					$table,
+					array( 'status' => 'retry_scheduled', 'next_attempt_at' => gmdate( 'Y-m-d H:i:s', time() + 1 ) ),
+					array( 'id' => $row->id )
+				);
+				++$tally['other'];
+				continue;
+			}
+
+			$items[ $row->id ] = array(
+				'subscriber' => $subscriber,
+				'payload'    => json_decode( (string) $row->payload, true ) ?: array(),
+			);
+		}
+
+		if ( empty( $items ) ) {
+			return $tally;
+		}
+
+		try {
+			$results = $provider->send_many( $items );
+		} catch ( \Throwable $e ) {
+			$fallback = new SendResult( false, '', $e->getMessage() );
+			$results  = array_fill_keys( array_keys( $items ), $fallback );
+		}
+
+		foreach ( $items as $row_id => $item ) {
+			$row     = $rows_by_id[ $row_id ];
+			$result  = $results[ $row_id ] ?? new SendResult( false, '', 'Provider did not return a result for this message.' );
+			$outcome = self::finalize_send_result( $row, $result, $provider_slug );
 
 			if ( isset( $tally[ $outcome ] ) ) {
 				++$tally[ $outcome ];
@@ -474,12 +585,7 @@ class NotificationQueue {
 		global $wpdb;
 		$table = \ssm_table( 'notification_queue' );
 
-		// The channel doubles as the provider slug for circuit-breaker/
-		// rate-limiter purposes for now, since each channel resolves to
-		// exactly one concrete provider today (Twilio, wp_mail, Teams).
-		// Once SMTP2GO lands alongside wp_mail as a second email provider,
-		// this becomes the resolved provider's own slug instead.
-		$provider_slug = $row->channel;
+		$provider_slug = self::resolve_provider_slug( $row->channel );
 
 		if ( NotificationCircuitBreaker::is_open( $provider_slug ) ) {
 			$wpdb->update(
@@ -499,7 +605,9 @@ class NotificationQueue {
 			return 'cancelled';
 		}
 
-		$rate_limit = (int) apply_filters( 'ssm_notification_rate_limit_per_second', 0, $provider_slug );
+		$provider   = self::get_provider( $row->channel );
+		$rate_limit = $provider ? self::provider_rate_limit( $provider, $provider_slug ) : 0;
+
 		if ( $rate_limit > 0 && NotificationRateLimiter::reserve_capacity( $provider_slug, $rate_limit, 1 ) < 1 ) {
 			$wpdb->update(
 				$table,
@@ -517,8 +625,7 @@ class NotificationQueue {
 			return 'cancelled';
 		}
 
-		$payload  = json_decode( (string) $row->payload, true ) ?: array();
-		$provider = self::get_provider( $row->channel );
+		$payload = json_decode( (string) $row->payload, true ) ?: array();
 
 		if ( ! $provider ) {
 			$wpdb->update( $table, array( 'status' => 'failed', 'last_error' => 'No provider available for channel.' ), array( 'id' => $row->id ) );
@@ -536,6 +643,25 @@ class NotificationQueue {
 			$result = new SendResult( false, '', $e->getMessage() );
 		}
 
+		return self::finalize_send_result( $row, $result, $provider_slug );
+	}
+
+	/**
+	 * Records a send outcome (success or failure) against a queue row -
+	 * shared by the serial (dispatch_row()) and concurrent-batch
+	 * (dispatch_concurrent()) paths so retry classification, circuit
+	 * breaker updates, and backoff scheduling behave identically either
+	 * way.
+	 *
+	 * @param object     $row           Queue row (status already "processing").
+	 * @param SendResult $result        Outcome of the send attempt.
+	 * @param string     $provider_slug Resolved provider slug.
+	 * @return string One of: sent, failed, retry_scheduled.
+	 */
+	private static function finalize_send_result( $row, SendResult $result, $provider_slug ) {
+		global $wpdb;
+		$table = \ssm_table( 'notification_queue' );
+
 		$attempts = (int) $row->attempts + 1;
 
 		self::log_delivery( $row, $result );
@@ -550,9 +676,10 @@ class NotificationQueue {
 			$wpdb->update(
 				$table,
 				array(
-					'status'   => 'sent',
-					'attempts' => $attempts,
-					'sent_at'  => \ssm_now(),
+					'status'              => 'sent',
+					'attempts'            => $attempts,
+					'sent_at'             => \ssm_now(),
+					'provider_message_id' => substr( (string) $result->response, 0, 190 ),
 				),
 				array( 'id' => $row->id )
 			);
@@ -654,11 +781,21 @@ class NotificationQueue {
 		$table = \ssm_table( 'notification_queue' );
 		$limit = (int) \ssm_get_setting( 'sms_per_incident_limit', 0 );
 
+		// Deliberately counts only 'sent', not 'processing': claim_batch()
+		// flips a whole batch to 'processing' before any row in it is
+		// actually dispatched, so every row in a same-incident batch
+		// larger than the limit would otherwise see all its own
+		// not-yet-sent siblings as "already used" and every row would
+		// cancel itself out - the limit would effectively always trigger
+		// once claimed together. Counting only confirmed sends can very
+		// rarely let a genuine race (two overlapping runs claiming
+		// different batches for the same incident at once) overshoot the
+		// cap by a few messages; that's an acceptable trade for a soft
+		// cost-control budget, not a hard security limit.
 		$sent = (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$table} WHERE channel = 'sms' AND reference_type = 'incident' AND reference_id = %d AND status IN ('sent','processing') AND id != %d",
-				$row->reference_id,
-				$row->id
+				"SELECT COUNT(*) FROM {$table} WHERE channel = 'sms' AND reference_type = 'incident' AND reference_id = %d AND status = 'sent'",
+				$row->reference_id
 			)
 		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
@@ -739,7 +876,11 @@ class NotificationQueue {
 	}
 
 	/**
-	 * Resolves the provider instance for a channel.
+	 * Resolves the provider instance for a channel. For 'email' this
+	 * mirrors resolve_provider_slug()'s decision exactly (including the
+	 * circuit-breaker-aware SMTP2GO -> wp_mail fallback), so the instance
+	 * returned here is always the one whose slug dispatch_row()/
+	 * dispatch_concurrent() are keying breaker/rate-limit state under.
 	 *
 	 * @param string $channel email|sms|teams.
 	 * @return NotificationProviderInterface|null
@@ -747,7 +888,7 @@ class NotificationQueue {
 	public static function get_provider( $channel ) {
 		switch ( $channel ) {
 			case 'email':
-				return new EmailProvider();
+				return self::SLUG_SMTP2GO === self::resolve_provider_slug( 'email' ) ? new Smtp2goApiProvider() : new EmailProvider();
 			case 'sms':
 				return self::get_sms_provider();
 			case 'teams':
@@ -755,6 +896,45 @@ class NotificationQueue {
 		}
 
 		return apply_filters( 'ssm_notification_provider_instance', null, $channel );
+	}
+
+	/**
+	 * Resolves which provider *slug* a channel currently dispatches
+	 * through - the single source of truth get_provider() mirrors into an
+	 * actual instance, and dispatch_row()/dispatch_concurrent() use
+	 * directly for circuit-breaker/rate-limit/retry-classification keys.
+	 *
+	 * For 'email', this is where the SMTP2GO circuit breaker being open
+	 * silently becomes "use wp_mail instead" - by the time a caller checks
+	 * `NotificationCircuitBreaker::is_open( $slug )`, the slug returned
+	 * here has already accounted for that, so there's no separate
+	 * "provider is down, what now" branch needed elsewhere.
+	 *
+	 * @param string $channel email|sms|teams.
+	 * @return string
+	 */
+	public static function resolve_provider_slug( $channel ) {
+		if ( 'email' === $channel ) {
+			$configured = \ssm_get_setting( 'email_provider', self::SLUG_WP_MAIL );
+
+			if ( self::SLUG_SMTP2GO !== $configured ) {
+				return self::SLUG_WP_MAIL;
+			}
+
+			$fallback_enabled = (bool) \ssm_get_setting( 'smtp2go_fallback_to_wp_mail', true );
+
+			if ( $fallback_enabled && NotificationCircuitBreaker::is_open( self::SLUG_SMTP2GO ) ) {
+				return self::SLUG_WP_MAIL;
+			}
+
+			return self::SLUG_SMTP2GO;
+		}
+
+		if ( 'sms' === $channel ) {
+			return (string) \ssm_get_setting( 'sms_provider', 'twilio' );
+		}
+
+		return $channel;
 	}
 
 	/**
@@ -784,6 +964,19 @@ class NotificationQueue {
 		}
 
 		return null;
+	}
+
+	/**
+	 * @param NotificationProviderInterface $provider      Resolved provider instance.
+	 * @param string                        $provider_slug Its slug (for the generic filter fallback).
+	 * @return int Requests-per-second limit. 0 or less means unlimited.
+	 */
+	private static function provider_rate_limit( $provider, $provider_slug ) {
+		if ( $provider instanceof RateLimitedProviderInterface ) {
+			return (int) $provider->get_rate_limit_per_second();
+		}
+
+		return (int) apply_filters( 'ssm_notification_rate_limit_per_second', 0, $provider_slug );
 	}
 
 	/**

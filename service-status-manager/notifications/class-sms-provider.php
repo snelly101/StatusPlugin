@@ -73,7 +73,7 @@ abstract class SmsProvider implements NotificationProviderInterface {
 	 * @param array $message Message context.
 	 * @return string
 	 */
-	private function build_text( array $message ) {
+	protected function build_text( array $message ) {
 		$settings   = \ssm_get_settings();
 		$max_length = (int) ( $settings['sms_max_length'] ?? 160 );
 
@@ -105,7 +105,7 @@ abstract class SmsProvider implements NotificationProviderInterface {
 	 * @param int $subscriber_id Subscriber ID.
 	 * @return bool
 	 */
-	private function within_daily_limit( $subscriber_id ) {
+	protected function within_daily_limit( $subscriber_id ) {
 		$limit = (int) \ssm_get_setting( 'max_sms_per_subscriber_per_day', 5 );
 		if ( $limit <= 0 ) {
 			return true;
@@ -120,7 +120,7 @@ abstract class SmsProvider implements NotificationProviderInterface {
 	 *
 	 * @param int $subscriber_id Subscriber ID.
 	 */
-	private function increment_daily_count( $subscriber_id ) {
+	protected function increment_daily_count( $subscriber_id ) {
 		$key   = 'ssm_sms_count_' . $subscriber_id . '_' . gmdate( 'Y-m-d' );
 		$count = (int) get_transient( $key );
 		set_transient( $key, $count + 1, DAY_IN_SECONDS );

@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.9.0
+Stable tag: 1.10.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -79,12 +79,12 @@ Available WP-CLI commands: `run-checks [--all]`, `process-notifications`, `aggre
 
 == Email Setup ==
 
-Email notifications use WordPress' built-in `wp_mail()`. Set your sender name/address under **Settings > General**; emails are sent as HTML with an automatic plain-text alternative.
+Email notifications are sent one of two ways, chosen under **Settings > Email Provider**:
 
-By default no SMTP transport is configured, so delivery depends on your host's mail setup. Two ways to route mail through a real SMTP server:
-
-* **Built in**: enable "SMTP relay" under **Settings > Outgoing Mail (SMTP)** and enter your host/port/encryption/credentials. This affects every outgoing email on the site (not just this plugin's), the same way a dedicated SMTP plugin would - do not enable both at once, they will conflict for the same `phpmailer_init` hook.
-* **A separate SMTP plugin** (WP Mail SMTP, Post SMTP, etc.) - leave this plugin's SMTP relay disabled and the other plugin's configuration is used instead, since Service Status Manager only ever calls `wp_mail()`.
+* **WordPress mail (wp_mail)** - the default. Set your sender name/address under **Settings > General**; emails are sent as HTML with an automatic plain-text alternative. By default no SMTP transport is configured, so delivery depends on your host's mail setup. Two ways to route mail through a real SMTP server:
+  * **Built in**: enable "SMTP relay" under **Settings > Outgoing Mail (SMTP)** and enter your host/port/encryption/credentials. This affects every outgoing email on the site (not just this plugin's), the same way a dedicated SMTP plugin would - do not enable both at once, they will conflict for the same `phpmailer_init` hook.
+  * **A separate SMTP plugin** (WP Mail SMTP, Post SMTP, etc.) - leave this plugin's SMTP relay disabled and the other plugin's configuration is used instead.
+* **SMTP2GO API** - sends via [SMTP2GO](https://www.smtp2go.com/)'s HTTP API instead of `wp_mail()`, with several messages in flight at once rather than fully serial delivery - recommended for large subscriber lists. Requires an SMTP2GO account and API key; enter them under **Settings > Email Provider**. If SMTP2GO becomes unreachable, sending automatically falls back to `wp_mail()` until it recovers (toggle this under the same settings section).
 
 Either way, send a test message from **Notifications > Send a test notification** (Email channel) to confirm delivery.
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.10.0 =
+Phase B of the notification engine work started in 1.9.0: adds SMTP2GO as an optional email transport (Settings > Email Provider), alongside a new concurrent-sending mechanism so a batch of notifications is sent with several requests in flight at once instead of one at a time. Email via wp_mail() remains the default and requires no changes; switching to SMTP2GO needs an SMTP2GO account and API key. If SMTP2GO appears to be down, sending automatically falls back to wp_mail until it recovers (this is optional and on by default). Twilio SMS and Microsoft Teams notifications also now send concurrently within a batch, for the same throughput benefit, with no configuration changes needed. Every provider still has an individual "send one" fallback path, used automatically for anything too small to be worth batching, so behavior is unchanged for low-volume sites. Also fixes a bug in the per-incident SMS limit (added in 1.9.0): a batch of messages larger than the configured limit would incorrectly cancel every message in it, because messages still in the same batch were being counted as if already sent.
 
 = 1.9.0 =
 Rebuilds the notification queue for near-immediate delivery at high subscriber counts, without requiring anything beyond ordinary WordPress hosting (no SSH/shell access or persistent background processes needed). Previously, saving an incident or maintenance update looped over every matching subscriber synchronously inside that admin request, and looked up each subscriber's preferences with a separate database query - both fine at small scale, both a real problem once you have thousands of subscribers. Incident/maintenance saves now return immediately and hand off to a background dispatcher that fans out to matching subscribers using far fewer, batched queries, then inserts and sends notifications in bulk. The dispatcher self-chains (works for a few seconds, then triggers its own continuation) so a large backlog keeps draining between cron ticks instead of waiting for the next one.

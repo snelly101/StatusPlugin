@@ -105,3 +105,4 @@ require_once __DIR__ . '/../monitoring/class-ssrf-guard.php';
 require_once __DIR__ . '/../notifications/class-notification-retry-policy.php';
 require_once __DIR__ . '/../notifications/class-notification-circuit-breaker.php';
 require_once __DIR__ . '/../includes/class-notification-manager.php';
+require_once __DIR__ . '/../notifications/class-notification-queue.php';

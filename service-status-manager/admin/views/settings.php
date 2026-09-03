@@ -23,6 +23,7 @@ $webhooks_in  = $wpdb->get_results( 'SELECT * FROM ' . ssm_table( 'webhooks_inco
 
 $sms_credentials  = json_decode( (string) Encryption::decrypt( $settings['sms_credentials_encrypted'] ), true ) ?: array();
 $smtp_password    = Encryption::decrypt( $settings['smtp_password_encrypted'] ?? '' );
+$smtp2go_api_key  = Encryption::decrypt( $settings['smtp2go_api_key_encrypted'] ?? '' );
 
 $outgoing_events = array(
 	'incident.created', 'incident.updated', 'incident.resolved',
@@ -55,8 +56,36 @@ $outgoing_events = array(
 				<td><label><input type="checkbox" name="retain_ip_addresses" value="1" <?php checked( $settings['retain_ip_addresses'] ); ?> /> <?php esc_html_e( 'Store subscriber/audit-log IP addresses', 'service-status-manager' ); ?></label></td></tr>
 		</table>
 
+		<h2><?php esc_html_e( 'Email Provider', 'service-status-manager' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Where notification emails are sent from. WordPress mail (wp_mail) is fully serial - fine at low subscriber counts, but slow at high volume. The SMTP2GO API sends concurrently and is the recommended choice for large subscriber lists.', 'service-status-manager' ); ?></p>
+		<table class="form-table">
+			<tr><th><label for="ssm-email-provider"><?php esc_html_e( 'Send notification emails via', 'service-status-manager' ); ?></label></th>
+				<td>
+					<select id="ssm-email-provider" name="email_provider">
+						<option value="wp_mail" <?php selected( $settings['email_provider'], 'wp_mail' ); ?>><?php esc_html_e( 'WordPress mail (wp_mail)', 'service-status-manager' ); ?></option>
+						<option value="smtp2go" <?php selected( $settings['email_provider'], 'smtp2go' ); ?>><?php esc_html_e( 'SMTP2GO API', 'service-status-manager' ); ?></option>
+					</select>
+				</td></tr>
+			<tr><th><label for="ssm-smtp2go-key"><?php esc_html_e( 'SMTP2GO API key', 'service-status-manager' ); ?></label></th>
+				<td><input type="password" id="ssm-smtp2go-key" name="smtp2go_api_key" class="regular-text" placeholder="<?php echo esc_attr( $smtp2go_api_key ? Encryption::mask( $smtp2go_api_key ) : '' ); ?>" autocomplete="off" />
+				<p class="description"><?php esc_html_e( 'Leave blank to keep the currently saved key. Never displayed in full after saving.', 'service-status-manager' ); ?></p></td></tr>
+			<tr><th><label for="ssm-smtp2go-sender"><?php esc_html_e( 'SMTP2GO sender address', 'service-status-manager' ); ?></label></th>
+				<td><input type="email" id="ssm-smtp2go-sender" name="smtp2go_sender" class="regular-text" value="<?php echo esc_attr( $settings['smtp2go_sender'] ); ?>" />
+				<p class="description"><?php esc_html_e( 'Must be a verified sender/domain in your SMTP2GO account.', 'service-status-manager' ); ?></p></td></tr>
+			<tr><th><label for="ssm-smtp2go-reply-to"><?php esc_html_e( 'Reply-To address', 'service-status-manager' ); ?></label></th>
+				<td><input type="email" id="ssm-smtp2go-reply-to" name="smtp2go_reply_to" class="regular-text" value="<?php echo esc_attr( $settings['smtp2go_reply_to'] ); ?>" /></td></tr>
+			<tr><th><?php esc_html_e( 'Fallback', 'service-status-manager' ); ?></th>
+				<td><label><input type="checkbox" name="smtp2go_fallback_to_wp_mail" value="1" <?php checked( $settings['smtp2go_fallback_to_wp_mail'] ); ?> /> <?php esc_html_e( 'If SMTP2GO appears to be down, automatically fall back to wp_mail until it recovers', 'service-status-manager' ); ?></label></td></tr>
+			<tr><th><?php esc_html_e( 'Test', 'service-status-manager' ); ?></th>
+				<td><p class="description"><?php echo wp_kses_post( sprintf(
+					/* translators: %s: link to the Notifications page */
+					__( 'Save your changes, then send a test email from the %s screen (choose the Email channel).', 'service-status-manager' ),
+					'<a href="' . esc_url( admin_url( 'admin.php?page=service-status-manager-notifications' ) ) . '">' . esc_html__( 'Notifications', 'service-status-manager' ) . '</a>'
+				) ); ?></p></td></tr>
+		</table>
+
 		<h2><?php esc_html_e( 'Outgoing Mail (SMTP)', 'service-status-manager' ); ?></h2>
-		<p class="description"><?php esc_html_e( 'Optional: route every outgoing email from this site (not just this plugin\'s notifications) through a specific SMTP server, instead of your host\'s default mail transport. Leave disabled if you already use a dedicated SMTP plugin - running both at once will conflict.', 'service-status-manager' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Optional: route every outgoing email from this site (not just this plugin\'s notifications) through a specific SMTP server, instead of your host\'s default mail transport - only relevant when the Email Provider above is set to WordPress mail. Leave disabled if you already use a dedicated SMTP plugin - running both at once will conflict.', 'service-status-manager' ); ?></p>
 		<table class="form-table">
 			<tr><th><?php esc_html_e( 'Enable SMTP relay', 'service-status-manager' ); ?></th>
 				<td><label><input type="checkbox" name="smtp_enabled" value="1" <?php checked( $settings['smtp_enabled'] ); ?> /> <?php esc_html_e( 'Send all site email through the SMTP server configured below', 'service-status-manager' ); ?></label></td></tr>

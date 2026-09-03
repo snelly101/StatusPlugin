@@ -100,7 +100,7 @@ class NotificationDispatcher {
 				$claimed_this_pass      += count( $rows );
 				$totals['rows_claimed'] += count( $rows );
 
-				$result = NotificationQueue::dispatch_claimed_rows( $rows );
+				$result = NotificationQueue::dispatch_claimed_rows( $rows, $ch );
 				$totals['rows_sent']   += $result['sent'];
 				$totals['rows_failed'] += $result['failed'];
 			}

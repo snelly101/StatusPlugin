@@ -45,6 +45,10 @@ trait AdminSettingsTrait {
 			'sms_truncate_mode'               => in_array( $post['sms_truncate_mode'] ?? '', array( 'truncate', 'split' ), true ) ? $post['sms_truncate_mode'] : 'truncate',
 			'sms_monthly_limit'               => absint( $post['sms_monthly_limit'] ?? 0 ),
 			'sms_per_incident_limit'          => absint( $post['sms_per_incident_limit'] ?? 0 ),
+			'email_provider'                  => in_array( $post['email_provider'] ?? '', array( 'wp_mail', 'smtp2go' ), true ) ? $post['email_provider'] : 'wp_mail',
+			'smtp2go_sender'                  => sanitize_email( $post['smtp2go_sender'] ?? '' ),
+			'smtp2go_reply_to'                => sanitize_email( $post['smtp2go_reply_to'] ?? '' ),
+			'smtp2go_fallback_to_wp_mail'     => ! empty( $post['smtp2go_fallback_to_wp_mail'] ),
 			'raw_check_retention_days'        => absint( $post['raw_check_retention_days'] ?? 35 ),
 			'hourly_aggregate_retention_days' => absint( $post['hourly_aggregate_retention_days'] ?? 400 ),
 			'daily_aggregate_retention_days'  => absint( $post['daily_aggregate_retention_days'] ?? 1825 ),
@@ -75,13 +79,17 @@ trait AdminSettingsTrait {
 			$new_settings['smtp_password_encrypted'] = Encryption::encrypt( sanitize_text_field( $post['smtp_password'] ) );
 		}
 
+		if ( ! empty( $post['smtp2go_api_key'] ) ) {
+			$new_settings['smtp2go_api_key_encrypted'] = Encryption::encrypt( sanitize_text_field( $post['smtp2go_api_key'] ) );
+		}
+
 		ssm_update_settings( $new_settings );
 		AuditLog::record(
 			'settings_updated',
 			'settings',
 			null,
 			null,
-			array_diff_key( $new_settings, array_flip( array( 'sms_credentials_encrypted', 'smtp_password_encrypted' ) ) )
+			array_diff_key( $new_settings, array_flip( array( 'sms_credentials_encrypted', 'smtp_password_encrypted', 'smtp2go_api_key_encrypted' ) ) )
 		);
 
 		$this->redirect_with_notice( 'settings', __( 'Settings saved.', 'service-status-manager' ) );
