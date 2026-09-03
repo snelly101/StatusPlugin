@@ -180,9 +180,49 @@
 	min-width: 320px;
 	background: #fff;
 	border: 1px solid var(--ssm-border);
-	padding: 0 16px 16px;
+	padding: 16px;
 	border-radius: var(--ssm-r-lg);
 	box-shadow: var(--ssm-shadow-sm);
+}
+
+.ssm-col-form > h2 {
+	margin-top: 0;
+}
+
+/* WP's default form-table reserves a fixed 200px label column, and
+   .regular-text/.large-text inputs have their own fixed widths - both
+   sized for a full-width settings page, not this narrow (320-420px)
+   card. Left alone, the input either fights the label column for room or
+   overflows the card. Stack label above field instead, full width -
+   the same pattern WP's own narrow sidebar boxes (Add New Category, Add
+   New Tag) use for exactly this reason. */
+.ssm-col-form .form-table th {
+	display: block;
+	width: auto;
+	padding: 0 0 6px;
+}
+
+.ssm-col-form .form-table td {
+	display: block;
+	width: auto;
+	padding: 0 0 16px;
+	margin: 0;
+}
+
+.ssm-col-form .form-table input[type="text"],
+.ssm-col-form .form-table input[type="email"],
+.ssm-col-form .form-table input[type="url"],
+.ssm-col-form .form-table input[type="password"],
+.ssm-col-form .form-table input[type="time"],
+.ssm-col-form .form-table select,
+.ssm-col-form .form-table textarea {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.ssm-col-form .form-table input[type="number"] {
+	width: 100px;
 }
 
 /* Activity timeline */

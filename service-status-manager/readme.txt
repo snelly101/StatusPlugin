@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.11.3
+Stable tag: 1.11.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.11.4 =
+Fixes the "Add Service Group" and "Edit Subscriber" boxes not properly fitting their fields - WordPress's default form layout reserves a fixed 200px-wide label column and gives text inputs their own fixed widths, both sized for a full-width settings page, not the narrower (320-420px) card these two screens put them in. Labels now sit above their field instead of beside it, and fields size to the full width of the box, the same layout pattern WordPress's own narrow sidebar boxes (e.g. "Add New Category") use for exactly this reason.
 
 = 1.11.3 =
 Fixes reminder notifications firing immediately for a maintenance window scheduled with less lead time than the reminder itself - e.g. a "1 hour before" reminder configured, but the window is created (or rescheduled) to start in 30 minutes. Previously that reminder's trigger time was already in the past the moment it was saved, so the next cron tick sent it right away instead of skipping it, which reads as a spurious/duplicate notice. Reminders whose lead time no longer fits are now silently skipped rather than fired late, both when a maintenance window is first created and when its schedule is changed afterward. Not retroactive for a reminder that had already fired this way before upgrading.
