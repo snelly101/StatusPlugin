@@ -162,6 +162,7 @@ class Admin {
 			// separately-maintained preview stylesheet.
 			wp_enqueue_style( 'ssm-public', SSM_PLUGIN_URL . 'public/css/public.css', array(), SSM_VERSION );
 			wp_enqueue_style( 'wp-color-picker' );
+			wp_enqueue_media(); // For the background-image picker only - this screen never touches any other media.
 			wp_enqueue_script( 'ssm-appearance', SSM_PLUGIN_URL . 'admin/js/appearance.js', array( 'jquery', 'wp-color-picker' ), SSM_VERSION, true );
 		}
 	}

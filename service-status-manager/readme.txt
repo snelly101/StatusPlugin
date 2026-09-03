@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.14.0
+Stable tag: 1.15.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.15.0 =
+Appearance Phase C: background images (Media Library picker, position/size/repeat/scroll behaviour, and a colour+opacity overlay for text legibility - rendered on its own layer so it never interferes with the grid/glow pattern or gradient options from Phase B), five built-in theme presets (Clean Light, Modern Dark, Cloud, Minimal, High Contrast) that populate the form as a starting point without saving anything by themselves, and a live accessibility panel showing WCAG contrast ratios for the colour pairs visitors actually read text against - informational only, your chosen colours are never changed automatically. As with Phases A and B, nothing here has any effect until an admin visits the Appearance screen. Purely visual - no changes to monitoring, incidents, maintenance, subscriptions, or notifications.
 
 = 1.14.0 =
 Appearance Phase B: dark mode now has its own optional colour set (Appearance -> Dark mode) that only applies when explicitly enabled - left off, dark mode is completely unchanged. New Background section: a decorative-pattern picker (the existing subtle grid + glow, either alone, or turned off entirely) and a solid-vs-gradient background style with configurable start/end colours and direction (including radial). New Header section: optional header background/text colour overrides (blank = inherit, today's behaviour) and a sticky-header on/off toggle. The previously non-functional "Secondary colour" concept has been replaced with a real, working Accent colour (header navigation hover) and a Buttons section for the primary button's text colour. As with Phase A, every new default reproduces the plugin's current hardcoded look exactly, so this upgrade changes nothing until an admin visits the Appearance screen. Purely visual - no changes to monitoring, incidents, maintenance, subscriptions, or notifications.

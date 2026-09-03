@@ -24,8 +24,12 @@ class AppearanceSettings {
 	const RADIUS_SCALES        = array( 'square', 'small', 'medium', 'standard', 'rounded', 'xl' );
 	const SHADOW_PRESETS       = array( 'none', 'subtle', 'soft', 'elevated' );
 	const BACKGROUND_PATTERNS  = array( 'none', 'grid', 'glow', 'default' );
-	const BACKGROUND_STYLES    = array( 'solid', 'gradient' );
+	const BACKGROUND_STYLES    = array( 'solid', 'gradient', 'image' );
 	const GRADIENT_DIRECTIONS  = array( 'to-bottom', 'to-right', 'diagonal', 'radial' );
+	const IMAGE_POSITIONS      = array( 'center', 'top', 'bottom', 'left', 'right' );
+	const IMAGE_SIZES          = array( 'cover', 'contain', 'auto' );
+	const IMAGE_REPEATS        = array( 'no-repeat', 'repeat', 'repeat-x', 'repeat-y' );
+	const IMAGE_ATTACHMENTS    = array( 'scroll', 'fixed' );
 
 	/**
 	 * Every value here matches the plugin's existing hardcoded public.css
@@ -85,6 +89,16 @@ class AppearanceSettings {
 			'gradient_start_color'  => '#eef4ff',
 			'gradient_end_color'    => '#f7f9fc',
 			'gradient_direction'    => 'to-bottom',
+
+			// Only used when background_style is "image". Empty URL means
+			// no image renders regardless of these other values.
+			'background_image_url'            => '',
+			'background_image_position'       => 'center',
+			'background_image_size'           => 'cover',
+			'background_image_repeat'         => 'no-repeat',
+			'background_image_attachment'     => 'scroll',
+			'background_image_overlay_color'  => '#0f172a',
+			'background_image_overlay_opacity' => 0,
 
 			'header_bg_color'   => '',
 			'header_text_color' => '',
@@ -176,6 +190,7 @@ class AppearanceSettings {
 			'status_operational_color', 'status_degraded_color', 'status_partial_color',
 			'status_outage_color', 'status_maintenance_color', 'status_unknown_color',
 			'gradient_start_color', 'gradient_end_color',
+			'background_image_overlay_color',
 			'button_text_color',
 			'dark_bg_color', 'dark_bg_alt_color', 'dark_surface_color', 'dark_surface_hover_color',
 			'dark_border_color', 'dark_text_color', 'dark_text_muted_color',
@@ -221,6 +236,26 @@ class AppearanceSettings {
 		$sanitized['gradient_direction'] = in_array( $input['gradient_direction'] ?? '', self::GRADIENT_DIRECTIONS, true )
 			? $input['gradient_direction']
 			: $defaults['gradient_direction'];
+
+		$sanitized['background_image_url'] = ! empty( $input['background_image_url'] ) ? esc_url_raw( (string) $input['background_image_url'] ) : '';
+
+		$sanitized['background_image_position'] = in_array( $input['background_image_position'] ?? '', self::IMAGE_POSITIONS, true )
+			? $input['background_image_position']
+			: $defaults['background_image_position'];
+
+		$sanitized['background_image_size'] = in_array( $input['background_image_size'] ?? '', self::IMAGE_SIZES, true )
+			? $input['background_image_size']
+			: $defaults['background_image_size'];
+
+		$sanitized['background_image_repeat'] = in_array( $input['background_image_repeat'] ?? '', self::IMAGE_REPEATS, true )
+			? $input['background_image_repeat']
+			: $defaults['background_image_repeat'];
+
+		$sanitized['background_image_attachment'] = in_array( $input['background_image_attachment'] ?? '', self::IMAGE_ATTACHMENTS, true )
+			? $input['background_image_attachment']
+			: $defaults['background_image_attachment'];
+
+		$sanitized['background_image_overlay_opacity'] = min( 100, max( 0, absint( $input['background_image_overlay_opacity'] ?? $defaults['background_image_overlay_opacity'] ) ) );
 
 		$sanitized['header_sticky']  = ! empty( $input['header_sticky'] );
 		$sanitized['dark_mode_custom'] = ! empty( $input['dark_mode_custom'] );

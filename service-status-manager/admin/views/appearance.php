@@ -75,6 +75,25 @@ $optional_color_field = function ( $key, $label, $description ) use ( $s ) {
 			<?php wp_nonce_field( 'ssm_save_appearance' ); ?>
 			<input type="hidden" name="action" value="ssm_save_appearance" />
 
+			<h2><?php esc_html_e( 'Quick start: theme preset', 'service-status-manager' ); ?></h2>
+			<table class="form-table">
+				<tr>
+					<th><label for="ssm-a-theme-preset"><?php esc_html_e( 'Apply a preset', 'service-status-manager' ); ?></label></th>
+					<td>
+						<select id="ssm-a-theme-preset">
+							<option value=""><?php esc_html_e( '— Choose a starting point —', 'service-status-manager' ); ?></option>
+							<option value="clean_light"><?php esc_html_e( 'Clean Light', 'service-status-manager' ); ?></option>
+							<option value="modern_dark"><?php esc_html_e( 'Modern Dark', 'service-status-manager' ); ?></option>
+							<option value="cloud"><?php esc_html_e( 'Cloud', 'service-status-manager' ); ?></option>
+							<option value="minimal"><?php esc_html_e( 'Minimal', 'service-status-manager' ); ?></option>
+							<option value="high_contrast"><?php esc_html_e( 'High Contrast', 'service-status-manager' ); ?></option>
+						</select>
+						<button type="button" class="button" id="ssm-a-apply-preset"><?php esc_html_e( 'Apply', 'service-status-manager' ); ?></button>
+						<p class="description"><?php esc_html_e( 'Fills in the fields below as a starting point - review and adjust anything, then Save Appearance. Applying a preset does not save anything by itself.', 'service-status-manager' ); ?></p>
+					</td>
+				</tr>
+			</table>
+
 			<h2><?php esc_html_e( 'Colours', 'service-status-manager' ); ?></h2>
 			<table class="form-table">
 				<?php
@@ -109,6 +128,7 @@ $optional_color_field = function ( $key, $label, $description ) use ( $s ) {
 						<select id="ssm-a-background_style" name="background_style">
 							<option value="solid" <?php selected( $s['background_style'], 'solid' ); ?>><?php esc_html_e( 'Solid colour (default)', 'service-status-manager' ); ?></option>
 							<option value="gradient" <?php selected( $s['background_style'], 'gradient' ); ?>><?php esc_html_e( 'Gradient', 'service-status-manager' ); ?></option>
+							<option value="image" <?php selected( $s['background_style'], 'image' ); ?>><?php esc_html_e( 'Image', 'service-status-manager' ); ?></option>
 						</select>
 					</td>
 				</tr>
@@ -127,6 +147,70 @@ $optional_color_field = function ( $key, $label, $description ) use ( $s ) {
 								<option value="radial" <?php selected( $s['gradient_direction'], 'radial' ); ?>><?php esc_html_e( 'Radial', 'service-status-manager' ); ?></option>
 							</select>
 							<p class="description"><?php esc_html_e( 'Only used when Background style is set to Gradient.', 'service-status-manager' ); ?></p>
+						</td>
+					</tr>
+				</tbody>
+				<tbody id="ssm-a-image-fields">
+					<tr>
+						<th><label for="ssm-a-background_image_url"><?php esc_html_e( 'Background image', 'service-status-manager' ); ?></label></th>
+						<td>
+							<input type="text" id="ssm-a-background_image_url" name="background_image_url" class="regular-text" value="<?php echo esc_attr( $s['background_image_url'] ); ?>" readonly />
+							<button type="button" class="button" id="ssm-a-choose-bg-image"><?php esc_html_e( 'Choose image', 'service-status-manager' ); ?></button>
+							<button type="button" class="button" id="ssm-a-remove-bg-image" <?php echo $s['background_image_url'] ? '' : 'hidden'; ?>><?php esc_html_e( 'Remove', 'service-status-manager' ); ?></button>
+							<div id="ssm-a-bg-image-preview" style="margin-top:8px;">
+								<?php if ( $s['background_image_url'] ) : ?>
+									<img src="<?php echo esc_url( $s['background_image_url'] ); ?>" alt="" style="max-width:200px; max-height:100px; border:1px solid #ddd; border-radius:4px;" />
+								<?php endif; ?>
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="ssm-a-background_image_position"><?php esc_html_e( 'Image position', 'service-status-manager' ); ?></label></th>
+						<td>
+							<select id="ssm-a-background_image_position" name="background_image_position">
+								<?php foreach ( array( 'center', 'top', 'bottom', 'left', 'right' ) as $pos ) : ?>
+									<option value="<?php echo esc_attr( $pos ); ?>" <?php selected( $s['background_image_position'], $pos ); ?>><?php echo esc_html( ucfirst( $pos ) ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="ssm-a-background_image_size"><?php esc_html_e( 'Image size', 'service-status-manager' ); ?></label></th>
+						<td>
+							<select id="ssm-a-background_image_size" name="background_image_size">
+								<option value="cover" <?php selected( $s['background_image_size'], 'cover' ); ?>><?php esc_html_e( 'Cover (fill, may crop)', 'service-status-manager' ); ?></option>
+								<option value="contain" <?php selected( $s['background_image_size'], 'contain' ); ?>><?php esc_html_e( 'Contain (fit, no crop)', 'service-status-manager' ); ?></option>
+								<option value="auto" <?php selected( $s['background_image_size'], 'auto' ); ?>><?php esc_html_e( 'Original size', 'service-status-manager' ); ?></option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="ssm-a-background_image_repeat"><?php esc_html_e( 'Image repeat', 'service-status-manager' ); ?></label></th>
+						<td>
+							<select id="ssm-a-background_image_repeat" name="background_image_repeat">
+								<option value="no-repeat" <?php selected( $s['background_image_repeat'], 'no-repeat' ); ?>><?php esc_html_e( 'No repeat', 'service-status-manager' ); ?></option>
+								<option value="repeat" <?php selected( $s['background_image_repeat'], 'repeat' ); ?>><?php esc_html_e( 'Tile', 'service-status-manager' ); ?></option>
+								<option value="repeat-x" <?php selected( $s['background_image_repeat'], 'repeat-x' ); ?>><?php esc_html_e( 'Tile horizontally', 'service-status-manager' ); ?></option>
+								<option value="repeat-y" <?php selected( $s['background_image_repeat'], 'repeat-y' ); ?>><?php esc_html_e( 'Tile vertically', 'service-status-manager' ); ?></option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="ssm-a-background_image_attachment"><?php esc_html_e( 'Scrolling', 'service-status-manager' ); ?></label></th>
+						<td>
+							<select id="ssm-a-background_image_attachment" name="background_image_attachment">
+								<option value="scroll" <?php selected( $s['background_image_attachment'], 'scroll' ); ?>><?php esc_html_e( 'Scrolls with the page', 'service-status-manager' ); ?></option>
+								<option value="fixed" <?php selected( $s['background_image_attachment'], 'fixed' ); ?>><?php esc_html_e( 'Fixed (parallax-style)', 'service-status-manager' ); ?></option>
+							</select>
+							<p class="description"><?php esc_html_e( 'Fixed always scrolls normally on small screens, where it can cause rendering issues.', 'service-status-manager' ); ?></p>
+						</td>
+					</tr>
+					<?php $color_field( 'background_image_overlay_color', __( 'Overlay colour', 'service-status-manager' ), __( 'A tint over the image to help text stay readable.', 'service-status-manager' ) ); ?>
+					<tr>
+						<th><label for="ssm-a-background_image_overlay_opacity"><?php esc_html_e( 'Overlay opacity', 'service-status-manager' ); ?></label></th>
+						<td>
+							<input type="number" id="ssm-a-background_image_overlay_opacity" name="background_image_overlay_opacity" min="0" max="100" style="width:90px;" value="<?php echo esc_attr( $s['background_image_overlay_opacity'] ); ?>" /> %
+							<p class="description"><?php esc_html_e( '0 = no overlay (default), 100 = fully opaque.', 'service-status-manager' ); ?></p>
 						</td>
 					</tr>
 				</tbody>
@@ -284,6 +368,18 @@ $optional_color_field = function ( $key, $label, $description ) use ( $s ) {
 						<button type="button" class="ssm-button ssm-button-primary"><?php esc_html_e( 'Subscribe', 'service-status-manager' ); ?></button>
 					</div>
 				</div>
+			</div>
+
+			<div class="ssm-appearance-a11y">
+				<h2><?php esc_html_e( 'Accessibility check', 'service-status-manager' ); ?></h2>
+				<p class="description"><?php esc_html_e( 'Live contrast ratios for the colour pairs visitors read text against. This is informational - your colours are never changed automatically.', 'service-status-manager' ); ?></p>
+				<ul id="ssm-a-a11y-results" class="ssm-a11y-results">
+					<li data-pair="text_color:bg_color"><?php esc_html_e( 'Body text on page background', 'service-status-manager' ); ?> <span class="ssm-a11y-ratio">—</span></li>
+					<li data-pair="text_color:surface_color"><?php esc_html_e( 'Body text on card background', 'service-status-manager' ); ?> <span class="ssm-a11y-ratio">—</span></li>
+					<li data-pair="text_muted_color:surface_color"><?php esc_html_e( 'Muted text on card background', 'service-status-manager' ); ?> <span class="ssm-a11y-ratio">—</span></li>
+					<li data-pair="button_text_color:primary_color"><?php esc_html_e( 'Button text on primary colour', 'service-status-manager' ); ?> <span class="ssm-a11y-ratio">—</span></li>
+				</ul>
+				<p class="description"><?php esc_html_e( 'WCAG AA requires at least 4.5:1 for normal text. Ratios below that are flagged but not blocked - you may have a deliberate reason for a lower-contrast decorative element.', 'service-status-manager' ); ?></p>
 			</div>
 
 			<div class="ssm-appearance-tools">

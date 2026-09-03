@@ -407,3 +407,47 @@
 .ssm-appearance-form .wp-picker-container {
 	vertical-align: middle;
 }
+
+.ssm-appearance-a11y {
+	margin: 20px 0;
+	padding: 12px 14px;
+	background: #fff;
+	border: 1px solid var(--ssm-border);
+	border-radius: var(--ssm-r-md);
+}
+
+.ssm-appearance-a11y h2 {
+	margin-top: 0;
+	font-size: 14px;
+}
+
+.ssm-a11y-results {
+	margin: 8px 0;
+	list-style: none;
+}
+
+.ssm-a11y-results li {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 4px 0;
+	font-size: 13px;
+}
+
+.ssm-a11y-ratio {
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: var(--ssm-surface-2);
+}
+
+.ssm-a11y-ratio.ssm-a11y-pass {
+	background: #ecfdf5;
+	color: #059669;
+}
+
+.ssm-a11y-ratio.ssm-a11y-fail {
+	background: #fef2f2;
+	color: #dc2626;
+}

@@ -209,4 +209,69 @@ final class AppearanceSettingsTest extends TestCase {
 		$this->assertStringContainsString( '--ssm-bg:#010101;', $css );
 		$this->assertStringContainsString( '--ssm-text:#fefefe;', $css );
 	}
+
+	public function test_sanitize_rejects_invalid_background_image_url() {
+		$this->assertSame( '', AppearanceSettings::sanitize( array( 'background_image_url' => 'not a url' ) )['background_image_url'] );
+		$this->assertSame( '', AppearanceSettings::sanitize( array() )['background_image_url'] );
+	}
+
+	public function test_sanitize_accepts_valid_background_image_url() {
+		$sanitized = AppearanceSettings::sanitize( array( 'background_image_url' => 'https://example.com/bg.jpg' ) );
+		$this->assertSame( 'https://example.com/bg.jpg', $sanitized['background_image_url'] );
+	}
+
+	public function test_sanitize_clamps_overlay_opacity_and_validates_image_enums() {
+		$sanitized = AppearanceSettings::sanitize( array(
+			'background_image_overlay_opacity' => 250,
+			'background_image_position'        => 'nonsense',
+			'background_image_size'            => 'nonsense',
+			'background_image_repeat'          => 'nonsense',
+			'background_image_attachment'      => 'nonsense',
+		) );
+
+		$this->assertSame( 100, $sanitized['background_image_overlay_opacity'] );
+		$this->assertSame( 'center', $sanitized['background_image_position'] );
+		$this->assertSame( 'cover', $sanitized['background_image_size'] );
+		$this->assertSame( 'no-repeat', $sanitized['background_image_repeat'] );
+		$this->assertSame( 'scroll', $sanitized['background_image_attachment'] );
+	}
+
+	public function test_renderer_omits_image_vars_when_no_url_even_if_style_is_image() {
+		$css = AppearanceRenderer::build_css( array( 'background_style' => 'image', 'background_image_url' => '' ) );
+		$this->assertStringNotContainsString( '--ssm-bg-image:', $css );
+	}
+
+	public function test_renderer_omits_image_vars_when_style_is_not_image_even_with_url_set() {
+		$css = AppearanceRenderer::build_css( array( 'background_style' => 'solid', 'background_image_url' => 'https://example.com/bg.jpg' ) );
+		$this->assertStringNotContainsString( '--ssm-bg-image:', $css );
+	}
+
+	public function test_renderer_emits_image_vars_when_style_is_image_and_url_set() {
+		$css = AppearanceRenderer::build_css( array(
+			'background_style'     => 'image',
+			'background_image_url' => 'https://example.com/bg.jpg',
+			'background_image_size' => 'contain',
+		) );
+		$this->assertStringContainsString( '--ssm-bg-image:url("https://example.com/bg.jpg");', $css );
+		$this->assertStringContainsString( '--ssm-bg-image-size:contain;', $css );
+	}
+
+	public function test_renderer_omits_overlay_var_when_opacity_is_zero() {
+		$css = AppearanceRenderer::build_css( array(
+			'background_style'     => 'image',
+			'background_image_url' => 'https://example.com/bg.jpg',
+			'background_image_overlay_opacity' => 0,
+		) );
+		$this->assertStringNotContainsString( '--ssm-bg-image-overlay:', $css );
+	}
+
+	public function test_renderer_emits_overlay_var_as_rgba_when_opacity_set() {
+		$css = AppearanceRenderer::build_css( array(
+			'background_style'                 => 'image',
+			'background_image_url'             => 'https://example.com/bg.jpg',
+			'background_image_overlay_color'   => '#000000',
+			'background_image_overlay_opacity' => 50,
+		) );
+		$this->assertStringContainsString( '--ssm-bg-image-overlay:rgba(0,0,0,0.5);', $css );
+	}
 }

@@ -58,6 +58,14 @@ trait AdminAppearanceTrait {
 			'gradient_end_color'   => $post['gradient_end_color'] ?? '',
 			'gradient_direction'   => $post['gradient_direction'] ?? '',
 
+			'background_image_url'             => $post['background_image_url'] ?? '',
+			'background_image_position'        => $post['background_image_position'] ?? '',
+			'background_image_size'            => $post['background_image_size'] ?? '',
+			'background_image_repeat'          => $post['background_image_repeat'] ?? '',
+			'background_image_attachment'      => $post['background_image_attachment'] ?? '',
+			'background_image_overlay_color'   => $post['background_image_overlay_color'] ?? '',
+			'background_image_overlay_opacity' => $post['background_image_overlay_opacity'] ?? 0,
+
 			'header_bg_color'   => $post['header_bg_color'] ?? '',
 			'header_text_color' => $post['header_text_color'] ?? '',
 			'header_sticky'     => ! empty( $post['header_sticky'] ),

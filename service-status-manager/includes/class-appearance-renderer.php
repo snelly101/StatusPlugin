@@ -167,6 +167,19 @@ class AppearanceRenderer {
 		$vars['--ssm-bg-decoration'] = self::BACKGROUND_PATTERNS[ $s['background_pattern'] ] ?? self::BACKGROUND_PATTERNS['default'];
 		$vars['--ssm-bg-final']      = self::background_fill_css( $s );
 
+		if ( 'image' === $s['background_style'] && '' !== $s['background_image_url'] ) {
+			$vars['--ssm-bg-image']            = 'url("' . str_replace( array( '\\', '"' ), array( '\\\\', '\\"' ), $s['background_image_url'] ) . '")';
+			$vars['--ssm-bg-image-position']   = $s['background_image_position'];
+			$vars['--ssm-bg-image-size']       = $s['background_image_size'];
+			$vars['--ssm-bg-image-repeat']     = $s['background_image_repeat'];
+			$vars['--ssm-bg-image-attachment'] = $s['background_image_attachment'];
+
+			$opacity = min( 100, max( 0, absint( $s['background_image_overlay_opacity'] ) ) ) / 100;
+			if ( $opacity > 0 ) {
+				$vars['--ssm-bg-image-overlay'] = self::hex_to_rgba( $s['background_image_overlay_color'], $opacity );
+			}
+		}
+
 		$css = '.ssm-status-page{' . self::declarations( $vars ) . '}';
 
 		if ( ! empty( $s['dark_mode_custom'] ) ) {
@@ -208,6 +221,31 @@ class AppearanceRenderer {
 		$direction = self::GRADIENT_DIRECTIONS[ $s['gradient_direction'] ] ?? self::GRADIENT_DIRECTIONS['to-bottom'];
 
 		return 'linear-gradient(' . $direction . ', ' . $s['gradient_start_color'] . ', ' . $s['gradient_end_color'] . ')';
+	}
+
+	/**
+	 * Converts a validated "#rrggbb"/"#rgb" colour plus an opacity fraction
+	 * into an rgba() string, for the background-image overlay tint.
+	 *
+	 * @param string $hex     Sanitised hex colour (already passed through
+	 *                         sanitize_hex_color()).
+	 * @param float  $opacity 0-1.
+	 * @return string
+	 */
+	private static function hex_to_rgba( $hex, $opacity ) {
+		$hex = ltrim( (string) $hex, '#' );
+		if ( 3 === strlen( $hex ) ) {
+			$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+		}
+		if ( 6 !== strlen( $hex ) || ! ctype_xdigit( $hex ) ) {
+			return 'rgba(15,23,42,' . $opacity . ')';
+		}
+
+		$r = hexdec( substr( $hex, 0, 2 ) );
+		$g = hexdec( substr( $hex, 2, 2 ) );
+		$b = hexdec( substr( $hex, 4, 2 ) );
+
+		return 'rgba(' . $r . ',' . $g . ',' . $b . ',' . $opacity . ')';
 	}
 
 	/**

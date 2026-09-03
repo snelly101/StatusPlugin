@@ -173,6 +173,31 @@
 	background-attachment: local;
 }
 
+/* Optional background image (Appearance -> Background -> Image). Rendered
+   on its own layer behind everything else, rather than as another layer
+   in .ssm-status-page's own `background` shorthand above, because that
+   shorthand's --ssm-bg-decoration value can itself expand to a variable
+   number of comma-separated layers depending on the "Background pattern"
+   setting - background-position/-size/-repeat only line up correctly
+   with background-image when every comma list has a matching number of
+   entries, which --ssm-bg-image couldn't guarantee sitting alongside it.
+   A dedicated layer sidesteps that entirely and defaults to fully inert
+   (`--ssm-bg-image` unset -> `none`, `--ssm-bg-image-overlay` unset ->
+   `transparent`) when no image is configured. */
+.ssm-status-page::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background-image: var(--ssm-bg-image, none);
+	background-position: var(--ssm-bg-image-position, center);
+	background-size: var(--ssm-bg-image-size, cover);
+	background-repeat: var(--ssm-bg-image-repeat, no-repeat);
+	background-attachment: var(--ssm-bg-image-attachment, scroll);
+	box-shadow: inset 0 0 0 9999px var(--ssm-bg-image-overlay, transparent);
+	pointer-events: none;
+}
+
 .ssm-status-page h1,
 .ssm-status-page h2,
 .ssm-status-page h3,
@@ -1614,6 +1639,13 @@
 	.ssm-status-page {
 		padding: var(--ssm-sp-4) var(--ssm-sp-3) var(--ssm-sp-7);
 		font-size: 15px;
+	}
+
+	/* background-attachment: fixed is a known source of jank/rendering
+	   glitches on mobile browsers - force scroll regardless of the
+	   Appearance setting below this width. */
+	.ssm-status-page::before {
+		background-attachment: scroll !important;
 	}
 
 	.ssm-site-header {

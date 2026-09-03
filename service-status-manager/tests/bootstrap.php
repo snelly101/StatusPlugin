@@ -104,6 +104,9 @@ if ( ! function_exists( 'sanitize_hex_color' ) ) {
 if ( ! function_exists( 'wp_json_encode' ) ) {
 	function wp_json_encode( $data, $options = 0 ) { return json_encode( $data, $options ); } // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 }
+if ( ! function_exists( 'esc_url_raw' ) ) {
+	function esc_url_raw( $url ) { return filter_var( (string) $url, FILTER_VALIDATE_URL ) ? $url : ''; }
+}
 
 if ( ! class_exists( 'WP_Error' ) ) {
 	/**
