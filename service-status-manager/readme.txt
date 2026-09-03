@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.11.0
+Stable tag: 1.11.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.11.1 =
+Fixes old, previously-stuck notifications suddenly being delivered alongside a current one after upgrading. Before 1.9.0, notifications could sit in the queue indefinitely (a broken cron setup, a provider outage, an earlier bug) without a hard cutoff - once 1.9.0's dispatcher started reliably working through the whole queue instead of only whatever a given cron tick happened to catch, any such backlog got delivered in one go, which could mean receiving a "New Incident" or "Update" notice hours or weeks late, for something long since resolved. Notifications are now cancelled instead of sent if they're older than 24 hours by the time they'd go out (configurable under Settings > Notification Engine, 0 disables it). Subscription-confirmation and manage-your-subscription emails are exempt, since those stay useful indefinitely and cancelling one could leave a subscriber unable to ever confirm.
 
 = 1.11.0 =
 Phase C of the notification engine work (final phase, following 1.9.0/1.10.0): adds a new **Notification Engine** admin page (Status administrator/Integration-manager access) showing live queue depth per channel, each provider's circuit-breaker state, recent dispatcher run history, and a warning banner if notifications appear to be backing up. New WP-CLI commands: `wp service-status process [--channel=] [--time-budget=]` (the dispatcher, replacing `process-notifications` as the primary command - the old name still works as an alias), `wp service-status queue status`, `wp service-status queue retry-failed`, and `wp service-status provider health`. Every throughput/resilience setting introduced in 1.9.0/1.10.0 (circuit breaker threshold/cooldown, per-provider rate limits and concurrency, dispatcher time budget/batch size, notification queue retention) is now a real settings-screen field under Settings > SMS Provider / Email Provider / Notification Engine / Data Retention, instead of only being changeable via a code filter. Also fixes a bug from 1.10.0: Twilio's concurrent SMS sending was using the "requests per second" setting as its concurrency limit instead of a dedicated one, conflating two different throughput controls.

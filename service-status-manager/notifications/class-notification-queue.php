@@ -511,6 +511,16 @@ class NotificationQueue {
 		foreach ( $rows as $row ) {
 			$rows_by_id[ $row->id ] = $row;
 
+			if ( self::is_stale( $row ) ) {
+				$wpdb->update(
+					$table,
+					array( 'status' => 'cancelled', 'last_error' => 'Notification expired before it could be sent (queued too long ago).' ),
+					array( 'id' => $row->id )
+				);
+				++$tally['other'];
+				continue;
+			}
+
 			if ( 'sms' === $channel && self::sms_monthly_limit_reached() ) {
 				$wpdb->update( $table, array( 'status' => 'cancelled', 'last_error' => 'Monthly SMS limit reached.' ), array( 'id' => $row->id ) );
 				++$tally['other'];
@@ -584,6 +594,15 @@ class NotificationQueue {
 	private static function dispatch_row( $row ) {
 		global $wpdb;
 		$table = \ssm_table( 'notification_queue' );
+
+		if ( self::is_stale( $row ) ) {
+			$wpdb->update(
+				$table,
+				array( 'status' => 'cancelled', 'last_error' => 'Notification expired before it could be sent (queued too long ago).' ),
+				array( 'id' => $row->id )
+			);
+			return 'cancelled';
+		}
 
 		$provider_slug = self::resolve_provider_slug( $row->channel );
 
@@ -800,6 +819,36 @@ class NotificationQueue {
 		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		return $sent >= $limit;
+	}
+
+	/**
+	 * Whether this row is too old to still be worth sending. A status
+	 * notification is only useful close to real-time - a "New Incident"
+	 * or "Update" message arriving hours (or, if a site's cron was ever
+	 * broken, weeks) after the fact is actively confusing rather than
+	 * helpful, especially once the incident is long since resolved.
+	 *
+	 * Exempts the transactional per-subscriber messages (confirm your
+	 * subscription, here's your management link) - those stay useful
+	 * indefinitely and expiring one could leave a subscriber stuck unable
+	 * to ever confirm/manage, which is worse than a late delivery.
+	 *
+	 * @param object $row Queue row.
+	 * @return bool
+	 */
+	private static function is_stale( $row ) {
+		if ( in_array( $row->event_type, array( 'subscription_confirmation', 'teams_verify', 'management_link' ), true ) ) {
+			return false;
+		}
+
+		$max_age_hours = (int) \ssm_get_setting( 'notification_max_age_hours', 24 );
+		if ( $max_age_hours <= 0 ) {
+			return false;
+		}
+
+		$age_seconds = time() - strtotime( $row->created_at . ' UTC' );
+
+		return $age_seconds > ( $max_age_hours * HOUR_IN_SECONDS );
 	}
 
 	/**

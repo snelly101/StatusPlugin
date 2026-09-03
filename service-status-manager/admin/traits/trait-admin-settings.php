@@ -59,6 +59,7 @@ trait AdminSettingsTrait {
 			'circuit_breaker_cooldown_seconds'  => max( 1, absint( $post['circuit_breaker_cooldown_seconds'] ?? 60 ) ),
 			'notification_dispatch_time_budget_seconds' => max( 1, absint( $post['notification_dispatch_time_budget_seconds'] ?? 20 ) ),
 			'notification_dispatch_batch_size'  => max( 1, absint( $post['notification_dispatch_batch_size'] ?? 100 ) ),
+			'notification_max_age_hours'      => absint( $post['notification_max_age_hours'] ?? 24 ),
 			'notification_queue_retention_days' => absint( $post['notification_queue_retention_days'] ?? 30 ),
 			'notification_queue_failed_retention_days' => absint( $post['notification_queue_failed_retention_days'] ?? 90 ),
 			'raw_check_retention_days'        => absint( $post['raw_check_retention_days'] ?? 35 ),

@@ -202,6 +202,9 @@ $outgoing_events = array(
 			<tr><th><label for="ssm-dispatch-batch"><?php esc_html_e( 'Dispatcher batch size', 'service-status-manager' ); ?></label></th>
 				<td><input type="number" id="ssm-dispatch-batch" name="notification_dispatch_batch_size" value="<?php echo esc_attr( $settings['notification_dispatch_batch_size'] ); ?>" min="1" />
 				<p class="description"><?php esc_html_e( 'Maximum rows claimed per channel on each pass.', 'service-status-manager' ); ?></p></td></tr>
+			<tr><th><label for="ssm-max-age"><?php esc_html_e( 'Discard notifications older than (hours)', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-max-age" name="notification_max_age_hours" value="<?php echo esc_attr( $settings['notification_max_age_hours'] ); ?>" min="0" />
+				<p class="description"><?php esc_html_e( 'A status notification is only useful close to real-time - if something (a broken cron setup, a long provider outage) delayed a message this long, it\'s cancelled instead of sent, rather than arriving confusingly late (e.g. about an incident that\'s long since resolved). Doesn\'t apply to subscription-confirmation/management-link emails, which stay useful indefinitely. 0 disables this and always attempts delivery no matter how old.', 'service-status-manager' ); ?></p></td></tr>
 		</table>
 
 		<h2><?php esc_html_e( 'Data Retention', 'service-status-manager' ); ?></h2>

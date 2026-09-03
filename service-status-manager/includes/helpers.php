@@ -237,6 +237,7 @@ function ssm_get_settings() {
 			'circuit_breaker_cooldown_seconds'  => 60,
 			'notification_dispatch_time_budget_seconds' => 20,
 			'notification_dispatch_batch_size'  => 100,
+			'notification_max_age_hours'  => 24,
 			'email_provider'              => 'wp_mail',
 			'smtp2go_api_key_encrypted'   => '',
 			'smtp2go_sender'              => '',
