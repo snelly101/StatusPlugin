@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.11.1
+Stable tag: 1.11.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.11.2 =
+Fixes a service getting stuck showing "Under maintenance" forever after its maintenance window completes or is cancelled, if that service is in Automatic status mode with no monitors attached. When maintenance completes, the plugin tries to recalculate the service's status from its monitors - but a service with no monitors has nothing to recalculate from, so it was left exactly as-is (still "maintenance") instead of falling back to Operational like a manually-controlled service already did. If a service is stuck like this right now, edit it under Services, temporarily switch Status mode to Manual with status Operational, and save - this release prevents it from happening again for any future maintenance window.
 
 = 1.11.1 =
 Fixes old, previously-stuck notifications suddenly being delivered alongside a current one after upgrading. Before 1.9.0, notifications could sit in the queue indefinitely (a broken cron setup, a provider outage, an earlier bug) without a hard cutoff - once 1.9.0's dispatcher started reliably working through the whole queue instead of only whatever a given cron tick happened to catch, any such backlog got delivered in one go, which could mean receiving a "New Incident" or "Update" notice hours or weeks late, for something long since resolved. Notifications are now cancelled instead of sent if they're older than 24 hours by the time they'd go out (configurable under Settings > Notification Engine, 0 disables it). Subscription-confirmation and manage-your-subscription emails are exempt, since those stay useful indefinitely and cancelling one could leave a subscriber unable to ever confirm.

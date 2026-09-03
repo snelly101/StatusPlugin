@@ -444,7 +444,19 @@ class MaintenanceManager {
 		} elseif ( in_array( $new_status, array( 'completed', 'cancelled' ), true ) ) {
 			foreach ( $services as $service ) {
 				ServiceManager::recalculate_status( $service->id );
-				if ( 'manual' === $service->status_mode && 'maintenance' === $service->status ) {
+
+				// recalculate_status() is a deliberate no-op for manual-mode
+				// services, and also for automatic-mode services with no
+				// active monitors to compute a status from (see its own
+				// docblock) - either way, nothing above just moved the
+				// service off "maintenance", so it would otherwise stay
+				// stuck showing "under maintenance" forever once the window
+				// ends. Re-fetch (rather than trusting the pre-loop $service
+				// snapshot) since an automatic-mode service *with* monitors
+				// may have just been legitimately recalculated to something
+				// else (e.g. still degraded), which must not be overridden.
+				$current = ServiceManager::get_service( $service->id );
+				if ( $current && 'maintenance' === $current->status ) {
 					ServiceManager::set_status( $service->id, 'operational' );
 				}
 			}
