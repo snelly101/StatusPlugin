@@ -168,10 +168,8 @@
 	line-height: 1.55;
 	color: var(--ssm-text);
 	background:
-		radial-gradient(ellipse 900px 420px at 50% -8%, var(--ssm-primary-tint), transparent 65%),
-		linear-gradient(var(--ssm-bg-alt) 1px, transparent 1px) 0 0 / 100% 40px,
-		linear-gradient(90deg, var(--ssm-bg-alt) 1px, transparent 1px) 0 0 / 40px 100%,
-		var(--ssm-bg);
+		var(--ssm-bg-decoration, radial-gradient(ellipse 900px 420px at 50% -8%, var(--ssm-primary-tint), transparent 65%), linear-gradient(var(--ssm-bg-alt) 1px, transparent 1px) 0 0 / 100% 40px, linear-gradient(90deg, var(--ssm-bg-alt) 1px, transparent 1px) 0 0 / 40px 100%),
+		var(--ssm-bg-final, var(--ssm-bg));
 	background-attachment: local;
 }
 
@@ -223,7 +221,7 @@
 --------------------------------------------------------------------- */
 
 .ssm-site-header {
-	position: sticky;
+	position: var(--ssm-header-position, sticky);
 	top: 0;
 	z-index: 40;
 	display: flex;
@@ -231,7 +229,7 @@
 	gap: var(--ssm-sp-5);
 	margin: calc(var(--ssm-sp-6) * -1) calc(var(--ssm-sp-4) * -1) var(--ssm-sp-6);
 	padding: var(--ssm-sp-4) var(--ssm-sp-5);
-	background: color-mix(in srgb, var(--ssm-surface) 88%, transparent);
+	background: var(--ssm-header-bg, color-mix(in srgb, var(--ssm-surface) 88%, transparent));
 	backdrop-filter: saturate(1.4) blur(10px);
 	-webkit-backdrop-filter: saturate(1.4) blur(10px);
 	border-bottom: 1px solid var(--ssm-border);
@@ -251,7 +249,7 @@
 	font-weight: 700;
 	font-size: 1.05rem;
 	text-decoration: none;
-	color: var(--ssm-text);
+	color: var(--ssm-header-text, var(--ssm-text));
 	flex-shrink: 0;
 }
 
@@ -279,7 +277,7 @@
 }
 
 .ssm-site-header-nav a:hover {
-	color: var(--ssm-text);
+	color: var(--ssm-accent, var(--ssm-text));
 }
 
 .ssm-site-header-status {
@@ -576,7 +574,7 @@
 .ssm-status-page .ssm-button-primary {
 	background: var(--ssm-primary) !important;
 	border-color: var(--ssm-primary) !important;
-	color: #fff !important;
+	color: var(--ssm-button-primary-text, #fff) !important;
 	box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--ssm-primary) 55%, transparent);
 }
 

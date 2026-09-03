@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.13.0
+Stable tag: 1.14.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.14.0 =
+Appearance Phase B: dark mode now has its own optional colour set (Appearance -> Dark mode) that only applies when explicitly enabled - left off, dark mode is completely unchanged. New Background section: a decorative-pattern picker (the existing subtle grid + glow, either alone, or turned off entirely) and a solid-vs-gradient background style with configurable start/end colours and direction (including radial). New Header section: optional header background/text colour overrides (blank = inherit, today's behaviour) and a sticky-header on/off toggle. The previously non-functional "Secondary colour" concept has been replaced with a real, working Accent colour (header navigation hover) and a Buttons section for the primary button's text colour. As with Phase A, every new default reproduces the plugin's current hardcoded look exactly, so this upgrade changes nothing until an admin visits the Appearance screen. Purely visual - no changes to monitoring, incidents, maintenance, subscriptions, or notifications.
 
 = 1.13.0 =
 New: Service Status -> Appearance screen for customising the public status page's look without writing CSS - primary/hover colours, page and secondary background, card background/hover/border colour/border width/corner roundness/shadow strength, text and muted-text colour, all six status colours (with a note that colour is always paired with a label and icon, never used alone), content width, and an advanced Custom CSS field, plus a live preview panel, Reset to Defaults, and JSON export/import. Every default matches the plugin's existing hardcoded look exactly, so this upgrade does not change how any existing status page looks until an admin visits the new screen and changes something. This is the first phase of a larger appearance system (background gradients/images, header/logo/button styling, dark-mode-specific colours, and theme presets are planned for later releases) and is purely visual - monitoring, incidents, maintenance, subscriptions and notifications are completely unaffected.

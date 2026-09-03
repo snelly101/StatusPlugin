@@ -4,15 +4,22 @@
  * block, output once per page load via wp_add_inline_style() rather than
  * an inline <style> tag repeated per component.
  *
- * Every declaration here targets the plain `.ssm-status-page` selector,
+ * Most declarations here target the plain `.ssm-status-page` selector,
  * which is intentionally the same specificity as the design-system
  * defaults in public.css and lower specificity than its dark-mode
  * overrides (`.ssm-status-page:not([data-ssm-theme="light"])` and
  * `.ssm-status-page[data-ssm-theme="dark"]`, both one selector heavier).
  * That means these settings customise light mode - and any value that
  * genuinely isn't a light/dark concept (radius, shadow shape, content
- * width, border width) - without fighting the built-in dark palette.
- * Full dark-mode-aware customisation is a later phase, not this one.
+ * width, border width, header position) - without fighting the built-in
+ * dark palette.
+ *
+ * When an admin explicitly turns on "custom dark mode colours", a second
+ * block is appended that mirrors those same two dark-mode selectors
+ * exactly (same specificity, later in source order, so it wins the
+ * cascade tie the same way the light block wins over the plain base
+ * selector). Left off (the default), dark mode keeps using the plugin's
+ * existing, already-designed dark palette - completely untouched.
  *
  * @package ServiceStatusManager
  */
@@ -62,6 +69,41 @@ class AppearanceRenderer {
 	);
 
 	/**
+	 * Decorative background layers, keyed by the "Background pattern"
+	 * setting. "default" is the plugin's original always-on look
+	 * (a soft radial glow behind the hero plus a faint 40px grid) as one
+	 * combined background-image list; the others let an admin simplify it
+	 * without Custom CSS.
+	 */
+	const BACKGROUND_PATTERNS = array(
+		'default' => 'radial-gradient(ellipse 900px 420px at 50% -8%, var(--ssm-primary-tint), transparent 65%), linear-gradient(var(--ssm-bg-alt) 1px, transparent 1px) 0 0 / 100% 40px, linear-gradient(90deg, var(--ssm-bg-alt) 1px, transparent 1px) 0 0 / 40px 100%',
+		'grid'    => 'linear-gradient(var(--ssm-bg-alt) 1px, transparent 1px) 0 0 / 100% 40px, linear-gradient(90deg, var(--ssm-bg-alt) 1px, transparent 1px) 0 0 / 40px 100%',
+		'glow'    => 'radial-gradient(ellipse 900px 420px at 50% -8%, var(--ssm-primary-tint), transparent 65%)',
+		'none'    => 'none',
+	);
+
+	/**
+	 * CSS gradient direction/shape for each "Gradient direction" option.
+	 * "radial" builds a radial-gradient() instead of a linear-gradient().
+	 */
+	const GRADIENT_DIRECTIONS = array(
+		'to-bottom' => 'to bottom',
+		'to-right'  => 'to right',
+		'diagonal'  => '135deg',
+	);
+
+	/** Keys mirrored into the custom-dark-mode override block. */
+	const DARK_MODE_KEYS = array(
+		'bg'            => 'dark_bg_color',
+		'bg-alt'        => 'dark_bg_alt_color',
+		'surface'       => 'dark_surface_color',
+		'surface-hover' => 'dark_surface_hover_color',
+		'border'        => 'dark_border_color',
+		'text'          => 'dark_text_color',
+		'text-muted'    => 'dark_text_muted_color',
+	);
+
+	/**
 	 * Builds the CSS to inject: a single `.ssm-status-page{ --var:...; }`
 	 * declaration block, plus the admin's raw Custom CSS appended
 	 * verbatim (already stripped of tags at save time - stripped again
@@ -78,6 +120,7 @@ class AppearanceRenderer {
 		$vars = array(
 			'--ssm-primary'       => $s['primary_color'],
 			'--ssm-primary-hover' => $s['primary_hover_color'],
+			'--ssm-accent'        => $s['accent_color'],
 
 			'--ssm-bg'     => $s['bg_color'],
 			'--ssm-bg-alt' => $s['bg_alt_color'],
@@ -98,7 +141,17 @@ class AppearanceRenderer {
 			'--ssm-unknown'     => $s['status_unknown_color'],
 
 			'--ssm-content-max-width' => absint( $s['content_max_width'] ) . 'px',
+
+			'--ssm-button-primary-text' => $s['button_text_color'],
+			'--ssm-header-position'     => ! empty( $s['header_sticky'] ) ? 'sticky' : 'static',
 		);
+
+		if ( '' !== $s['header_bg_color'] ) {
+			$vars['--ssm-header-bg'] = $s['header_bg_color'];
+		}
+		if ( '' !== $s['header_text_color'] ) {
+			$vars['--ssm-header-text'] = $s['header_text_color'];
+		}
 
 		$radius = self::RADIUS_SCALES[ $s['card_radius_scale'] ] ?? self::RADIUS_SCALES['standard'];
 		$vars['--ssm-r-sm'] = $radius['sm'];
@@ -111,17 +164,63 @@ class AppearanceRenderer {
 		$vars['--ssm-shadow-md'] = $shadow['md'];
 		$vars['--ssm-shadow-lg'] = $shadow['lg'];
 
-		$declarations = '';
-		foreach ( $vars as $name => $value ) {
-			$declarations .= $name . ':' . $value . ';';
-		}
+		$vars['--ssm-bg-decoration'] = self::BACKGROUND_PATTERNS[ $s['background_pattern'] ] ?? self::BACKGROUND_PATTERNS['default'];
+		$vars['--ssm-bg-final']      = self::background_fill_css( $s );
 
-		$css = '.ssm-status-page{' . $declarations . '}';
+		$css = '.ssm-status-page{' . self::declarations( $vars ) . '}';
+
+		if ( ! empty( $s['dark_mode_custom'] ) ) {
+			$dark_vars = array();
+			foreach ( self::DARK_MODE_KEYS as $css_suffix => $settings_key ) {
+				$dark_vars[ '--ssm-' . $css_suffix ] = $s[ $settings_key ];
+			}
+			$dark_declarations = self::declarations( $dark_vars );
+
+			$css .= '@media (prefers-color-scheme: dark){.ssm-status-page:not([data-ssm-theme="light"]){' . $dark_declarations . '}}';
+			$css .= '.ssm-status-page[data-ssm-theme="dark"]{' . $dark_declarations . '}';
+		}
 
 		if ( ! empty( $s['custom_css'] ) ) {
 			$css .= "\n" . wp_strip_all_tags( $s['custom_css'] );
 		}
 
 		return $css;
+	}
+
+	/**
+	 * The final (bottom-most) background layer: the plain colour in
+	 * "solid" mode (kept in sync with --ssm-bg via a var() reference,
+	 * rather than a duplicated literal), or a linear/radial gradient
+	 * built from the two configured stop colours in "gradient" mode.
+	 *
+	 * @param array $s Sanitised settings.
+	 * @return string
+	 */
+	private static function background_fill_css( array $s ) {
+		if ( 'gradient' !== $s['background_style'] ) {
+			return 'var(--ssm-bg)';
+		}
+
+		if ( 'radial' === $s['gradient_direction'] ) {
+			return 'radial-gradient(circle at 30% 0%, ' . $s['gradient_start_color'] . ', ' . $s['gradient_end_color'] . ')';
+		}
+
+		$direction = self::GRADIENT_DIRECTIONS[ $s['gradient_direction'] ] ?? self::GRADIENT_DIRECTIONS['to-bottom'];
+
+		return 'linear-gradient(' . $direction . ', ' . $s['gradient_start_color'] . ', ' . $s['gradient_end_color'] . ')';
+	}
+
+	/**
+	 * Joins a [custom-property => value] map into a CSS declaration string.
+	 *
+	 * @param array $vars Custom property name => value.
+	 * @return string
+	 */
+	private static function declarations( array $vars ) {
+		$declarations = '';
+		foreach ( $vars as $name => $value ) {
+			$declarations .= $name . ':' . $value . ';';
+		}
+		return $declarations;
 	}
 }

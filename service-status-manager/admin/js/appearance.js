@@ -34,6 +34,7 @@
 	var COLOR_FIELD_TO_VAR = {
 		primary_color: '--ssm-primary',
 		primary_hover_color: '--ssm-primary-hover',
+		accent_color: '--ssm-accent',
 		bg_color: '--ssm-bg',
 		bg_alt_color: '--ssm-bg-alt',
 		surface_color: '--ssm-surface',
@@ -46,7 +47,8 @@
 		status_partial_color: '--ssm-partial',
 		status_outage_color: '--ssm-outage',
 		status_maintenance_color: '--ssm-maintenance',
-		status_unknown_color: '--ssm-unknown'
+		status_unknown_color: '--ssm-unknown',
+		button_text_color: '--ssm-button-primary-text'
 	};
 
 	function updatePreview() {
@@ -78,6 +80,15 @@
 		el.style.setProperty( '--ssm-shadow-md', shadow.md );
 	}
 
+	function toggleSection( $toggleEl, show ) {
+		$toggleEl.toggle( show );
+	}
+
+	function syncConditionalSections() {
+		toggleSection( $( '#ssm-a-gradient-fields' ), 'gradient' === $( '#ssm-a-background_style' ).val() );
+		toggleSection( $( '.ssm-appearance-dark-fields' ), $( '#ssm-a-dark_mode_custom' ).is( ':checked' ) );
+	}
+
 	$( function () {
 		$( '.ssm-color-picker' ).wpColorPicker( {
 			change: function () {
@@ -91,7 +102,9 @@
 		} );
 
 		$( document ).on( 'input change', '#ssm-a-card_border_width, #ssm-a-card_radius_scale, #ssm-a-card_shadow', updatePreview );
+		$( document ).on( 'change', '#ssm-a-background_style, #ssm-a-dark_mode_custom', syncConditionalSections );
 
 		updatePreview();
+		syncConditionalSections();
 	} );
 } )( window.jQuery );

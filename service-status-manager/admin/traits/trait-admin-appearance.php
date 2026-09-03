@@ -50,6 +50,29 @@ trait AdminAppearanceTrait {
 
 			'content_max_width' => $post['content_max_width'] ?? 0,
 
+			'accent_color' => $post['accent_color'] ?? '',
+
+			'background_pattern'   => $post['background_pattern'] ?? '',
+			'background_style'     => $post['background_style'] ?? '',
+			'gradient_start_color' => $post['gradient_start_color'] ?? '',
+			'gradient_end_color'   => $post['gradient_end_color'] ?? '',
+			'gradient_direction'   => $post['gradient_direction'] ?? '',
+
+			'header_bg_color'   => $post['header_bg_color'] ?? '',
+			'header_text_color' => $post['header_text_color'] ?? '',
+			'header_sticky'     => ! empty( $post['header_sticky'] ),
+
+			'button_text_color' => $post['button_text_color'] ?? '',
+
+			'dark_mode_custom'         => ! empty( $post['dark_mode_custom'] ),
+			'dark_bg_color'            => $post['dark_bg_color'] ?? '',
+			'dark_bg_alt_color'        => $post['dark_bg_alt_color'] ?? '',
+			'dark_surface_color'       => $post['dark_surface_color'] ?? '',
+			'dark_surface_hover_color' => $post['dark_surface_hover_color'] ?? '',
+			'dark_border_color'        => $post['dark_border_color'] ?? '',
+			'dark_text_color'          => $post['dark_text_color'] ?? '',
+			'dark_text_muted_color'    => $post['dark_text_muted_color'] ?? '',
+
 			'custom_css' => $post['custom_css'] ?? '',
 		);
 

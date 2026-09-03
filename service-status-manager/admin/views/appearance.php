@@ -50,6 +50,21 @@ $color_field = function ( $key, $label, $description = '' ) use ( $s ) {
 	</tr>
 	<?php
 };
+
+// Same as $color_field, but the empty string is a valid, meaningful value
+// ("inherit the page's normal colour") rather than "unset" - used only for
+// the header overrides, which default to blank for exactly that reason.
+$optional_color_field = function ( $key, $label, $description ) use ( $s ) {
+	?>
+	<tr>
+		<th><label for="ssm-a-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
+		<td>
+			<input type="text" id="ssm-a-<?php echo esc_attr( $key ); ?>" class="ssm-color-picker" name="<?php echo esc_attr( $key ); ?>" value="<?php echo esc_attr( $s[ $key ] ); ?>" data-default-color="" />
+			<p class="description"><?php echo esc_html( $description ); ?></p>
+		</td>
+	</tr>
+	<?php
+};
 ?>
 <div class="wrap ssm-wrap">
 	<h1><?php esc_html_e( 'Appearance', 'service-status-manager' ); ?></h1>
@@ -74,8 +89,47 @@ $color_field = function ( $key, $label, $description = '' ) use ( $s ) {
 			<table class="form-table">
 				<?php
 				$color_field( 'bg_color', __( 'Page background', 'service-status-manager' ) );
-				$color_field( 'bg_alt_color', __( 'Secondary background', 'service-status-manager' ), __( 'Used for subtle section fills and alternating stripes.', 'service-status-manager' ) );
+				$color_field( 'bg_alt_color', __( 'Secondary background', 'service-status-manager' ), __( 'Used for subtle section fills, the decorative grid pattern below, and alternating stripes.', 'service-status-manager' ) );
 				?>
+				<tr>
+					<th><label for="ssm-a-background_pattern"><?php esc_html_e( 'Background pattern', 'service-status-manager' ); ?></label></th>
+					<td>
+						<select id="ssm-a-background_pattern" name="background_pattern">
+							<option value="default" <?php selected( $s['background_pattern'], 'default' ); ?>><?php esc_html_e( 'Grid + soft glow (default)', 'service-status-manager' ); ?></option>
+							<option value="grid" <?php selected( $s['background_pattern'], 'grid' ); ?>><?php esc_html_e( 'Fine grid only', 'service-status-manager' ); ?></option>
+							<option value="glow" <?php selected( $s['background_pattern'], 'glow' ); ?>><?php esc_html_e( 'Soft glow only', 'service-status-manager' ); ?></option>
+							<option value="none" <?php selected( $s['background_pattern'], 'none' ); ?>><?php esc_html_e( 'None (flat)', 'service-status-manager' ); ?></option>
+						</select>
+						<p class="description"><?php esc_html_e( 'A subtle decorative texture behind the page content.', 'service-status-manager' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th><label for="ssm-a-background_style"><?php esc_html_e( 'Background style', 'service-status-manager' ); ?></label></th>
+					<td>
+						<select id="ssm-a-background_style" name="background_style">
+							<option value="solid" <?php selected( $s['background_style'], 'solid' ); ?>><?php esc_html_e( 'Solid colour (default)', 'service-status-manager' ); ?></option>
+							<option value="gradient" <?php selected( $s['background_style'], 'gradient' ); ?>><?php esc_html_e( 'Gradient', 'service-status-manager' ); ?></option>
+						</select>
+					</td>
+				</tr>
+				<tbody id="ssm-a-gradient-fields">
+					<?php
+					$color_field( 'gradient_start_color', __( 'Gradient start colour', 'service-status-manager' ) );
+					$color_field( 'gradient_end_color', __( 'Gradient end colour', 'service-status-manager' ) );
+					?>
+					<tr>
+						<th><label for="ssm-a-gradient_direction"><?php esc_html_e( 'Gradient direction', 'service-status-manager' ); ?></label></th>
+						<td>
+							<select id="ssm-a-gradient_direction" name="gradient_direction">
+								<option value="to-bottom" <?php selected( $s['gradient_direction'], 'to-bottom' ); ?>><?php esc_html_e( 'Top to bottom', 'service-status-manager' ); ?></option>
+								<option value="to-right" <?php selected( $s['gradient_direction'], 'to-right' ); ?>><?php esc_html_e( 'Left to right', 'service-status-manager' ); ?></option>
+								<option value="diagonal" <?php selected( $s['gradient_direction'], 'diagonal' ); ?>><?php esc_html_e( 'Diagonal', 'service-status-manager' ); ?></option>
+								<option value="radial" <?php selected( $s['gradient_direction'], 'radial' ); ?>><?php esc_html_e( 'Radial', 'service-status-manager' ); ?></option>
+							</select>
+							<p class="description"><?php esc_html_e( 'Only used when Background style is set to Gradient.', 'service-status-manager' ); ?></p>
+						</td>
+					</tr>
+				</tbody>
 			</table>
 
 			<h2><?php esc_html_e( 'Cards', 'service-status-manager' ); ?></h2>
@@ -134,6 +188,49 @@ $color_field = function ( $key, $label, $description = '' ) use ( $s ) {
 						<p class="description"><?php esc_html_e( 'Maximum width of the status page content. Default is 920px. The page always remains fully responsive below this width.', 'service-status-manager' ); ?></p>
 					</td>
 				</tr>
+			</table>
+
+			<h2><?php esc_html_e( 'Header', 'service-status-manager' ); ?></h2>
+			<table class="form-table">
+				<?php
+				$optional_color_field( 'header_bg_color', __( 'Header background', 'service-status-manager' ), __( 'Leave blank to use the card background colour above (today\'s default: a translucent, blurred header).', 'service-status-manager' ) );
+				$optional_color_field( 'header_text_color', __( 'Header text', 'service-status-manager' ), __( 'Leave blank to use the page text colour above.', 'service-status-manager' ) );
+				$color_field( 'accent_color', __( 'Accent colour', 'service-status-manager' ), __( 'Used for the header navigation links\' hover colour.', 'service-status-manager' ) );
+				?>
+				<tr>
+					<th><?php esc_html_e( 'Sticky header', 'service-status-manager' ); ?></th>
+					<td>
+						<label><input type="checkbox" name="header_sticky" value="1" <?php checked( ! empty( $s['header_sticky'] ) ); ?> /> <?php esc_html_e( 'Keep the header pinned to the top of the screen while scrolling', 'service-status-manager' ); ?></label>
+						<p class="description"><?php esc_html_e( 'Only applies to status pages with "Dedicated header" turned on (Status Pages screen).', 'service-status-manager' ); ?></p>
+					</td>
+				</tr>
+			</table>
+
+			<h2><?php esc_html_e( 'Buttons', 'service-status-manager' ); ?></h2>
+			<table class="form-table">
+				<?php $color_field( 'button_text_color', __( 'Primary button text colour', 'service-status-manager' ), __( 'The Subscribe button and other primary actions. Corner roundness and shadow follow the Cards settings above.', 'service-status-manager' ) ); ?>
+			</table>
+
+			<h2><?php esc_html_e( 'Dark mode', 'service-status-manager' ); ?></h2>
+			<table class="form-table">
+				<tr>
+					<th><?php esc_html_e( 'Custom dark mode colours', 'service-status-manager' ); ?></th>
+					<td>
+						<label><input type="checkbox" id="ssm-a-dark_mode_custom" name="dark_mode_custom" value="1" <?php checked( ! empty( $s['dark_mode_custom'] ) ); ?> /> <?php esc_html_e( 'Use the colours below instead of the built-in dark palette', 'service-status-manager' ); ?></label>
+						<p class="description"><?php esc_html_e( 'Left off, dark mode keeps its current appearance exactly - visitors who prefer dark mode (or whose system is set to it) are unaffected by the light-mode colours above.', 'service-status-manager' ); ?></p>
+					</td>
+				</tr>
+			</table>
+			<table class="form-table ssm-appearance-dark-fields">
+				<?php
+				$color_field( 'dark_bg_color', __( 'Dark page background', 'service-status-manager' ) );
+				$color_field( 'dark_bg_alt_color', __( 'Dark secondary background', 'service-status-manager' ) );
+				$color_field( 'dark_surface_color', __( 'Dark card background', 'service-status-manager' ) );
+				$color_field( 'dark_surface_hover_color', __( 'Dark card hover background', 'service-status-manager' ) );
+				$color_field( 'dark_border_color', __( 'Dark border colour', 'service-status-manager' ) );
+				$color_field( 'dark_text_color', __( 'Dark text colour', 'service-status-manager' ) );
+				$color_field( 'dark_text_muted_color', __( 'Dark muted text colour', 'service-status-manager' ) );
+				?>
 			</table>
 
 			<h2><?php esc_html_e( 'Custom CSS', 'service-status-manager' ); ?></h2>
