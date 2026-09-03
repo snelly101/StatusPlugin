@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.11.2
+Stable tag: 1.11.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.11.3 =
+Fixes reminder notifications firing immediately for a maintenance window scheduled with less lead time than the reminder itself - e.g. a "1 hour before" reminder configured, but the window is created (or rescheduled) to start in 30 minutes. Previously that reminder's trigger time was already in the past the moment it was saved, so the next cron tick sent it right away instead of skipping it, which reads as a spurious/duplicate notice. Reminders whose lead time no longer fits are now silently skipped rather than fired late, both when a maintenance window is first created and when its schedule is changed afterward. Not retroactive for a reminder that had already fired this way before upgrading.
 
 = 1.11.2 =
 Fixes a service getting stuck showing "Under maintenance" forever after its maintenance window completes or is cancelled, if that service is in Automatic status mode with no monitors attached. When maintenance completes, the plugin tries to recalculate the service's status from its monitors - but a service with no monitors has nothing to recalculate from, so it was left exactly as-is (still "maintenance") instead of falling back to Operational like a manually-controlled service already did. If a service is stuck like this right now, edit it under Services, temporarily switch Status mode to Manual with status Operational, and save - this release prevents it from happening again for any future maintenance window.

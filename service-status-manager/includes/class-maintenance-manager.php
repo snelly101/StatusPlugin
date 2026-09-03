@@ -155,6 +155,7 @@ class MaintenanceManager {
 
 		$slug = self::unique_slug( sanitize_title( $title ) );
 
+		$reminder_hours  = array_values( array_filter( array_map( 'absint', (array) ( $data['reminder_hours'] ?? ssm_get_setting( 'maintenance_reminder_hours', array( 24, 1 ) ) ) ) ) );
 		$notify_settings = array(
 			'on_announce' => ! empty( $data['notify_on_announce'] ),
 			'on_start'    => ! empty( $data['notify_on_start'] ),
@@ -162,7 +163,7 @@ class MaintenanceManager {
 			'on_extend'   => ! empty( $data['notify_on_extend'] ),
 			'on_cancel'   => ! empty( $data['notify_on_cancel'] ),
 			'on_update'   => ! empty( $data['notify_on_update'] ),
-			'reminder_hours' => array_values( array_filter( array_map( 'absint', (array) ( $data['reminder_hours'] ?? ssm_get_setting( 'maintenance_reminder_hours', array( 24, 1 ) ) ) ) ) ),
+			'reminder_hours' => $reminder_hours,
 		);
 
 		$wpdb->insert(
@@ -178,7 +179,14 @@ class MaintenanceManager {
 				'impact'          => in_array( $data['impact'] ?? 'none', self::IMPACTS, true ) ? $data['impact'] : 'none',
 				'is_public'       => isset( $data['is_public'] ) && ! $data['is_public'] ? 0 : 1,
 				'notify_settings' => wp_json_encode( $notify_settings ),
-				'reminders_sent'  => wp_json_encode( array() ),
+				// Pre-mark any lead time the window is already too close to
+				// honour (e.g. a "1 hour before" reminder on a window
+				// starting in 30 minutes) as sent, without actually sending
+				// it - otherwise the next cron tick sees its fire time
+				// already in the past and fires it immediately, which reads
+				// as "reminder: this already started" rather than a useful
+				// heads-up.
+				'reminders_sent'  => wp_json_encode( self::unreachable_reminder_keys( $data['scheduled_start'], $reminder_hours ) ),
 				'created_by'      => get_current_user_id() ?: null,
 				'created_at'      => ssm_now(),
 				'updated_at'      => ssm_now(),
@@ -237,8 +245,12 @@ class MaintenanceManager {
 		// at least one of them is actually present - this was previously
 		// never persisted on edit at all (only set at creation), so
 		// changing these checkboxes on an existing event had no effect.
-		$notify_keys = array( 'notify_on_announce', 'notify_on_start', 'notify_on_complete', 'notify_on_extend', 'notify_on_cancel', 'notify_on_update' );
+		$notify_keys    = array( 'notify_on_announce', 'notify_on_start', 'notify_on_complete', 'notify_on_extend', 'notify_on_cancel', 'notify_on_update' );
+		$reminder_hours = json_decode( (string) $existing->notify_settings, true )['reminder_hours'] ?? array();
+
 		if ( array_intersect( $notify_keys, array_keys( $data ) ) ) {
+			$reminder_hours = isset( $data['reminder_hours'] ) ? array_values( array_filter( array_map( 'absint', (array) $data['reminder_hours'] ) ) ) : $reminder_hours;
+
 			$fields['notify_settings'] = wp_json_encode(
 				array(
 					'on_announce'    => ! empty( $data['notify_on_announce'] ),
@@ -247,9 +259,23 @@ class MaintenanceManager {
 					'on_extend'      => ! empty( $data['notify_on_extend'] ),
 					'on_cancel'      => ! empty( $data['notify_on_cancel'] ),
 					'on_update'      => ! empty( $data['notify_on_update'] ),
-					'reminder_hours' => isset( $data['reminder_hours'] ) ? array_values( array_filter( array_map( 'absint', (array) $data['reminder_hours'] ) ) ) : ( json_decode( (string) $existing->notify_settings, true )['reminder_hours'] ?? array() ),
+					'reminder_hours' => $reminder_hours,
 				)
 			);
+		}
+
+		// If the schedule moved (or the reminder lead times changed),
+		// re-suppress whichever configured reminders the new start time no
+		// longer leaves room for - same reasoning as create_maintenance():
+		// without this, rescheduling something to start sooner than a
+		// reminder's lead time would fire that reminder immediately on the
+		// next cron tick instead of not sending it. Only ever adds to
+		// reminders_sent, never removes, so an already-sent reminder can't
+		// be re-triggered by a later reschedule.
+		if ( $fields['scheduled_start'] !== $existing->scheduled_start || isset( $data['reminder_hours'] ) ) {
+			$already_sent = json_decode( (string) $existing->reminders_sent, true ) ?: array();
+			$newly_unreachable = self::unreachable_reminder_keys( $fields['scheduled_start'], $reminder_hours );
+			$fields['reminders_sent'] = wp_json_encode( array_values( array_unique( array_merge( $already_sent, $newly_unreachable ) ) ) );
 		}
 
 		$wpdb->update( ssm_table( 'maintenance' ), $fields, array( 'id' => $id ) );
@@ -490,6 +516,34 @@ class MaintenanceManager {
 	}
 
 	/**
+	 * Finds which of the given reminder lead times are already unreachable
+	 * for a maintenance window starting at $scheduled_start - i.e. the
+	 * window starts sooner than that reminder's lead time allows for, so
+	 * there's no meaningful "N hours before" moment left to send it at.
+	 * Uses the exact same due-check send_due_reminders() uses, since
+	 * "unreachable right now" and "due right now" are the same condition -
+	 * that's precisely why an unhandled one fires immediately on the next
+	 * cron tick instead of being silently skipped.
+	 *
+	 * @param string $scheduled_start MySQL datetime, UTC.
+	 * @param array  $reminder_hours  Configured lead times in hours.
+	 * @return string[] Reminder keys (e.g. "h24") to mark as already sent.
+	 */
+	private static function unreachable_reminder_keys( $scheduled_start, array $reminder_hours ) {
+		$start_ts = strtotime( $scheduled_start . ' UTC' );
+		$keys     = array();
+
+		foreach ( $reminder_hours as $lead_hours ) {
+			$fire_at = $start_ts - ( (int) $lead_hours * HOUR_IN_SECONDS );
+			if ( time() >= $fire_at ) {
+				$keys[] = 'h' . $lead_hours;
+			}
+		}
+
+		return $keys;
+	}
+
+	/**
 	 * Sends reminder notifications for scheduled maintenance whose
 	 * configured lead time has arrived, tracking which reminders have
 	 * already fired in the `reminders_sent` column so repeated cron runs
@@ -506,20 +560,13 @@ class MaintenanceManager {
 			$sent     = json_decode( (string) $event->reminders_sent, true ) ?: array();
 			$hours    = $settings['reminder_hours'] ?? array();
 
-			$start_ts = strtotime( $event->scheduled_start . ' UTC' );
+			$due_now = array_diff( self::unreachable_reminder_keys( $event->scheduled_start, $hours ), $sent );
 
-			foreach ( $hours as $lead_hours ) {
-				$reminder_key = 'h' . $lead_hours;
-				if ( in_array( $reminder_key, $sent, true ) ) {
-					continue;
-				}
-
-				$fire_at = $start_ts - ( $lead_hours * HOUR_IN_SECONDS );
-				if ( time() >= $fire_at ) {
-					do_action( 'ssm_maintenance_reminder', self::get_maintenance( $event->id ), $lead_hours );
-					$sent[] = $reminder_key;
-					$wpdb->update( $table, array( 'reminders_sent' => wp_json_encode( $sent ) ), array( 'id' => $event->id ) );
-				}
+			foreach ( $due_now as $reminder_key ) {
+				$lead_hours = (int) substr( $reminder_key, 1 );
+				do_action( 'ssm_maintenance_reminder', self::get_maintenance( $event->id ), $lead_hours );
+				$sent[] = $reminder_key;
+				$wpdb->update( $table, array( 'reminders_sent' => wp_json_encode( $sent ) ), array( 'id' => $event->id ) );
 			}
 		}
 	}
