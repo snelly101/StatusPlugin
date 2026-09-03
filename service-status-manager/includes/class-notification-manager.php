@@ -629,12 +629,23 @@ class NotificationManager {
 			ssm_format_datetime( $maintenance->scheduled_end )
 		);
 
+		// SMS has a hard character budget (see SmsProvider::build_text()'s
+		// truncation, and sms_max_length), so it gets a short d/m/y date
+		// instead of the site's full date_format + time_format used
+		// everywhere else (email, Teams, and the schedule_label payload key
+		// below) - e.g. "21/1/26 3:00pm" rather than "21 January 2026 3:00 pm".
+		$sms_schedule_label = sprintf(
+			'%1$s to %2$s',
+			ssm_format_datetime( $maintenance->scheduled_start, 'j/n/y g:ia' ),
+			ssm_format_datetime( $maintenance->scheduled_end, 'j/n/y g:ia' )
+		);
+
 		$notice_label = rtrim( trim( $prefix ), ':' );
 
 		$sms_summary = self::build_sms_summary(
 			array(
 				sprintf( '%s: %s', $notice_label, wp_strip_all_tags( $maintenance->title ) ),
-				$schedule_label,
+				$sms_schedule_label,
 				$services ? sprintf( __( 'Services: %s', 'service-status-manager' ), implode( ', ', wp_list_pluck( $services, 'name' ) ) ) : '',
 			)
 		);

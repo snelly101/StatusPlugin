@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.15.2
+Stable tag: 1.15.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.15.3 =
+Maintenance SMS notifications (announced, started, completed, extended, cancelled, updated, and reminders) now show the scheduled window's date in short UK d/m/y form - e.g. "21/1/26 3:00pm" instead of the site's full date format (e.g. "21 January 2026 3:00 pm"), which was eating into SMS's tight character budget. Email and Microsoft Teams notifications are unaffected - they still show the fuller date as before, since only SMS has a length constraint that makes the short form worth it.
 
 = 1.15.2 =
 Gave in-progress maintenance its own "Active maintenance" section on the public status page - previously the section was titled "Scheduled maintenance" and a window that was actually happening right now sat in the same unlabelled list as ones that hadn't started yet, with no heading calling out that it was active (same issue fixed for incidents back in 1.12.2). The section is now titled "Maintenance", with "Active maintenance" and "Upcoming maintenance" as separate headings above "Maintenance history", each shown only when there's something in it.
