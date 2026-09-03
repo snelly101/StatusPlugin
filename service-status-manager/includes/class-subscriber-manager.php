@@ -601,6 +601,62 @@ class SubscriberManager {
 	}
 
 	/**
+	 * Counts the active subscribers who would actually be notified about a
+	 * given service - the same targeting NotificationManager's own
+	 * matching uses: active subscribers with *no* selections at all
+	 * (meaning "subscribed to everything", the default and most common
+	 * case since a subscriber isn't required to pick anything specific),
+	 * plus anyone who explicitly selected this service, its parent group,
+	 * or any monitor attached to it.
+	 *
+	 * A naive "count rows in subscriber_selections for this service" query
+	 * undercounts badly - it misses every everything-subscriber entirely,
+	 * plus anyone who opted in via the service's group or one of its
+	 * monitors rather than the service directly.
+	 *
+	 * @param int $service_id Service ID.
+	 * @return int
+	 */
+	public static function count_for_service( $service_id ) {
+		global $wpdb;
+
+		$service = ServiceManager::get_service( $service_id );
+		if ( ! $service ) {
+			return 0;
+		}
+
+		$monitor_ids = wp_list_pluck( MonitorManager::get_monitors_for_service( $service_id ), 'id' );
+
+		$subscribers_table = ssm_table( 'subscribers' );
+		$selections_table  = ssm_table( 'subscriber_selections' );
+
+		$scope_clauses = array( "( sel.scope_type = 'service' AND sel.scope_id = %d )" );
+		$scope_params  = array( absint( $service_id ) );
+
+		if ( $service->group_id ) {
+			$scope_clauses[] = "( sel.scope_type = 'group' AND sel.scope_id = %d )";
+			$scope_params[]  = absint( $service->group_id );
+		}
+
+		if ( $monitor_ids ) {
+			$placeholders    = implode( ',', array_fill( 0, count( $monitor_ids ), '%d' ) );
+			$scope_clauses[] = "( sel.scope_type = 'monitor' AND sel.scope_id IN ({$placeholders}) )";
+			$scope_params    = array_merge( $scope_params, array_map( 'absint', $monitor_ids ) );
+		}
+
+		$scope_sql = implode( ' OR ', $scope_clauses );
+
+		$sql = "SELECT COUNT(*) FROM {$subscribers_table} s
+			WHERE s.status = 'active'
+			AND (
+				NOT EXISTS ( SELECT 1 FROM {$selections_table} sel WHERE sel.subscriber_id = s.id )
+				OR EXISTS ( SELECT 1 FROM {$selections_table} sel WHERE sel.subscriber_id = s.id AND ( {$scope_sql} ) )
+			)";
+
+		return (int) $wpdb->get_var( $wpdb->prepare( $sql, $scope_params ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/**
 	 * Paginated subscriber list for the admin screen.
 	 *
 	 * @param array $args per_page, paged, search, status.

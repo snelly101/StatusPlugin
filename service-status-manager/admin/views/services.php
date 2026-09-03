@@ -10,6 +10,7 @@ namespace ServiceStatusManager\Admin;
 use ServiceStatusManager\ServiceManager;
 use ServiceStatusManager\MonitorManager;
 use ServiceStatusManager\UptimeAggregator;
+use ServiceStatusManager\SubscriberManager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -20,9 +21,6 @@ $groups   = ServiceManager::get_groups();
 $edit_id  = isset( $_GET['edit'] ) ? absint( $_GET['edit'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 $editing  = $edit_id ? ServiceManager::get_service( $edit_id ) : null;
 $statuses = ssm_get_status_definitions();
-
-global $wpdb;
-$selections_table = ssm_table( 'subscriber_selections' );
 ?>
 <div class="wrap ssm-wrap">
 	<h1><?php esc_html_e( 'Services', 'service-status-manager' ); ?></h1>
@@ -49,7 +47,7 @@ $selections_table = ssm_table( 'subscriber_selections' );
 			$status_def    = ssm_get_status_definition( $service->status );
 			$monitor_count = count( MonitorManager::get_monitors_for_service( $service->id ) );
 			$uptime        = UptimeAggregator::get_service_uptime_percentage( $service->id, 90 );
-			$subscriber_count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT subscriber_id) FROM {$selections_table} WHERE scope_type = 'service' AND scope_id = %d", $service->id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$subscriber_count = SubscriberManager::count_for_service( $service->id );
 			?>
 			<tr>
 				<td><a href="<?php echo esc_url( add_query_arg( 'edit', $service->id ) ); ?>"><strong><?php echo esc_html( $service->name ); ?></strong></a></td>

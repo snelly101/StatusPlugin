@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.11.5
+Stable tag: 1.11.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.11.6 =
+Fixes the Subscribers count on the Services page always showing 0. It only counted subscribers who explicitly picked that exact service when subscribing - it missed everyone who chose "Everything" (the default, and the most common choice), and also missed anyone who opted in via the service's group or one of its monitors rather than the service itself. Now counts the same way notifications are actually targeted: everything-subscribers, plus service/group/monitor-specific ones.
 
 = 1.11.5 =
 Fixes service groups, services, and status pages not getting a slug when the Slug field is left blank to auto-generate one from the name - it was being saved as a literal empty value instead. Because slugs must be unique, this also meant that after the *first* group/service/page was created this way, every next one created the same way (blank Slug field) silently failed to save at all - no error was shown, it just didn't appear in the list. Existing groups/services/pages left with a blank slug by this bug are automatically repaired to a real slug the next time the plugin loads after upgrading; no action needed. If you found that adding a second (or later) group/service/status page seemed to do nothing, it likely hit this - re-add anything that appears to be missing. Save failures like this now also show a clear error message instead of a false "saved" confirmation.
