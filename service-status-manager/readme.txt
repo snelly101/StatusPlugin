@@ -1,10 +1,10 @@
 === Service Status Manager ===
-Contributors: (your organisation)
+Contributors: SnelsonServer
 Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.12.2
+Stable tag: 1.12.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.12.3 =
+Fixed "Pin to top of status page" having no visible effect: a pinned incident's only signal was a barely-perceptible shadow difference (every incident card already has a shadow by default), and a pinned-but-resolved incident wasn't sorted to the top of "Recently resolved" at all (only the active-incidents ordering respected the pin). Pinned incidents now show a "Pinned" badge on the public status page, and pinning is honoured in both the active and resolved incident lists. Also set the plugin author to SnelsonServer.
 
 = 1.12.2 =
 The public status page's incidents section is now titled "Incidents" (previously "Incident history"), and an active incident sitting there now gets its own "Active incidents" heading above it, separate from the "Recently resolved" section below - previously an ongoing incident had no heading of its own and just sat directly under a section literally titled "history", which read as if it had already happened.

@@ -3,10 +3,10 @@
  * Plugin Name:       Service Status Manager
  * Plugin URI:        https://github.com/snelly101/StatusPlugin
  * Description:       A complete public status page system: services, monitors, incidents, scheduled maintenance, subscriber notifications (email, SMS, Microsoft Teams) and a REST API.
- * Version:           1.12.2
+ * Version:           1.12.3
  * Requires at least: 6.2
  * Requires PHP:      8.1
- * Author:            Service Status Manager Contributors
+ * Author:            SnelsonServer
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       service-status-manager
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Core plugin constants. Every other file in the plugin relies on these.
-define( 'SSM_VERSION', '1.12.2' );
+define( 'SSM_VERSION', '1.12.3' );
 define( 'SSM_DB_VERSION', '1.3.0' );
 define( 'SSM_PLUGIN_FILE', __FILE__ );
 define( 'SSM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );

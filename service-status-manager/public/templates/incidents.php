@@ -56,6 +56,9 @@ $render_incident = function ( $incident ) use ( $severity_labels, $status_labels
 			<?php endif; ?>
 		>
 			<h4 class="ssm-incident-title"><?php echo esc_html( $incident->title ); ?></h4>
+			<?php if ( $incident->is_pinned ) : ?>
+				<span class="ssm-incident-pinned-badge"><?php echo ssm_icon( 'pin' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php esc_html_e( 'Pinned', 'service-status-manager' ); ?></span>
+			<?php endif; ?>
 			<span class="ssm-status-pill <?php echo esc_attr( $severity_class ); ?>"><?php echo esc_html( $severity_labels[ $incident->severity ] ?? $incident->severity ); ?></span>
 			<span class="ssm-status-pill <?php echo $is_resolved ? 'ssm-status-operational' : esc_attr( $severity_class ); ?>"><?php echo esc_html( $status_labels[ $incident->status ] ?? $incident->status ); ?></span>
 			<?php if ( $collapsible ) : ?>

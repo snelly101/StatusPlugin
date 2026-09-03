@@ -94,7 +94,7 @@ class IncidentManager {
 		$sql = "SELECT * FROM {$table}
 			WHERE status = 'resolved' AND is_public = 1
 			AND (scheduled_publish_at IS NULL OR scheduled_publish_at <= %s)
-			ORDER BY ends_at DESC LIMIT %d";
+			ORDER BY is_pinned DESC, ends_at DESC LIMIT %d";
 
 		return $wpdb->get_results( $wpdb->prepare( $sql, ssm_now(), max( 1, absint( $limit ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}

@@ -980,6 +980,25 @@
 	box-shadow: var(--ssm-shadow-md);
 }
 
+.ssm-incident-pinned-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--ssm-sp-1);
+	padding: var(--ssm-sp-1) var(--ssm-sp-3);
+	border-radius: var(--ssm-r-pill);
+	font-size: .8rem;
+	font-weight: 600;
+	background: var(--ssm-primary-tint);
+	color: var(--ssm-primary);
+	white-space: nowrap;
+	line-height: 1.2;
+}
+
+.ssm-incident-pinned-badge .ssm-icon {
+	width: 13px;
+	height: 13px;
+}
+
 .ssm-incident-header {
 	display: flex;
 	flex-wrap: wrap;
