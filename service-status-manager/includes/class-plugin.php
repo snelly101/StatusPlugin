@@ -20,7 +20,7 @@ use ServiceStatusManager\Api\RestApi;
 use ServiceStatusManager\Api\WebhookApi;
 use ServiceStatusManager\Api\WebhookDispatcher;
 use ServiceStatusManager\Monitoring\MonitorRunner;
-use ServiceStatusManager\Notifications\NotificationQueue;
+use ServiceStatusManager\Notifications\NotificationDispatcher;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -61,7 +61,12 @@ class Plugin {
 		Smtp::register();
 
 		add_action( Cron::RUN_MONITOR_CHECKS, array( MonitorRunner::class, 'run_due_checks' ) );
-		add_action( Cron::PROCESS_NOTIFICATIONS, array( NotificationQueue::class, 'process_batch' ) );
+		add_action(
+			Cron::PROCESS_NOTIFICATIONS,
+			function () {
+				NotificationDispatcher::run_once( 'all', null, 'wp_cron' );
+			}
+		);
 		add_action( Cron::AGGREGATE_HOURLY, array( UptimeAggregator::class, 'aggregate_hourly' ) );
 		add_action( Cron::AGGREGATE_DAILY, array( UptimeAggregator::class, 'aggregate_daily' ) );
 		add_action( Cron::CLEANUP_OLD_DATA, array( Cleanup::class, 'run' ) );

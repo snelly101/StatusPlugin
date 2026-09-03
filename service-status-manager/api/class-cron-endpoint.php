@@ -21,7 +21,7 @@ namespace ServiceStatusManager\Api;
 use ServiceStatusManager\RateLimiter;
 use ServiceStatusManager\MaintenanceManager;
 use ServiceStatusManager\Monitoring\MonitorRunner;
-use ServiceStatusManager\Notifications\NotificationQueue;
+use ServiceStatusManager\Notifications\NotificationDispatcher;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -65,15 +65,34 @@ class CronEndpoint {
 			return new \WP_Error( 'ssm_forbidden', __( 'Invalid token.', 'service-status-manager' ), array( 'status' => 403 ) );
 		}
 
-		$checked       = MonitorRunner::run_due_checks();
-		$notifications = NotificationQueue::process_batch();
+		// A self-chained hop from NotificationDispatcher only needs to
+		// re-enter the dispatcher - re-running monitor checks and
+		// maintenance transitions on every fast chained hop would be
+		// wasted work (they already run on the normal scope=full tick).
+		$scope = sanitize_key( $request->get_param( 'scope' ) ?: 'full' );
+
+		if ( 'notifications' === $scope ) {
+			$result = NotificationDispatcher::run_once( 'all', null, 'cron_chain' );
+
+			return rest_ensure_response(
+				array(
+					'ok'                      => true,
+					'scope'                   => 'notifications',
+					'notifications_processed' => $result['rows_sent'] + $result['rows_failed'],
+					'timestamp'               => \ssm_now(),
+				)
+			);
+		}
+
+		$checked = MonitorRunner::run_due_checks();
+		$result  = NotificationDispatcher::run_once( 'all', null, 'cron_endpoint' );
 		MaintenanceManager::process_transitions();
 
 		return rest_ensure_response(
 			array(
 				'ok'                     => true,
 				'monitors_checked'       => $checked,
-				'notifications_processed' => $notifications,
+				'notifications_processed' => $result['rows_sent'] + $result['rows_failed'],
 				'timestamp'              => \ssm_now(),
 			)
 		);

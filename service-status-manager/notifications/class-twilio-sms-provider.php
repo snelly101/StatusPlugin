@@ -61,7 +61,7 @@ class TwilioSmsProvider extends SmsProvider {
 		}
 
 		$error_message = $body['message'] ?? sprintf( 'Twilio returned HTTP %d.', $code );
-		return new SendResult( false, '', $error_message );
+		return new SendResult( false, '', $error_message, $code );
 	}
 
 	/**

@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.8.0
+Stable tag: 1.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,11 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.9.0 =
+Rebuilds the notification queue for near-immediate delivery at high subscriber counts, without requiring anything beyond ordinary WordPress hosting (no SSH/shell access or persistent background processes needed). Previously, saving an incident or maintenance update looped over every matching subscriber synchronously inside that admin request, and looked up each subscriber's preferences with a separate database query - both fine at small scale, both a real problem once you have thousands of subscribers. Incident/maintenance saves now return immediately and hand off to a background dispatcher that fans out to matching subscribers using far fewer, batched queries, then inserts and sends notifications in bulk. The dispatcher self-chains (works for a few seconds, then triggers its own continuation) so a large backlog keeps draining between cron ticks instead of waiting for the next one.
+
+Also adds: a queue "lease" so a notification stuck mid-send (e.g. a fatal PHP error) is automatically recovered instead of stuck forever; a distinction between permanent failures (bad phone number/address - fails immediately, doesn't waste retries) and transient ones (rate-limited/temporary outage - retried with backoff, same as before); a circuit breaker that stops hammering a provider (Twilio/email/Teams) during a real outage instead of retrying every queued message against it individually; a priority so a critical incident's notifications are never stuck behind a routine maintenance reminder in the same channel's queue; enforcement of the existing (previously decorative) monthly and per-incident SMS limit settings; and a fix so failed notification queue rows are eventually cleaned up like sent ones are (they were never purged before, which could permanently block a future notification to the same subscriber about the same incident).
 
 = 1.8.0 =
 Scheduled maintenance now has a full update timeline, matching incidents: a "Timeline" section on the maintenance edit screen with an "Add update" form lets you post a status change (or just a progress note) with your own message, at any time - so you're no longer stuck waiting for a maintenance window to auto-start/auto-complete on its scheduled times via cron. Manually starting, completing, or cancelling a window applies the same service-status effects and respects the same notification checkboxes (When it begins/When completed/When cancelled) as the automatic transitions, which now also produce a timeline entry so the record is complete either way. Adds a new "When a progress update is posted (no status change)" notification checkbox for plain progress notes. The public status page shows each maintenance window's timeline too, collapsed by default once a window is completed or cancelled (same pattern as resolved incidents). Also fixes notification checkboxes on the maintenance edit screen never actually saving when editing an existing event (they only ever took effect when first creating one). New `maintenance_updates` database table (migration runs automatically).

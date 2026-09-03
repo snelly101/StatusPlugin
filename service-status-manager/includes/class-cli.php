@@ -16,7 +16,7 @@
 namespace ServiceStatusManager;
 
 use ServiceStatusManager\Monitoring\MonitorRunner;
-use ServiceStatusManager\Notifications\NotificationQueue;
+use ServiceStatusManager\Notifications\NotificationDispatcher;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -47,7 +47,12 @@ class Cli {
 	}
 
 	/**
-	 * Processes a batch of pending notifications from the queue.
+	 * Fans out pending notification events and dispatches due notifications
+	 * from the queue - the same dispatcher the cron endpoint and WP-Cron
+	 * use, just run once from the command line. Since WP-CLI has no
+	 * execution time limit, this is given a larger time budget than a
+	 * typical web-triggered run so a single invocation gets further
+	 * through a large backlog before chaining to another hop.
 	 *
 	 * ## EXAMPLES
 	 *
@@ -57,8 +62,17 @@ class Cli {
 	 * @param array $assoc_args Associative arguments.
 	 */
 	public function process_notifications( $args, $assoc_args ) {
-		$count = NotificationQueue::process_batch();
-		\WP_CLI::success( sprintf( 'Processed %d notification(s).', $count ) );
+		$result = NotificationDispatcher::run_once( 'all', 60, 'cli' );
+
+		\WP_CLI::success(
+			sprintf(
+				'Fanned out %d event(s); sent %d, failed %d notification(s).%s',
+				$result['events_fanned_out'],
+				$result['rows_sent'],
+				$result['rows_failed'],
+				$result['chained'] ? ' More work remains and was handed off to a chained run.' : ''
+			)
+		);
 	}
 
 	/**

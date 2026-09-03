@@ -457,7 +457,8 @@ class Admin {
 
 	public function handle_process_notifications_now() {
 		$this->guard( 'ssm_process_notifications_now', Capabilities::MANAGE );
-		$count = \ServiceStatusManager\Notifications\NotificationQueue::process_batch();
+		$result = \ServiceStatusManager\Notifications\NotificationDispatcher::run_once( 'all', null, 'admin' );
+		$count  = $result['rows_sent'] + $result['rows_failed'];
 		$this->redirect_with_notice(
 			'tools',
 			sprintf(

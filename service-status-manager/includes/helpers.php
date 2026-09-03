@@ -212,6 +212,8 @@ function ssm_get_settings() {
 			'hourly_aggregate_retention_days' => 400,
 			'daily_aggregate_retention_days'  => 1825,
 			'notification_log_retention_days' => 400,
+			'notification_queue_retention_days' => 30,
+			'notification_queue_failed_retention_days' => 90,
 			'audit_log_retention_days'   => 1825,
 			'ssrf_allow_private_ips'     => false,
 			'ssrf_allowlist'             => array(),

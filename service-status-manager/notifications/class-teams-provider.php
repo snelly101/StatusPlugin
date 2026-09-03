@@ -143,6 +143,6 @@ class TeamsProvider implements NotificationProviderInterface {
 			return new SendResult( true, 'http_' . $code );
 		}
 
-		return new SendResult( false, '', sprintf( 'Teams webhook returned HTTP %d.', $code ) );
+		return new SendResult( false, '', sprintf( 'Teams webhook returned HTTP %d.', $code ), $code );
 	}
 }

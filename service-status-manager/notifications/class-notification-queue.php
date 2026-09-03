@@ -32,6 +32,7 @@ class NotificationQueue {
 	 *     @type int    $reference_id
 	 *     @type array  $payload         Rendered message context (subject, body_html, body_text, sms_summary, url, severity, ...).
 	 *     @type string $dedup_key
+	 *     @type int    $priority        0 (highest) - 5 (lowest). Defaults to 3. See NotificationManager::priority_for().
 	 *     @type string $next_attempt_at Optional MySQL datetime; defaults to now (subject to quiet-hours deferral for SMS).
 	 * }
 	 * @return int|false New queue row ID, or false if it was a duplicate.
@@ -59,6 +60,7 @@ class NotificationQueue {
 				'reference_id'    => isset( $args['reference_id'] ) ? absint( $args['reference_id'] ) : null,
 				'payload'         => wp_json_encode( $args['payload'] ?? array() ),
 				'status'          => 'pending',
+				'priority'        => self::clamp_priority( $args['priority'] ?? 3 ),
 				'attempts'        => 0,
 				'max_attempts'    => (int) apply_filters( 'ssm_notification_max_attempts', 5 ),
 				'next_attempt_at' => $next_attempt_at,
@@ -88,6 +90,170 @@ class NotificationQueue {
 	}
 
 	/**
+	 * Bulk-inserts many queue rows in one round trip, for fan-outs large
+	 * enough (hundreds to thousands of subscriber-channel pairs) that one
+	 * enqueue() call per row would mean one round trip per row. Duplicate
+	 * dedup_keys are silently skipped (INSERT IGNORE), matching enqueue()'s
+	 * existing "duplicate is a no-op, not an error" semantics.
+	 *
+	 * Callers are expected to chunk large sets themselves (~500 rows per
+	 * call is a reasonable batch size) - this method does not chunk
+	 * internally, so a single call building one enormous VALUES list is
+	 * the caller's own choice.
+	 *
+	 * Unlike enqueue(), reference_type/reference_id are required on every
+	 * row (not nullable) - the only current callers (NotificationManager's
+	 * incident/maintenance fan-out) always have them; the low-volume
+	 * subscriber-management messages that legitimately omit them still go
+	 * through enqueue().
+	 *
+	 * @param array[] $rows Each shaped like enqueue()'s $args, minus next_attempt_at chunking concerns (still honoured per-row).
+	 * @return int Number of rows actually inserted (excludes duplicates).
+	 */
+	public static function enqueue_many( array $rows ) {
+		global $wpdb;
+
+		if ( empty( $rows ) ) {
+			return 0;
+		}
+
+		$table        = \ssm_table( 'notification_queue' );
+		$now          = \ssm_now();
+		$max_attempts = (int) apply_filters( 'ssm_notification_max_attempts', 5 );
+
+		$placeholders = array();
+		$values       = array();
+
+		foreach ( $rows as $args ) {
+			$channel = sanitize_key( $args['channel'] );
+
+			$next_attempt_at = $args['next_attempt_at'] ?? $now;
+			if ( 'sms' === $channel ) {
+				$next_attempt_at = self::apply_quiet_hours( $next_attempt_at, $args['payload']['severity'] ?? 'informational' );
+			}
+
+			$placeholders[] = '(%s,%d,%s,%s,%s,%d,%s,%s,%d,%d,%d,%s,%s)';
+			array_push(
+				$values,
+				substr( $args['dedup_key'], 0, 190 ),
+				absint( $args['subscriber_id'] ),
+				$channel,
+				sanitize_key( $args['event_type'] ),
+				sanitize_key( $args['reference_type'] ),
+				absint( $args['reference_id'] ),
+				wp_json_encode( $args['payload'] ?? array() ),
+				'pending',
+				self::clamp_priority( $args['priority'] ?? 3 ),
+				0,
+				$max_attempts,
+				$next_attempt_at,
+				$now
+			);
+		}
+
+		$sql = "INSERT IGNORE INTO {$table}
+			(dedup_key, subscriber_id, channel, event_type, reference_type, reference_id, payload, status, priority, attempts, max_attempts, next_attempt_at, created_at)
+			VALUES " . implode( ',', $placeholders );
+
+		$wpdb->query( $wpdb->prepare( $sql, $values ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		$inserted = (int) $wpdb->rows_affected;
+
+		self::trigger_immediate_processing();
+
+		return $inserted;
+	}
+
+	/**
+	 * @param mixed $priority Raw priority value.
+	 * @return int Clamped to 0-5.
+	 */
+	private static function clamp_priority( $priority ) {
+		return max( 0, min( 5, (int) $priority ) );
+	}
+
+	/**
+	 * Atomically claims up to $limit due rows for a single channel in one
+	 * round trip - a multi-table UPDATE...JOIN against a derived table,
+	 * which MySQL 5.7+/MariaDB 10.2+ both allow (the "can't specify target
+	 * table for update in FROM clause" restriction doesn't apply to a
+	 * subquery aliased in a JOIN, since it's materialised as a temp table
+	 * before the join runs). No SKIP LOCKED dependency, so no MySQL 8+/
+	 * MariaDB 10.6+ requirement.
+	 *
+	 * @param string $channel       email|sms|teams.
+	 * @param int    $limit         Max rows to claim.
+	 * @param string $locked_by     Opaque identifier for this run (observability only - correctness comes from the atomic claim itself, not from this value).
+	 * @param int    $lease_seconds How long the claim is held before NotificationQueue::reclaim_expired() will recover it if this run dies mid-dispatch.
+	 * @return object[] Claimed rows (status already 'processing').
+	 */
+	public static function claim_batch( $channel, $limit, $locked_by, $lease_seconds = 120 ) {
+		global $wpdb;
+		$table = \ssm_table( 'notification_queue' );
+
+		$now           = \ssm_now();
+		$lease_expires = gmdate( 'Y-m-d H:i:s', time() + max( 30, (int) $lease_seconds ) );
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$table} t
+				INNER JOIN (
+					SELECT id FROM {$table}
+					WHERE channel = %s AND status IN ('pending','retry_scheduled') AND next_attempt_at <= %s
+					ORDER BY priority ASC, id ASC
+					LIMIT %d
+				) c ON c.id = t.id
+				SET t.status = 'processing', t.locked_by = %s, t.locked_at = %s, t.lease_expires_at = %s",
+				$channel,
+				$now,
+				max( 1, (int) $limit ),
+				$locked_by,
+				$now,
+				$lease_expires
+			)
+		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( ! $wpdb->rows_affected ) {
+			return array();
+		}
+
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$table} WHERE channel = %s AND status = 'processing' AND locked_by = %s ORDER BY priority ASC, id ASC",
+				$channel,
+				$locked_by
+			)
+		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/**
+	 * Recovers rows stuck in 'processing' because the run that claimed
+	 * them (via claim_batch()) died before finishing - a PHP fatal error,
+	 * the host killing a long-running request, etc. Run at the start of
+	 * every NotificationDispatcher pass.
+	 *
+	 * @return int Number of rows recovered.
+	 */
+	public static function reclaim_expired() {
+		global $wpdb;
+		$table = \ssm_table( 'notification_queue' );
+
+		$recovered = $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$table} SET status = 'pending', locked_by = NULL, locked_at = NULL, lease_expires_at = NULL
+				WHERE status = 'processing' AND lease_expires_at IS NOT NULL AND lease_expires_at < %s",
+				\ssm_now()
+			)
+		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( $recovered ) {
+			\ssm_log( sprintf( 'Notification queue: reclaimed %d row(s) stuck in "processing" past their lease.', $recovered ), 'debug' );
+		}
+
+		return (int) $recovered;
+	}
+
+	/**
 	 * Fires a non-blocking "loopback" request to the plugin's own secured
 	 * cron endpoint immediately after something is queued, so messages
 	 * are usually sent within a second or two instead of waiting for the
@@ -106,8 +272,12 @@ class NotificationQueue {
 	 * single loopback request rather than one per message, and never
 	 * blocks the caller (a monitor check, an admin saving an incident, a
 	 * public subscription request) waiting for it to complete.
+	 *
+	 * Public so NotificationManager can also call it right after writing a
+	 * notification_events row - the deferred fan-out needs the same
+	 * "wake the dispatcher up soon" behaviour as a direct enqueue() does.
 	 */
-	private static function trigger_immediate_processing() {
+	public static function trigger_immediate_processing() {
 		if ( get_transient( 'ssm_notify_trigger_lock' ) ) {
 			return;
 		}
@@ -271,29 +441,93 @@ class NotificationQueue {
 	}
 
 	/**
+	 * Dispatches a batch of already-claimed rows (from claim_batch()),
+	 * tallying outcomes for the caller's observability (NotificationRuns).
+	 *
+	 * @param object[] $rows Claimed queue rows.
+	 * @return array{sent:int,failed:int,other:int}
+	 */
+	public static function dispatch_claimed_rows( array $rows ) {
+		$tally = array( 'sent' => 0, 'failed' => 0, 'other' => 0 );
+
+		foreach ( $rows as $row ) {
+			$outcome = self::dispatch_row( $row );
+
+			if ( isset( $tally[ $outcome ] ) ) {
+				++$tally[ $outcome ];
+			} else {
+				++$tally['other'];
+			}
+		}
+
+		return $tally;
+	}
+
+	/**
 	 * Dispatches a single claimed queue row to its provider and records
 	 * the outcome.
 	 *
 	 * @param object $row Queue row (status already set to "processing").
+	 * @return string One of: sent, failed, retry_scheduled, cancelled, other.
 	 */
 	private static function dispatch_row( $row ) {
 		global $wpdb;
 		$table = \ssm_table( 'notification_queue' );
+
+		// The channel doubles as the provider slug for circuit-breaker/
+		// rate-limiter purposes for now, since each channel resolves to
+		// exactly one concrete provider today (Twilio, wp_mail, Teams).
+		// Once SMTP2GO lands alongside wp_mail as a second email provider,
+		// this becomes the resolved provider's own slug instead.
+		$provider_slug = $row->channel;
+
+		if ( NotificationCircuitBreaker::is_open( $provider_slug ) ) {
+			$wpdb->update(
+				$table,
+				array(
+					'status'          => 'retry_scheduled',
+					'last_error'      => sprintf( 'Provider "%s" circuit breaker is open; deferring.', $provider_slug ),
+					'next_attempt_at' => gmdate( 'Y-m-d H:i:s', time() + 60 ),
+				),
+				array( 'id' => $row->id )
+			);
+			return 'retry_scheduled';
+		}
+
+		if ( 'sms' === $row->channel && self::sms_monthly_limit_reached() ) {
+			$wpdb->update( $table, array( 'status' => 'cancelled', 'last_error' => 'Monthly SMS limit reached.' ), array( 'id' => $row->id ) );
+			return 'cancelled';
+		}
+
+		$rate_limit = (int) apply_filters( 'ssm_notification_rate_limit_per_second', 0, $provider_slug );
+		if ( $rate_limit > 0 && NotificationRateLimiter::reserve_capacity( $provider_slug, $rate_limit, 1 ) < 1 ) {
+			$wpdb->update(
+				$table,
+				array( 'status' => 'retry_scheduled', 'next_attempt_at' => gmdate( 'Y-m-d H:i:s', time() + 1 ) ),
+				array( 'id' => $row->id )
+			);
+			return 'retry_scheduled';
+		}
 
 		$subscriber = SubscriberManager::get_subscriber( $row->subscriber_id );
 		$gate       = self::gate_check( $subscriber, $row->channel, $row->event_type );
 
 		if ( true !== $gate ) {
 			$wpdb->update( $table, array( 'status' => 'cancelled', 'last_error' => $gate ), array( 'id' => $row->id ) );
-			return;
+			return 'cancelled';
 		}
 
-		$payload = json_decode( (string) $row->payload, true ) ?: array();
+		$payload  = json_decode( (string) $row->payload, true ) ?: array();
 		$provider = self::get_provider( $row->channel );
 
 		if ( ! $provider ) {
 			$wpdb->update( $table, array( 'status' => 'failed', 'last_error' => 'No provider available for channel.' ), array( 'id' => $row->id ) );
-			return;
+			return 'failed';
+		}
+
+		if ( 'sms' === $row->channel && (int) \ssm_get_setting( 'sms_per_incident_limit', 0 ) > 0 && self::sms_per_incident_limit_reached( $row ) ) {
+			$wpdb->update( $table, array( 'status' => 'cancelled', 'last_error' => 'Per-incident SMS limit reached.' ), array( 'id' => $row->id ) );
+			return 'cancelled';
 		}
 
 		try {
@@ -307,6 +541,12 @@ class NotificationQueue {
 		self::log_delivery( $row, $result );
 
 		if ( $result->success ) {
+			NotificationCircuitBreaker::record_success( $provider_slug );
+
+			if ( 'sms' === $row->channel ) {
+				self::increment_sms_monthly_count();
+			}
+
 			$wpdb->update(
 				$table,
 				array(
@@ -318,7 +558,23 @@ class NotificationQueue {
 			);
 
 			do_action( 'ssm_notification_sent', $row );
-			return;
+			return 'sent';
+		}
+
+		$classification = NotificationRetryPolicy::classify( $result->http_code, (string) $result->error, $provider_slug );
+		NotificationCircuitBreaker::record_failure( $provider_slug, $classification );
+
+		// A permanent failure (bad recipient, bad credentials) is never
+		// worth retrying with backoff - it will fail identically every
+		// time, so fail it immediately rather than burning attempts.
+		if ( NotificationRetryPolicy::TRANSIENT !== $classification ) {
+			$wpdb->update(
+				$table,
+				array( 'status' => 'failed', 'attempts' => $attempts, 'last_error' => $result->error ),
+				array( 'id' => $row->id )
+			);
+			do_action( 'ssm_notification_failed', $row, $result->error );
+			return 'failed';
 		}
 
 		if ( $attempts >= (int) $row->max_attempts ) {
@@ -328,7 +584,7 @@ class NotificationQueue {
 				array( 'id' => $row->id )
 			);
 			do_action( 'ssm_notification_failed', $row, $result->error );
-			return;
+			return 'failed';
 		}
 
 		$delay = min( 6 * HOUR_IN_SECONDS, (int) pow( 2, $attempts ) * MINUTE_IN_SECONDS );
@@ -344,6 +600,69 @@ class NotificationQueue {
 			),
 			array( 'id' => $row->id )
 		);
+
+		return 'retry_scheduled';
+	}
+
+	/**
+	 * Whether the site-wide monthly SMS cap (`sms_monthly_limit` setting,
+	 * 0 = unlimited) has been reached. Tracked with a transient counter,
+	 * the same lightweight pattern SmsProvider uses for its per-subscriber
+	 * daily cap, just keyed globally instead of per-subscriber.
+	 *
+	 * @return bool
+	 */
+	private static function sms_monthly_limit_reached() {
+		$limit = (int) \ssm_get_setting( 'sms_monthly_limit', 0 );
+		if ( $limit <= 0 ) {
+			return false;
+		}
+
+		return (int) get_transient( self::sms_monthly_counter_key() ) >= $limit;
+	}
+
+	/**
+	 * Increments the site-wide monthly SMS counter after a successful send.
+	 */
+	private static function increment_sms_monthly_count() {
+		$key   = self::sms_monthly_counter_key();
+		$count = (int) get_transient( $key );
+		set_transient( $key, $count + 1, 32 * DAY_IN_SECONDS );
+	}
+
+	/**
+	 * @return string Transient key for the current calendar month's SMS counter.
+	 */
+	private static function sms_monthly_counter_key() {
+		return 'ssm_sms_monthly_count_' . gmdate( 'Y-m' );
+	}
+
+	/**
+	 * Whether this row's incident has already had `sms_per_incident_limit`
+	 * SMS messages sent for it. Only meaningful for incident-referenced SMS
+	 * rows; maintenance and other event types are not subject to this cap.
+	 *
+	 * @param object $row Queue row about to be dispatched (not yet counted as sent).
+	 * @return bool
+	 */
+	private static function sms_per_incident_limit_reached( $row ) {
+		if ( 'incident' !== $row->reference_type || ! $row->reference_id ) {
+			return false;
+		}
+
+		global $wpdb;
+		$table = \ssm_table( 'notification_queue' );
+		$limit = (int) \ssm_get_setting( 'sms_per_incident_limit', 0 );
+
+		$sent = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$table} WHERE channel = 'sms' AND reference_type = 'incident' AND reference_id = %d AND status IN ('sent','processing') AND id != %d",
+				$row->reference_id,
+				$row->id
+			)
+		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		return $sent >= $limit;
 	}
 
 	/**

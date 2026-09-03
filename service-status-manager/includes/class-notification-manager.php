@@ -2,8 +2,16 @@
 /**
  * Notification rule engine: listens for domain events (incident/
  * maintenance lifecycle, subscriber verification) and decides *who*
- * should be notified and *how*, then hands off to
- * Notifications\NotificationQueue::enqueue() for actual delivery.
+ * should be notified and *how*.
+ *
+ * Incident/maintenance events are NOT fanned out to subscribers
+ * synchronously - at 2,000+ subscribers, looping over every match inside
+ * the admin's incident-save HTTP request is exactly the slow-request
+ * problem this subsystem exists to avoid. Instead, on_incident_*()/
+ * on_maintenance_*() write one lightweight row to `notification_events`
+ * and return immediately; the actual targeting + payload-building +
+ * queueing happens in fan_out_pending_events(), called by
+ * Notifications\NotificationDispatcher on its own time-boxed schedule.
  *
  * This is the only class that evaluates subscriber preferences against
  * an event; NotificationQueue and the individual providers never make
@@ -45,11 +53,18 @@ class NotificationManager {
 		add_action( 'ssm_subscriber_confirmed', array( __CLASS__, 'on_subscriber_confirmed' ) );
 	}
 
+	/*
+	 * ---------------------------------------------------------------
+	 * Incident event listeners - queue a notification_events row and
+	 * return; see fan_out_incident_event() for the actual targeting.
+	 * ---------------------------------------------------------------
+	 */
+
 	/**
 	 * @param object $incident Incident row.
 	 */
 	public static function on_incident_created( $incident ) {
-		self::notify_for_incident( $incident, 'incident_created', __( 'New Incident: ', 'service-status-manager' ) );
+		self::queue_incident_event( $incident, 'incident_created' );
 	}
 
 	/**
@@ -57,7 +72,7 @@ class NotificationManager {
 	 * @param object $update   The new update row.
 	 */
 	public static function on_incident_updated( $incident, $update ) {
-		self::notify_for_incident( $incident, 'incident_updated', __( 'Incident Update: ', 'service-status-manager' ), $update );
+		self::queue_incident_event( $incident, 'incident_updated', $update );
 	}
 
 	/**
@@ -71,12 +86,341 @@ class NotificationManager {
 			return;
 		}
 
-		self::notify_for_incident( $incident, 'incident_resolved', __( 'Resolved: ', 'service-status-manager' ) );
+		self::queue_incident_event( $incident, 'incident_resolved' );
+	}
+
+	/**
+	 * @param object      $incident Incident row.
+	 * @param string      $event    Event type slug.
+	 * @param object|null $update   The relevant update row, if any.
+	 */
+	private static function queue_incident_event( $incident, $event, $update = null ) {
+		self::create_event(
+			array(
+				'event_type'     => $event,
+				'reference_type' => 'incident',
+				'reference_id'   => $incident->id,
+				'update_id'      => $update ? $update->id : null,
+				'severity'       => $incident->severity,
+			)
+		);
+	}
+
+	/*
+	 * ---------------------------------------------------------------
+	 * Maintenance event listeners - same deferred pattern.
+	 * ---------------------------------------------------------------
+	 */
+
+	/**
+	 * @param object $maintenance Maintenance row.
+	 */
+	public static function on_maintenance_announced( $maintenance ) {
+		self::queue_maintenance_event( $maintenance, 'maintenance_announced' );
+	}
+
+	/**
+	 * @param object      $maintenance Maintenance row.
+	 * @param object|null $update      The update row that triggered this transition, if any.
+	 */
+	public static function on_maintenance_started( $maintenance, $update = null ) {
+		self::queue_maintenance_event( $maintenance, 'maintenance_started', $update );
+	}
+
+	/**
+	 * @param object      $maintenance Maintenance row.
+	 * @param object|null $update      The update row that triggered this transition, if any.
+	 */
+	public static function on_maintenance_completed( $maintenance, $update = null ) {
+		self::queue_maintenance_event( $maintenance, 'maintenance_completed', $update );
+	}
+
+	/**
+	 * @param object $maintenance Maintenance row.
+	 */
+	public static function on_maintenance_extended( $maintenance ) {
+		self::queue_maintenance_event( $maintenance, 'maintenance_extended' );
+	}
+
+	/**
+	 * @param object      $maintenance Maintenance row.
+	 * @param object|null $update      The update row that triggered this transition, if any.
+	 */
+	public static function on_maintenance_cancelled( $maintenance, $update = null ) {
+		self::queue_maintenance_event( $maintenance, 'maintenance_cancelled', $update );
+	}
+
+	/**
+	 * A status-unchanged progress note posted to an in-progress (or
+	 * scheduled) maintenance window's timeline.
+	 *
+	 * @param object $maintenance Maintenance row.
+	 * @param object $update      The new update row.
+	 */
+	public static function on_maintenance_updated( $maintenance, $update ) {
+		self::queue_maintenance_event( $maintenance, 'maintenance_updated', $update );
+	}
+
+	/**
+	 * @param object $maintenance Maintenance row.
+	 * @param int    $lead_hours  Hours before start this reminder fires.
+	 */
+	public static function on_maintenance_reminder( $maintenance, $lead_hours ) {
+		self::queue_maintenance_event( $maintenance, 'maintenance_reminder', null, array( 'lead_hours' => (int) $lead_hours ) );
+	}
+
+	/**
+	 * @param object      $maintenance Maintenance row.
+	 * @param string      $event       Event type slug.
+	 * @param object|null $update      The relevant update row, if any.
+	 * @param array       $meta        Small extra context that can't be re-derived when fanning out later (e.g. lead_hours).
+	 */
+	private static function queue_maintenance_event( $maintenance, $event, $update = null, array $meta = array() ) {
+		self::create_event(
+			array(
+				'event_type'     => $event,
+				'reference_type' => 'maintenance',
+				'reference_id'   => $maintenance->id,
+				'update_id'      => $update ? $update->id : null,
+				'severity'       => 'informational',
+				'meta'           => $meta,
+			)
+		);
+	}
+
+	/**
+	 * Inserts a notification_events row and wakes the dispatcher. Cheap and
+	 * synchronous (one small insert) - the actual subscriber targeting
+	 * happens later, off the admin's request.
+	 *
+	 * @param array $args {
+	 *     @type string   $event_type
+	 *     @type string   $reference_type
+	 *     @type int      $reference_id
+	 *     @type int|null $update_id
+	 *     @type string|null $severity
+	 *     @type array    $meta
+	 * }
+	 */
+	private static function create_event( array $args ) {
+		global $wpdb;
+
+		$table = ssm_table( 'notification_events' );
+
+		$wpdb->insert(
+			$table,
+			array(
+				'event_type'     => $args['event_type'],
+				'reference_type' => $args['reference_type'],
+				'reference_id'   => $args['reference_id'],
+				'update_id'      => $args['update_id'] ?? null,
+				'severity'       => $args['severity'] ?? null,
+				'meta'           => ! empty( $args['meta'] ) ? wp_json_encode( $args['meta'] ) : null,
+				'status'         => 'pending',
+				'created_at'     => current_time( 'mysql', true ),
+			)
+		);
+
+		ssm_log(
+			sprintf(
+				'Notification event #%d (%s / %s #%d) queued for fan-out.',
+				$wpdb->insert_id,
+				$args['event_type'],
+				$args['reference_type'],
+				$args['reference_id']
+			),
+			'debug'
+		);
+
+		NotificationQueue::trigger_immediate_processing();
+	}
+
+	/*
+	 * ---------------------------------------------------------------
+	 * Fan-out: called by NotificationDispatcher, not by the domain
+	 * events directly.
+	 * ---------------------------------------------------------------
+	 */
+
+	/**
+	 * Claims and fans out a batch of pending notification_events rows.
+	 * Uses the same single-row atomic-claim pattern as the queue itself
+	 * (UPDATE ... WHERE status = 'pending') so two overlapping dispatcher
+	 * runs can't both fan out the same event.
+	 *
+	 * @param int $limit Maximum events to fan out in this call.
+	 * @return int Number of events actually fanned out.
+	 */
+	public static function fan_out_pending_events( $limit = 20 ) {
+		global $wpdb;
+
+		$table = ssm_table( 'notification_events' );
+
+		$ids = $wpdb->get_col(
+			$wpdb->prepare( "SELECT id FROM {$table} WHERE status = 'pending' ORDER BY id ASC LIMIT %d", $limit ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+
+		$fanned_out = 0;
+
+		foreach ( $ids as $event_id ) {
+			$claimed = $wpdb->query(
+				$wpdb->prepare( "UPDATE {$table} SET status = 'processing' WHERE id = %d AND status = 'pending'", $event_id ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			);
+
+			if ( ! $claimed ) {
+				continue;
+			}
+
+			self::fan_out_event( (int) $event_id );
+			++$fanned_out;
+		}
+
+		return $fanned_out;
+	}
+
+	/**
+	 * @param int $event_id notification_events.id, already claimed by the caller.
+	 */
+	private static function fan_out_event( $event_id ) {
+		global $wpdb;
+
+		$table = ssm_table( 'notification_events' );
+		$event = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $event_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( ! $event ) {
+			return;
+		}
+
+		try {
+			if ( 'incident' === $event->reference_type ) {
+				self::fan_out_incident_event( $event );
+			} elseif ( 'maintenance' === $event->reference_type ) {
+				self::fan_out_maintenance_event( $event );
+			}
+
+			$wpdb->update(
+				$table,
+				array(
+					'status'        => 'done',
+					'fanned_out_at' => current_time( 'mysql', true ),
+				),
+				array( 'id' => $event_id )
+			);
+		} catch ( \Throwable $e ) {
+			$attempts    = (int) $event->attempts + 1;
+			$next_status = $attempts < 3 ? 'pending' : 'failed';
+
+			$wpdb->update(
+				$table,
+				array(
+					'status'     => $next_status,
+					'attempts'   => $attempts,
+					'last_error' => substr( $e->getMessage(), 0, 500 ),
+				),
+				array( 'id' => $event_id )
+			);
+
+			ssm_log(
+				sprintf( 'Notification event #%d fan-out failed on attempt %d: %s', $event_id, $attempts, $e->getMessage() ),
+				'error'
+			);
+		}
+	}
+
+	/**
+	 * @param object $event notification_events row.
+	 */
+	private static function fan_out_incident_event( $event ) {
+		$incident = IncidentManager::get_incident( $event->reference_id );
+
+		if ( ! $incident ) {
+			return;
+		}
+
+		$update = $event->update_id ? self::get_incident_update( $event->update_id ) : null;
+
+		self::notify_for_incident( $incident, $event->event_type, self::incident_prefix_for_event( $event->event_type ), $update );
+	}
+
+	/**
+	 * @param object $event notification_events row.
+	 */
+	private static function fan_out_maintenance_event( $event ) {
+		$maintenance = MaintenanceManager::get_maintenance( $event->reference_id );
+
+		if ( ! $maintenance ) {
+			return;
+		}
+
+		$update = $event->update_id ? self::get_maintenance_update( $event->update_id ) : null;
+		$meta   = $event->meta ? json_decode( $event->meta, true ) : array();
+
+		self::notify_for_maintenance( $maintenance, $event->event_type, self::maintenance_prefix_for_event( $event->event_type, (array) $meta ), $update );
+	}
+
+	/**
+	 * @param string $event_type Event type slug.
+	 * @return string Subject-line prefix, mirrors the literal strings the
+	 *                on_incident_*() handlers used to pass directly.
+	 */
+	private static function incident_prefix_for_event( $event_type ) {
+		$prefixes = array(
+			'incident_created'  => __( 'New Incident: ', 'service-status-manager' ),
+			'incident_updated'  => __( 'Incident Update: ', 'service-status-manager' ),
+			'incident_resolved' => __( 'Resolved: ', 'service-status-manager' ),
+		);
+
+		return $prefixes[ $event_type ] ?? '';
+	}
+
+	/**
+	 * @param string $event_type Event type slug.
+	 * @param array  $meta       Event meta (only 'lead_hours' is used, for maintenance_reminder).
+	 * @return string
+	 */
+	private static function maintenance_prefix_for_event( $event_type, array $meta = array() ) {
+		if ( 'maintenance_reminder' === $event_type ) {
+			return sprintf(
+				/* translators: %d: hours until maintenance starts */
+				__( 'Reminder: Maintenance in %d hour(s): ', 'service-status-manager' ),
+				(int) ( $meta['lead_hours'] ?? 0 )
+			);
+		}
+
+		$prefixes = array(
+			'maintenance_announced' => __( 'Scheduled Maintenance: ', 'service-status-manager' ),
+			'maintenance_started'   => __( 'Maintenance Started: ', 'service-status-manager' ),
+			'maintenance_completed' => __( 'Maintenance Completed: ', 'service-status-manager' ),
+			'maintenance_extended'  => __( 'Maintenance Extended: ', 'service-status-manager' ),
+			'maintenance_cancelled' => __( 'Maintenance Cancelled: ', 'service-status-manager' ),
+			'maintenance_updated'   => __( 'Maintenance Update: ', 'service-status-manager' ),
+		);
+
+		return $prefixes[ $event_type ] ?? '';
+	}
+
+	/**
+	 * @param int $update_id incident_updates.id.
+	 * @return object|null
+	 */
+	private static function get_incident_update( $update_id ) {
+		global $wpdb;
+		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . ssm_table( 'incident_updates' ) . ' WHERE id = %d', $update_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/**
+	 * @param int $update_id maintenance_updates.id.
+	 * @return object|null
+	 */
+	private static function get_maintenance_update( $update_id ) {
+		global $wpdb;
+		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . ssm_table( 'maintenance_updates' ) . ' WHERE id = %d', $update_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
 
 	/**
 	 * Builds and queues notifications for every subscriber matching an
-	 * incident's affected services/monitors.
+	 * incident's affected services/monitors. Called only from
+	 * fan_out_incident_event() - never directly from the domain event.
 	 *
 	 * @param object      $incident Incident row.
 	 * @param string      $event    Event type slug.
@@ -123,6 +467,9 @@ class NotificationManager {
 			)
 		);
 
+		$priority = self::priority_for( $event, $incident->severity );
+		$rows     = array();
+
 		foreach ( $subscribers as $subscriber ) {
 			$channels = self::active_channels( $subscriber->id );
 
@@ -148,21 +495,22 @@ class NotificationManager {
 					'event_type'        => $event,
 				);
 
-				$queued_id = NotificationQueue::enqueue(
-					array(
-						'subscriber_id'  => $subscriber->id,
-						'channel'        => $channel,
-						'event_type'     => $event,
-						'reference_type' => 'incident',
-						'reference_id'   => $incident->id,
-						'payload'        => $payload,
-						'dedup_key'      => sprintf( 'incident-%d-%s-%d-%s', $incident->id, $update ? $update->id : $event, $subscriber->id, $channel ),
-					)
+				$rows[] = array(
+					'subscriber_id'  => $subscriber->id,
+					'channel'        => $channel,
+					'event_type'     => $event,
+					'reference_type' => 'incident',
+					'reference_id'   => $incident->id,
+					'payload'        => $payload,
+					'priority'       => $priority,
+					'dedup_key'      => sprintf( 'incident-%d-%s-%d-%s', $incident->id, $update ? $update->id : $event, $subscriber->id, $channel ),
 				);
-
-				ssm_log( sprintf( 'Incident #%d (%s): queue row %s for subscriber #%d via %s.', $incident->id, $event, $queued_id ? '#' . $queued_id : 'NOT created (duplicate dedup_key)', $subscriber->id, $channel ), 'debug' );
 			}
 		}
+
+		ssm_log( sprintf( 'Incident #%d (%s): %d notification(s) queued for dispatch.', $incident->id, $event, count( $rows ) ), 'debug' );
+
+		self::bulk_enqueue( $rows );
 	}
 
 	/**
@@ -189,74 +537,60 @@ class NotificationManager {
 	}
 
 	/**
-	 * @param object $maintenance Maintenance row.
-	 */
-	public static function on_maintenance_announced( $maintenance ) {
-		self::notify_for_maintenance( $maintenance, 'maintenance_announced', __( 'Scheduled Maintenance: ', 'service-status-manager' ) );
-	}
-
-	/**
-	 * @param object      $maintenance Maintenance row.
-	 * @param object|null $update      The update row that triggered this transition, if any.
-	 */
-	public static function on_maintenance_started( $maintenance, $update = null ) {
-		self::notify_for_maintenance( $maintenance, 'maintenance_started', __( 'Maintenance Started: ', 'service-status-manager' ), $update );
-	}
-
-	/**
-	 * @param object      $maintenance Maintenance row.
-	 * @param object|null $update      The update row that triggered this transition, if any.
-	 */
-	public static function on_maintenance_completed( $maintenance, $update = null ) {
-		self::notify_for_maintenance( $maintenance, 'maintenance_completed', __( 'Maintenance Completed: ', 'service-status-manager' ), $update );
-	}
-
-	/**
-	 * @param object $maintenance Maintenance row.
-	 */
-	public static function on_maintenance_extended( $maintenance ) {
-		self::notify_for_maintenance( $maintenance, 'maintenance_extended', __( 'Maintenance Extended: ', 'service-status-manager' ) );
-	}
-
-	/**
-	 * @param object      $maintenance Maintenance row.
-	 * @param object|null $update      The update row that triggered this transition, if any.
-	 */
-	public static function on_maintenance_cancelled( $maintenance, $update = null ) {
-		self::notify_for_maintenance( $maintenance, 'maintenance_cancelled', __( 'Maintenance Cancelled: ', 'service-status-manager' ), $update );
-	}
-
-	/**
-	 * A status-unchanged progress note posted to an in-progress (or
-	 * scheduled) maintenance window's timeline.
+	 * Maps an event (plus severity, for incidents) to a queue priority.
+	 * Lower numbers are claimed first, so a critical incident's SMS never
+	 * waits behind a routine maintenance reminder sitting in the same
+	 * channel's queue.
 	 *
-	 * @param object $maintenance Maintenance row.
-	 * @param object $update      The new update row.
-	 */
-	public static function on_maintenance_updated( $maintenance, $update ) {
-		self::notify_for_maintenance( $maintenance, 'maintenance_updated', __( 'Maintenance Update: ', 'service-status-manager' ), $update );
-	}
-
-	/**
-	 * @param object $maintenance Maintenance row.
-	 * @param int    $lead_hours  Hours before start this reminder fires.
-	 */
-	public static function on_maintenance_reminder( $maintenance, $lead_hours ) {
-		self::notify_for_maintenance(
-			$maintenance,
-			'maintenance_reminder',
-			sprintf(
-				/* translators: %d: hours until maintenance starts */
-				__( 'Reminder: Maintenance in %d hour(s): ', 'service-status-manager' ),
-				$lead_hours
-			)
-		);
-	}
-
-	/**
-	 * Builds and queues maintenance notifications for matching, opted-in
-	 * subscribers.
+	 * 0 = critical incident
+	 * 1 = major incident, transactional subscriber messages (verification/management link)
+	 * 2 = minor incident, maintenance started
+	 * 3 = informational incident, incident resolved, maintenance completed/cancelled/updated (default)
+	 * 4 = maintenance announced/extended/reminder
+	 * 5 = reserved for a future digest feature
 	 *
+	 * @param string      $event_type Event type slug.
+	 * @param string|null $severity   Incident severity, when relevant.
+	 * @return int
+	 */
+	public static function priority_for( $event_type, $severity = null ) {
+		if ( in_array( $event_type, array( 'subscription_confirmation', 'management_link' ), true ) ) {
+			return 1;
+		}
+
+		if ( in_array( $event_type, array( 'incident_created', 'incident_updated' ), true ) ) {
+			switch ( $severity ) {
+				case 'critical':
+					return 0;
+				case 'major':
+					return 1;
+				case 'minor':
+					return 2;
+				default:
+					return 3;
+			}
+		}
+
+		if ( 'incident_resolved' === $event_type ) {
+			return 3;
+		}
+
+		if ( 'maintenance_started' === $event_type ) {
+			return 2;
+		}
+
+		if ( in_array( $event_type, array( 'maintenance_completed', 'maintenance_cancelled', 'maintenance_updated' ), true ) ) {
+			return 3;
+		}
+
+		if ( in_array( $event_type, array( 'maintenance_announced', 'maintenance_extended', 'maintenance_reminder' ), true ) ) {
+			return 4;
+		}
+
+		return 3;
+	}
+
+	/**
 	 * @param object      $maintenance Maintenance row.
 	 * @param string      $event       Event type slug.
 	 * @param string      $prefix      Subject line prefix.
@@ -305,6 +639,9 @@ class NotificationManager {
 			)
 		);
 
+		$priority = self::priority_for( $event );
+		$rows     = array();
+
 		foreach ( $subscribers as $subscriber ) {
 			foreach ( self::active_channels( $subscriber->id ) as $channel ) {
 				$payload = array(
@@ -323,18 +660,36 @@ class NotificationManager {
 					'event_type'        => $event,
 				);
 
-				NotificationQueue::enqueue(
-					array(
-						'subscriber_id'  => $subscriber->id,
-						'channel'        => $channel,
-						'event_type'     => $event,
-						'reference_type' => 'maintenance',
-						'reference_id'   => $maintenance->id,
-						'payload'        => $payload,
-						'dedup_key'      => sprintf( 'maintenance-%d-%s-%d-%s', $maintenance->id, $update ? $event . '-' . $update->id : $event, $subscriber->id, $channel ),
-					)
+				$rows[] = array(
+					'subscriber_id'  => $subscriber->id,
+					'channel'        => $channel,
+					'event_type'     => $event,
+					'reference_type' => 'maintenance',
+					'reference_id'   => $maintenance->id,
+					'payload'        => $payload,
+					'priority'       => $priority,
+					'dedup_key'      => sprintf( 'maintenance-%d-%s-%d-%s', $maintenance->id, $update ? $event . '-' . $update->id : $event, $subscriber->id, $channel ),
 				);
 			}
+		}
+
+		self::bulk_enqueue( $rows );
+	}
+
+	/**
+	 * Queues a batch of already-built notification_queue row args in
+	 * chunks of ~500 multi-row inserts, rather than one enqueue() call
+	 * (and one round trip) per subscriber-channel pair.
+	 *
+	 * @param array[] $rows Rows shaped for Notifications\NotificationQueue::enqueue_many().
+	 */
+	private static function bulk_enqueue( array $rows ) {
+		if ( empty( $rows ) ) {
+			return;
+		}
+
+		foreach ( array_chunk( $rows, 500 ) as $chunk ) {
+			NotificationQueue::enqueue_many( $chunk );
 		}
 	}
 
@@ -343,6 +698,10 @@ class NotificationManager {
 	 * services/monitors/groups (or who have no specific selections at
 	 * all, which is treated as "subscribed to everything"), filtered by
 	 * minimum severity preference.
+	 *
+	 * Runs one lean query for candidate subscribers, then one (or a few,
+	 * chunked at 1,000 IDs) query for their selections, rather than a
+	 * separate subscriber_selections query per subscriber.
 	 *
 	 * @param int[]  $service_ids         Affected service IDs.
 	 * @param int[]  $monitor_ids         Affected monitor IDs.
@@ -357,11 +716,11 @@ class NotificationManager {
 		$subscribers_table = ssm_table( 'subscribers' );
 		$selections_table  = ssm_table( 'subscriber_selections' );
 
-		$active = $wpdb->get_results( "SELECT * FROM {$subscribers_table} WHERE status = 'active'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$active = $wpdb->get_results( "SELECT id, min_severity, maintenance_notifications FROM {$subscribers_table} WHERE status = 'active'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		ssm_log( sprintf( 'Notification targeting: %d subscriber(s) with status=active found overall.', count( $active ) ), 'debug' );
 
-		$matches = array();
+		$candidates = array();
 
 		foreach ( $active as $subscriber ) {
 			if ( $maintenance_context && ! $subscriber->maintenance_notifications ) {
@@ -373,7 +732,30 @@ class NotificationManager {
 				continue;
 			}
 
-			$selections = $wpdb->get_results( $wpdb->prepare( "SELECT scope_type, scope_id FROM {$selections_table} WHERE subscriber_id = %d", $subscriber->id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$candidates[ (int) $subscriber->id ] = $subscriber;
+		}
+
+		if ( empty( $candidates ) ) {
+			return array();
+		}
+
+		$selections_by_subscriber = array();
+
+		foreach ( array_chunk( array_keys( $candidates ), 1000 ) as $id_chunk ) {
+			$placeholders = implode( ',', array_fill( 0, count( $id_chunk ), '%d' ) );
+			$rows         = $wpdb->get_results(
+				$wpdb->prepare( "SELECT subscriber_id, scope_type, scope_id FROM {$selections_table} WHERE subscriber_id IN ({$placeholders})", $id_chunk ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			);
+
+			foreach ( $rows as $row ) {
+				$selections_by_subscriber[ (int) $row->subscriber_id ][] = $row;
+			}
+		}
+
+		$matches = array();
+
+		foreach ( $candidates as $subscriber_id => $subscriber ) {
+			$selections = $selections_by_subscriber[ $subscriber_id ] ?? array();
 
 			if ( empty( $selections ) ) {
 				$matches[] = $subscriber;
@@ -393,7 +775,7 @@ class NotificationManager {
 			}
 
 			if ( ! $hit ) {
-				ssm_log( sprintf( 'Notification targeting: subscriber #%d skipped - their selected services/groups/monitors do not overlap with this event.', $subscriber->id ), 'debug' );
+				ssm_log( sprintf( 'Notification targeting: subscriber #%d skipped - their selected services/groups/monitors do not overlap with this event.', $subscriber_id ), 'debug' );
 			}
 		}
 
@@ -440,7 +822,9 @@ class NotificationManager {
 	}
 
 	/**
-	 * Queues a channel verification (double opt-in) message.
+	 * Queues a channel verification (double opt-in) message. Per-subscriber
+	 * and low-volume (one recipient) - stays a direct, synchronous enqueue()
+	 * rather than going through the deferred notification_events path.
 	 *
 	 * @param int    $subscriber_id Subscriber ID.
 	 * @param string $channel       Channel being verified.
@@ -471,6 +855,7 @@ class NotificationManager {
 				'reference_type' => 'subscriber',
 				'reference_id'   => $subscriber_id,
 				'payload'        => $payload,
+				'priority'       => self::priority_for( 'subscription_confirmation' ),
 				'dedup_key'      => 'verify-' . $subscriber_id . '-' . $channel . '-' . substr( md5( $token ), 0, 8 ),
 			)
 		);
@@ -492,6 +877,7 @@ class NotificationManager {
 	/**
 	 * Queues a "here is your management link" message for an already
 	 * verified/active subscriber requesting it via resend_confirmation().
+	 * Per-subscriber and low-volume - stays direct, same as above.
 	 *
 	 * @param int    $subscriber_id Subscriber ID.
 	 * @param string $token         Raw management token.
@@ -520,6 +906,7 @@ class NotificationManager {
 				'reference_type' => 'subscriber',
 				'reference_id'   => $subscriber_id,
 				'payload'        => $payload,
+				'priority'       => self::priority_for( 'management_link' ),
 				'dedup_key'      => 'manage-link-' . $subscriber_id . '-' . substr( md5( $token ), 0, 8 ),
 			)
 		);

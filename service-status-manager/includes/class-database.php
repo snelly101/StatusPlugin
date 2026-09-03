@@ -332,17 +332,61 @@ class Database {
 			reference_id BIGINT UNSIGNED DEFAULT NULL,
 			payload LONGTEXT DEFAULT NULL,
 			status VARCHAR(20) NOT NULL DEFAULT 'pending',
+			priority TINYINT UNSIGNED NOT NULL DEFAULT 3,
 			attempts SMALLINT UNSIGNED NOT NULL DEFAULT 0,
 			max_attempts SMALLINT UNSIGNED NOT NULL DEFAULT 5,
 			next_attempt_at DATETIME NOT NULL,
 			last_error VARCHAR(500) DEFAULT NULL,
+			locked_by VARCHAR(40) DEFAULT NULL,
+			locked_at DATETIME DEFAULT NULL,
+			lease_expires_at DATETIME DEFAULT NULL,
+			provider_message_id VARCHAR(190) DEFAULT NULL,
+			provider_status VARCHAR(40) DEFAULT NULL,
+			delivered_at DATETIME DEFAULT NULL,
 			created_at DATETIME NOT NULL,
 			sent_at DATETIME DEFAULT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY dedup_key (dedup_key),
 			KEY status_next (status, next_attempt_at),
 			KEY subscriber_id (subscriber_id),
-			KEY reference (reference_type, reference_id)
+			KEY reference (reference_type, reference_id),
+			KEY claim_lookup (channel, status, next_attempt_at),
+			KEY reclaim_lookup (status, lease_expires_at)
+		) {$charset_collate};";
+
+		$schema['notification_events'] = "CREATE TABLE {$p}notification_events (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			event_type VARCHAR(60) NOT NULL,
+			reference_type VARCHAR(30) NOT NULL,
+			reference_id BIGINT UNSIGNED NOT NULL,
+			update_id BIGINT UNSIGNED DEFAULT NULL,
+			severity VARCHAR(20) DEFAULT NULL,
+			meta LONGTEXT DEFAULT NULL,
+			status VARCHAR(20) NOT NULL DEFAULT 'pending',
+			cursor_subscriber_id BIGINT UNSIGNED DEFAULT NULL,
+			attempts SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+			last_error VARCHAR(500) DEFAULT NULL,
+			created_at DATETIME NOT NULL,
+			fanned_out_at DATETIME DEFAULT NULL,
+			PRIMARY KEY  (id),
+			KEY status_created (status, created_at)
+		) {$charset_collate};";
+
+		$schema['notification_runs'] = "CREATE TABLE {$p}notification_runs (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			run_id VARCHAR(40) NOT NULL,
+			trigger_source VARCHAR(20) NOT NULL,
+			started_at DATETIME NOT NULL,
+			finished_at DATETIME DEFAULT NULL,
+			events_fanned_out INT UNSIGNED NOT NULL DEFAULT 0,
+			rows_claimed INT UNSIGNED NOT NULL DEFAULT 0,
+			rows_sent INT UNSIGNED NOT NULL DEFAULT 0,
+			rows_failed INT UNSIGNED NOT NULL DEFAULT 0,
+			channels_processed VARCHAR(60) DEFAULT NULL,
+			chained_next TINYINT(1) NOT NULL DEFAULT 0,
+			PRIMARY KEY  (id),
+			KEY run_id (run_id),
+			KEY started_at (started_at)
 		) {$charset_collate};";
 
 		$schema['notification_log'] = "CREATE TABLE {$p}notification_log (
