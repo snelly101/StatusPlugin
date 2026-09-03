@@ -87,6 +87,50 @@ if ( ! function_exists( 'get_transient' ) ) {
 if ( ! function_exists( 'set_transient' ) ) {
 	function set_transient( $key, $value, $expire = 0 ) { $GLOBALS['ssm_test_transients'][ $key ] = $value; return true; }
 }
+if ( ! function_exists( 'absint' ) ) {
+	function absint( $value ) { return abs( (int) $value ); }
+}
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+	function wp_strip_all_tags( $text ) { return trim( strip_tags( (string) $text ) ); }
+}
+if ( ! function_exists( 'sanitize_hex_color' ) ) {
+	function sanitize_hex_color( $color ) {
+		if ( '' === $color ) {
+			return '';
+		}
+		return preg_match( '/^#([A-Fa-f0-9]{3}){1,2}$/', $color ) ? $color : null;
+	}
+}
+if ( ! function_exists( 'wp_json_encode' ) ) {
+	function wp_json_encode( $data, $options = 0 ) { return json_encode( $data, $options ); } // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+}
+
+if ( ! class_exists( 'WP_Error' ) ) {
+	/**
+	 * Minimal stand-in for WordPress's WP_Error - just enough for pure
+	 * logic under test to construct and read one via get_error_message().
+	 */
+	class WP_Error {
+		private $code;
+		private $message;
+
+		public function __construct( $code = '', $message = '' ) {
+			$this->code    = $code;
+			$this->message = $message;
+		}
+
+		public function get_error_message() {
+			return $this->message;
+		}
+
+		public function get_error_code() {
+			return $this->code;
+		}
+	}
+}
+if ( ! function_exists( 'is_wp_error' ) ) {
+	function is_wp_error( $thing ) { return $thing instanceof WP_Error; }
+}
 
 /**
  * Test double for ssm_log() - the real one writes to a database table via
@@ -107,3 +151,5 @@ require_once __DIR__ . '/../notifications/class-notification-circuit-breaker.php
 require_once __DIR__ . '/../includes/class-notification-manager.php';
 require_once __DIR__ . '/../notifications/class-notification-queue.php';
 require_once __DIR__ . '/../includes/class-maintenance-manager.php';
+require_once __DIR__ . '/../includes/class-appearance-settings.php';
+require_once __DIR__ . '/../includes/class-appearance-renderer.php';

@@ -160,7 +160,7 @@
 .ssm-status-page {
 	position: relative;
 	isolation: isolate;
-	max-width: 920px;
+	max-width: var(--ssm-content-max-width, 920px);
 	margin: 0 auto;
 	padding: var(--ssm-sp-6) var(--ssm-sp-4) var(--ssm-sp-8);
 	font-family: var(--ssm-font);
@@ -452,7 +452,9 @@
 
 .ssm-card {
 	background: var(--ssm-surface);
-	border: 1px solid var(--ssm-border);
+	border-width: var(--ssm-card-border-width, 1px);
+	border-style: solid;
+	border-color: var(--ssm-border);
 	border-radius: var(--ssm-r-lg);
 	box-shadow: var(--ssm-shadow-sm);
 	transition: box-shadow var(--ssm-normal) var(--ssm-ease), transform var(--ssm-normal) var(--ssm-ease), border-color var(--ssm-normal) var(--ssm-ease);

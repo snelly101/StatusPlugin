@@ -366,3 +366,44 @@
 		width: 100%;
 	}
 }
+
+/* Appearance settings screen. The preview panel loads the real public.css
+   (via .ssm-status-page), so it stays scoped and always matches the front
+   end exactly - no separate preview stylesheet to keep in sync. */
+.ssm-appearance-side {
+	position: sticky;
+	top: 32px;
+}
+
+.ssm-appearance-preview {
+	border: 1px solid var(--ssm-border);
+	border-radius: 6px;
+	overflow: hidden;
+	background: #fff;
+	margin-bottom: 20px;
+}
+
+.ssm-appearance-preview-page {
+	max-width: none !important;
+	padding: 16px !important;
+	font-size: 13px !important;
+	transform-origin: top left;
+}
+
+.ssm-appearance-tools h2 {
+	margin-top: 24px;
+	margin-bottom: 8px;
+	font-size: 14px;
+}
+
+.ssm-appearance-tools h2:first-child {
+	margin-top: 0;
+}
+
+.ssm-appearance-tools form {
+	margin-bottom: 4px;
+}
+
+.ssm-appearance-form .wp-picker-container {
+	vertical-align: middle;
+}

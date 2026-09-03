@@ -13,6 +13,7 @@ use ServiceStatusManager\SubscriberManager;
 use ServiceStatusManager\RateLimiter;
 use ServiceStatusManager\StatusPageManager;
 use ServiceStatusManager\Capabilities;
+use ServiceStatusManager\AppearanceRenderer;
 use ServiceStatusManager\Notifications\NotificationQueue;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -61,6 +62,7 @@ class PublicController {
 	 */
 	public function enqueue_assets() {
 		wp_enqueue_style( 'ssm-public', SSM_PLUGIN_URL . 'public/css/public.css', array(), SSM_VERSION );
+		wp_add_inline_style( 'ssm-public', AppearanceRenderer::build_css() );
 		wp_enqueue_script( 'ssm-public', SSM_PLUGIN_URL . 'public/js/public.js', array(), SSM_VERSION, true );
 
 		$page            = StatusPageManager::get_page_by_slug( 'main' );

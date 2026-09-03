@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.12.3
+Stable tag: 1.13.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.13.0 =
+New: Service Status -> Appearance screen for customising the public status page's look without writing CSS - primary/hover colours, page and secondary background, card background/hover/border colour/border width/corner roundness/shadow strength, text and muted-text colour, all six status colours (with a note that colour is always paired with a label and icon, never used alone), content width, and an advanced Custom CSS field, plus a live preview panel, Reset to Defaults, and JSON export/import. Every default matches the plugin's existing hardcoded look exactly, so this upgrade does not change how any existing status page looks until an admin visits the new screen and changes something. This is the first phase of a larger appearance system (background gradients/images, header/logo/button styling, dark-mode-specific colours, and theme presets are planned for later releases) and is purely visual - monitoring, incidents, maintenance, subscriptions and notifications are completely unaffected.
 
 = 1.12.3 =
 Fixed "Pin to top of status page" having no visible effect: a pinned incident's only signal was a barely-perceptible shadow difference (every incident card already has a shadow by default), and a pinned-but-resolved incident wasn't sorted to the top of "Recently resolved" at all (only the active-incidents ordering respected the pin). Pinned incidents now show a "Pinned" badge on the public status page, and pinning is honoured in both the active and resolved incident lists. Also set the plugin author to SnelsonServer.

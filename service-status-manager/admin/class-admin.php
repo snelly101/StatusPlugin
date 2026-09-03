@@ -29,6 +29,7 @@ require_once __DIR__ . '/traits/trait-admin-incidents.php';
 require_once __DIR__ . '/traits/trait-admin-subscribers.php';
 require_once __DIR__ . '/traits/trait-admin-notifications.php';
 require_once __DIR__ . '/traits/trait-admin-settings.php';
+require_once __DIR__ . '/traits/trait-admin-appearance.php';
 
 class Admin {
 
@@ -36,6 +37,7 @@ class Admin {
 	use AdminSubscribersTrait;
 	use AdminNotificationsTrait;
 	use AdminSettingsTrait;
+	use AdminAppearanceTrait;
 
 	const MENU_SLUG = 'service-status-manager';
 
@@ -77,6 +79,10 @@ class Admin {
 			'ssm_export_report'     => 'handle_export_report',
 			'ssm_download_logs'     => 'handle_download_logs',
 			'ssm_uninstall_setting' => 'handle_uninstall_setting',
+			'ssm_save_appearance'   => 'handle_save_appearance',
+			'ssm_reset_appearance'  => 'handle_reset_appearance',
+			'ssm_export_appearance' => 'handle_export_appearance',
+			'ssm_import_appearance' => 'handle_import_appearance',
 		);
 
 		foreach ( $handlers as $action => $method ) {
@@ -110,6 +116,7 @@ class Admin {
 			'notifications'  => array( __( 'Notifications', 'service-status-manager' ), Capabilities::MANAGE_SUBSCRIBERS, 'render_notifications' ),
 			'notification-engine' => array( __( 'Notification Engine', 'service-status-manager' ), Capabilities::MANAGE_INTEGRATIONS, 'render_notification_engine' ),
 			'reports'        => array( __( 'Reports', 'service-status-manager' ), Capabilities::VIEW, 'render_reports' ),
+			'appearance'     => array( __( 'Appearance', 'service-status-manager' ), Capabilities::MANAGE_SETTINGS, 'render_appearance' ),
 			'settings'       => array( __( 'Settings', 'service-status-manager' ), Capabilities::MANAGE_SETTINGS, 'render_settings' ),
 			'logs'           => array( __( 'Logs', 'service-status-manager' ), Capabilities::MANAGE, 'render_logs' ),
 			'tools'          => array( __( 'Tools', 'service-status-manager' ), Capabilities::MANAGE, 'render_tools' ),
@@ -148,6 +155,15 @@ class Admin {
 				'nonce'   => wp_create_nonce( 'ssm_admin_ajax' ),
 			)
 		);
+
+		if ( false !== strpos( (string) $hook, 'appearance' ) ) {
+			// The preview panel reuses the real public stylesheet so it
+			// always matches the front end exactly, rather than a second,
+			// separately-maintained preview stylesheet.
+			wp_enqueue_style( 'ssm-public', SSM_PLUGIN_URL . 'public/css/public.css', array(), SSM_VERSION );
+			wp_enqueue_style( 'wp-color-picker' );
+			wp_enqueue_script( 'ssm-appearance', SSM_PLUGIN_URL . 'admin/js/appearance.js', array( 'jquery', 'wp-color-picker' ), SSM_VERSION, true );
+		}
 	}
 
 	/**
@@ -261,6 +277,10 @@ class Admin {
 
 	public function render_settings() {
 		$this->view( 'settings' );
+	}
+
+	public function render_appearance() {
+		$this->view( 'appearance' );
 	}
 
 	public function render_logs() {
