@@ -108,6 +108,7 @@ $render_incident = function ( $incident ) use ( $severity_labels, $status_labels
 ?>
 <div class="ssm-incidents">
 	<?php if ( ! empty( $active_incidents ) ) : ?>
+		<h3><?php esc_html_e( 'Active incidents', 'service-status-manager' ); ?></h3>
 		<?php foreach ( $active_incidents as $incident ) : $render_incident( $incident ); endforeach; ?>
 	<?php else : ?>
 		<?php

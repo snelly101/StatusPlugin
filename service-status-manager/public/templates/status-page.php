@@ -108,7 +108,7 @@ $overall_def   = ssm_get_status_definition( $overall );
 	</div>
 
 	<div class="ssm-page-section" id="ssm-incidents">
-		<h2><?php esc_html_e( 'Incident history', 'service-status-manager' ); ?></h2>
+		<h2><?php esc_html_e( 'Incidents', 'service-status-manager' ); ?></h2>
 		<?php echo $shortcodes->render_incidents( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 	</div>
 

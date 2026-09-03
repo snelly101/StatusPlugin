@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.12.1
+Stable tag: 1.12.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.12.2 =
+The public status page's incidents section is now titled "Incidents" (previously "Incident history"), and an active incident sitting there now gets its own "Active incidents" heading above it, separate from the "Recently resolved" section below - previously an ongoing incident had no heading of its own and just sat directly under a section literally titled "history", which read as if it had already happened.
 
 = 1.12.1 =
 Creating an incident or a scheduled maintenance window now requires selecting at least one affected service - both the incident/maintenance forms and their underlying save logic reject a save with none picked (previously the service checklist was optional, so it was possible to create or edit down to an incident/maintenance with no services attached to it at all, which is never a useful state).
