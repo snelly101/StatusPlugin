@@ -416,7 +416,12 @@ class ServiceManager {
 	}
 
 	/**
-	 * Recalculates an automatic-mode service's status from its monitors.
+	 * Recalculates an automatic-mode service's status from every live
+	 * signal available: its monitors, and any active (non-resolved),
+	 * public incident affecting it - a manually-created incident has no
+	 * monitor of its own, so without this a service with no monitors
+	 * attached would never show as anything other than operational no
+	 * matter how severe an incident against it is.
 	 *
 	 * @param int $service_id Service ID.
 	 */
@@ -430,18 +435,29 @@ class ServiceManager {
 		$monitors = MonitorManager::get_monitors_for_service( $service_id );
 		$states   = wp_list_pluck( array_filter( $monitors, fn( $m ) => $m->is_active ), 'current_state' );
 
-		if ( empty( $states ) ) {
-			// Nothing to recalculate from (no monitors attached, or none
-			// active) - leave the service's current status as-is rather
-			// than forcing it to "unknown". Without this, resolving an
-			// incident on a service with no monitor would make the
-			// service look worse than before the incident, since this is
-			// also called from IncidentManager::add_update() for every
-			// affected service the moment an incident is resolved.
+		$candidates = array();
+
+		if ( ! empty( $states ) ) {
+			$candidates[] = StatusCalculator::calculate_service_status( $states );
+		}
+
+		$incident_status = IncidentManager::get_active_incident_status_for_service( $service_id );
+		if ( $incident_status ) {
+			$candidates[] = $incident_status;
+		}
+
+		if ( empty( $candidates ) ) {
+			// No monitors (or none active) and no active public incident
+			// severe enough to count - "operational" is the honest
+			// default here, not "unknown": it's what lets a resolved
+			// incident (or an ended maintenance window) on a
+			// monitor-less service actually clear back to normal instead
+			// of staying stuck at whatever it last showed.
+			self::set_status( $service_id, 'operational' );
 			return;
 		}
 
-		self::set_status( $service_id, StatusCalculator::calculate_service_status( $states ) );
+		self::set_status( $service_id, StatusCalculator::highest_priority( $candidates ) );
 	}
 
 	/**

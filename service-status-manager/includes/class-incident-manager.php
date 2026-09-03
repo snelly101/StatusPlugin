@@ -35,6 +35,53 @@ class IncidentManager {
 	}
 
 	/**
+	 * Maps an incident severity to the service status it should imply
+	 * while the incident is active. Informational incidents deliberately
+	 * have no entry - they represent no customer-facing impact, so they
+	 * don't move a service off "operational".
+	 */
+	const SEVERITY_SERVICE_STATUS = array(
+		'critical' => 'major_outage',
+		'major'    => 'partial_outage',
+		'minor'    => 'degraded',
+	);
+
+	/**
+	 * The service status implied by the most severe active (non-resolved,
+	 * public, already-published) incident affecting a given service, for
+	 * ServiceManager::recalculate_status() to combine with that service's
+	 * own monitor-derived status. A manually-created incident has no
+	 * monitor of its own, so without this an incident against a
+	 * monitor-less service could never move it off "operational".
+	 *
+	 * @param int $service_id Service ID.
+	 * @return string|null Status slug, or null if no active incident implies one.
+	 */
+	public static function get_active_incident_status_for_service( $service_id ) {
+		global $wpdb;
+
+		$sql = 'SELECT i.severity FROM ' . ssm_table( 'incidents' ) . ' i
+			INNER JOIN ' . ssm_table( 'incident_services' ) . ' isvc ON isvc.incident_id = i.id
+			WHERE isvc.service_id = %d AND i.status != %s AND i.is_public = 1
+			AND (i.scheduled_publish_at IS NULL OR i.scheduled_publish_at <= %s)';
+
+		$severities = $wpdb->get_col( $wpdb->prepare( $sql, absint( $service_id ), 'resolved', ssm_now() ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		$worst_severity = null;
+		$worst_rank     = -1;
+
+		foreach ( $severities as $severity ) {
+			$rank = array_search( $severity, self::SEVERITIES, true );
+			if ( false !== $rank && $rank > $worst_rank ) {
+				$worst_rank     = $rank;
+				$worst_severity = $severity;
+			}
+		}
+
+		return self::SEVERITY_SERVICE_STATUS[ $worst_severity ] ?? null;
+	}
+
+	/**
 	 * Returns recently resolved, public incidents.
 	 *
 	 * @param int $limit Maximum number to return.
@@ -231,6 +278,10 @@ class IncidentManager {
 			$wpdb->insert( ssm_table( 'incident_monitors' ), array( 'incident_id' => $incident_id, 'monitor_id' => absint( $monitor_id ) ) );
 		}
 
+		foreach ( self::get_services_for_incident( $incident_id ) as $service ) {
+			ServiceManager::recalculate_status( $service->id );
+		}
+
 		$message = ! empty( $data['initial_message'] ) ? $data['initial_message'] : $data['description'] ?? '';
 		if ( '' !== trim( wp_strip_all_tags( $message ) ) ) {
 			self::insert_update( $incident_id, $status, $message, false );
@@ -282,6 +333,12 @@ class IncidentManager {
 			'updated_at'           => ssm_now(),
 		);
 
+		// Captured before service_ids is applied below, so a service moved
+		// *off* this incident still gets recalculated (otherwise it would
+		// be left showing whatever status the incident implied forever,
+		// since nothing else would ever re-check it).
+		$previously_affected = wp_list_pluck( self::get_services_for_incident( $id ), 'id' );
+
 		$wpdb->update( ssm_table( 'incidents' ), $fields, array( 'id' => $id ) );
 
 		if ( isset( $data['service_ids'] ) ) {
@@ -295,6 +352,17 @@ class IncidentManager {
 			foreach ( (array) $data['monitor_ids'] as $monitor_id ) {
 				$wpdb->insert( ssm_table( 'incident_monitors' ), array( 'incident_id' => $id, 'monitor_id' => absint( $monitor_id ) ) );
 			}
+		}
+
+		// Re-derive status for every service that was affected either
+		// before or after this save (a plain union - recalculating one
+		// that didn't actually change is harmless) - covers a service
+		// being added or removed from service_ids, and the severity or
+		// is_public flag changing for services that stayed affected
+		// throughout.
+		$currently_affected = wp_list_pluck( self::get_services_for_incident( $id ), 'id' );
+		foreach ( array_unique( array_merge( $previously_affected, $currently_affected ) ) as $service_id ) {
+			ServiceManager::recalculate_status( $service_id );
 		}
 
 		AuditLog::record( 'incident_updated', 'incident', $id, array( 'title' => $existing->title ), array( 'title' => $fields['title'] ) );
@@ -335,7 +403,11 @@ class IncidentManager {
 		}
 		$wpdb->update( ssm_table( 'incidents' ), $fields, array( 'id' => $incident_id ) );
 
-		if ( 'resolved' === $status ) {
+		// Whether this posting resolves the incident or reopens a
+		// previously-resolved one, either transition changes whether it
+		// still counts as "active" for get_active_incident_status_for_service()
+		// - recalculate every affected service either way.
+		if ( $status !== $incident->status ) {
 			foreach ( self::get_services_for_incident( $incident_id ) as $service ) {
 				ServiceManager::recalculate_status( $service->id );
 			}
@@ -412,10 +484,19 @@ class IncidentManager {
 		global $wpdb;
 		$id = absint( $id );
 
+		// Captured before the incident_services rows are deleted below, so
+		// a service this incident was elevating gets recalculated back to
+		// normal instead of being left stuck at whatever status it implied.
+		$affected_service_ids = wp_list_pluck( self::get_services_for_incident( $id ), 'id' );
+
 		$wpdb->delete( ssm_table( 'incident_updates' ), array( 'incident_id' => $id ) );
 		$wpdb->delete( ssm_table( 'incident_services' ), array( 'incident_id' => $id ) );
 		$wpdb->delete( ssm_table( 'incident_monitors' ), array( 'incident_id' => $id ) );
 		$wpdb->delete( ssm_table( 'incidents' ), array( 'id' => $id ) );
+
+		foreach ( $affected_service_ids as $service_id ) {
+			ServiceManager::recalculate_status( $service_id );
+		}
 
 		AuditLog::record( 'incident_deleted', 'incident', $id );
 	}

@@ -69,12 +69,15 @@ class StatusCalculator {
 
 	/**
 	 * Returns the most severe status from a list, according to the
-	 * configured priority order.
+	 * configured priority order. Public so callers combining status
+	 * signals from more than one source (e.g. ServiceManager combining a
+	 * service's monitors with any active incidents affecting it) can reuse
+	 * the same priority order rather than re-deriving it.
 	 *
 	 * @param string[] $statuses List of status slugs.
 	 * @return string
 	 */
-	private static function highest_priority( array $statuses ) {
+	public static function highest_priority( array $statuses ) {
 		$order = ssm_get_status_priority_order();
 
 		$best      = null;

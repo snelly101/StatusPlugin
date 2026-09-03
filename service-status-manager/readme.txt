@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.11.6
+Stable tag: 1.12.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,17 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.12.0 =
+Active incidents now affect the status shown for the services they're linked to, instead of only monitors (or a manual override) being able to. Previously, a manually-created incident (one you added yourself, not one raised automatically by a monitor) had no effect at all on a service's displayed status - the overall banner and that service's own badge stayed "Operational" the entire time the incident was open, unless a monitor also happened to be failing or you separately, manually marked the service down. This was most visible when reassigning an active incident to a different service: the newly-affected service showed no impact, and the previously-affected one - correctly - showed nothing either, so the top of the page said everything was fine while the incident itself was still listed as active further down.
+
+This only applies to services in Automatic status mode (Manual-mode services are never touched by this - you're always in full control there) and only while the incident is public and not yet resolved:
+* Critical severity -> Major outage
+* Major severity -> Partial outage
+* Minor severity -> Degraded
+* Informational severity has no effect, since it represents no customer-facing impact
+
+If a service also has its own monitor, the worse of the two (monitor result vs. incident severity) is shown - an incident can never make a service look better than what its monitor is actually reporting. Status is recalculated automatically whenever an incident is created, edited (including reassigning which services/severity it covers), posted an update to, resolved, reopened, or deleted, and correctly falls back to Operational once nothing (no monitor, no active incident) still implicates the service - including for a service with no monitor attached at all, which previously could get stuck showing an old status indefinitely once nothing was left to recalculate it away.
 
 = 1.11.6 =
 Fixes the Subscribers count on the Services page always showing 0. It only counted subscribers who explicitly picked that exact service when subscribing - it missed everyone who chose "Everything" (the default, and the most common choice), and also missed anyone who opted in via the service's group or one of its monitors rather than the service itself. Now counts the same way notifications are actually targeted: everything-subscribers, plus service/group/monitor-specific ones.

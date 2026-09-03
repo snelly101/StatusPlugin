@@ -69,4 +69,17 @@ final class StatusCalculatorTest extends TestCase {
 		$services[] = (object) array( 'status' => 'partial_outage', 'exclude_from_overall' => 0 );
 		$this->assertSame( 'partial_outage', StatusCalculator::calculate_overall_status( $services ) );
 	}
+
+	/**
+	 * highest_priority() is public specifically so ServiceManager can
+	 * combine a service's monitor-derived status with an active
+	 * incident's implied status and let the worse of the two win -
+	 * without this, an incident against a service with no monitor of its
+	 * own could never move that service off "operational".
+	 */
+	public function test_highest_priority_combines_monitor_and_incident_derived_status() {
+		$this->assertSame( 'major_outage', StatusCalculator::highest_priority( array( 'operational', 'major_outage' ) ) );
+		$this->assertSame( 'degraded', StatusCalculator::highest_priority( array( 'operational', 'degraded' ) ) );
+		$this->assertSame( 'partial_outage', StatusCalculator::highest_priority( array( 'degraded', 'partial_outage' ) ) );
+	}
 }
