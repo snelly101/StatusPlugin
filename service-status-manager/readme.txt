@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.11.4
+Stable tag: 1.11.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.11.5 =
+Fixes service groups, services, and status pages not getting a slug when the Slug field is left blank to auto-generate one from the name - it was being saved as a literal empty value instead. Because slugs must be unique, this also meant that after the *first* group/service/page was created this way, every next one created the same way (blank Slug field) silently failed to save at all - no error was shown, it just didn't appear in the list. Existing groups/services/pages left with a blank slug by this bug are automatically repaired to a real slug the next time the plugin loads after upgrading; no action needed. If you found that adding a second (or later) group/service/status page seemed to do nothing, it likely hit this - re-add anything that appears to be missing. Save failures like this now also show a clear error message instead of a false "saved" confirmation.
 
 = 1.11.4 =
 Fixes the "Add Service Group" and "Edit Subscriber" boxes not properly fitting their fields - WordPress's default form layout reserves a fixed 200px-wide label column and gives text inputs their own fixed widths, both sized for a full-width settings page, not the narrower (320-420px) card these two screens put them in. Labels now sit above their field instead of beside it, and fields size to the full width of the box, the same layout pattern WordPress's own narrow sidebar boxes (e.g. "Add New Category") use for exactly this reason.

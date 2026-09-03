@@ -68,7 +68,10 @@ class StatusPageManager {
 			return new \WP_Error( 'ssm_invalid_status_page', __( 'A status page name is required.', 'service-status-manager' ) );
 		}
 
-		$slug = self::unique_slug( sanitize_title( $data['slug'] ?? $name ) );
+		// $data['slug'] is always set (possibly to '') by the admin form
+		// when left blank for auto-generation, so `??` never falls back to
+		// the name - see the identical fix in ServiceManager::create_group().
+		$slug = self::unique_slug( sanitize_title( ! empty( $data['slug'] ) ? $data['slug'] : $name ) );
 
 		$wpdb->insert(
 			ssm_table( 'status_pages' ),
@@ -77,6 +80,10 @@ class StatusPageManager {
 				'updated_at' => ssm_now(),
 			)
 		);
+
+		if ( ! $wpdb->insert_id ) {
+			return new \WP_Error( 'ssm_status_page_save_failed', __( 'The status page could not be saved.', 'service-status-manager' ) . ( $wpdb->last_error ? ' ' . $wpdb->last_error : '' ) );
+		}
 
 		$id = (int) $wpdb->insert_id;
 		AuditLog::record( 'status_page_created', 'status_page', $id, null, $data );
@@ -165,6 +172,26 @@ class StatusPageManager {
 	 */
 	private static function sanitize_css( $css ) {
 		return wp_strip_all_tags( (string) $css );
+	}
+
+	/**
+	 * One-time repair for status pages saved with an empty slug (see
+	 * Plugin::maybe_repair_empty_slugs() for why) - regenerates a slug from
+	 * each affected page's name. Safe to call more than once; a page that
+	 * already has a non-empty slug is left untouched.
+	 */
+	public static function repair_empty_slugs() {
+		global $wpdb;
+		$table = ssm_table( 'status_pages' );
+
+		$pages = $wpdb->get_results( "SELECT id, name FROM {$table} WHERE slug = '' OR slug IS NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		foreach ( $pages as $page ) {
+			$wpdb->update(
+				$table,
+				array( 'slug' => self::unique_slug( sanitize_title( $page->name ), $page->id ) ),
+				array( 'id' => $page->id )
+			);
+		}
 	}
 
 	/**

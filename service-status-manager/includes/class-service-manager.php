@@ -48,7 +48,12 @@ class ServiceManager {
 			return new \WP_Error( 'ssm_invalid_group', __( 'A service group name is required.', 'service-status-manager' ) );
 		}
 
-		$slug = self::unique_group_slug( sanitize_title( $data['slug'] ?? $name ) );
+		// `??` alone doesn't work here: the admin form always submits a
+		// "slug" field, just empty when left blank for auto-generation, so
+		// $data['slug'] is *set* (to '') rather than absent, and `??` only
+		// falls back on absent/null - meaning a blank slug field was being
+		// saved as a literal empty string instead of falling back to the name.
+		$slug = self::unique_group_slug( sanitize_title( ! empty( $data['slug'] ) ? $data['slug'] : $name ) );
 
 		$wpdb->insert(
 			ssm_table( 'service_groups' ),
@@ -62,6 +67,15 @@ class ServiceManager {
 				'updated_at'     => ssm_now(),
 			)
 		);
+
+		if ( ! $wpdb->insert_id ) {
+			// Was silently swallowed before the fix above: a blank slug
+			// field saved as '', which the second such group/service/page
+			// collided with on the UNIQUE slug index and failed to insert
+			// at all - not just missing a slug, but never actually created,
+			// while the admin still saw a "saved" confirmation.
+			return new \WP_Error( 'ssm_group_save_failed', __( 'The service group could not be saved.', 'service-status-manager' ) . ( $wpdb->last_error ? ' ' . $wpdb->last_error : '' ) );
+		}
 
 		$id = (int) $wpdb->insert_id;
 		AuditLog::record( 'service_group_created', 'service_group', $id, null, $data );
@@ -123,6 +137,36 @@ class ServiceManager {
 		$wpdb->delete( ssm_table( 'service_groups' ), array( 'id' => $id ) );
 
 		AuditLog::record( 'service_group_deleted', 'service_group', $id );
+	}
+
+	/**
+	 * One-time repair for groups/services saved with an empty slug (see
+	 * Plugin::maybe_repair_empty_slugs() for why) - regenerates a slug
+	 * from each affected row's name. Safe to call more than once; a row
+	 * that already has a non-empty slug is left untouched.
+	 */
+	public static function repair_empty_slugs() {
+		global $wpdb;
+
+		$groups_table = ssm_table( 'service_groups' );
+		$groups       = $wpdb->get_results( "SELECT id, name FROM {$groups_table} WHERE slug = '' OR slug IS NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		foreach ( $groups as $group ) {
+			$wpdb->update(
+				$groups_table,
+				array( 'slug' => self::unique_group_slug( sanitize_title( $group->name ), $group->id ) ),
+				array( 'id' => $group->id )
+			);
+		}
+
+		$services_table = ssm_table( 'services' );
+		$services       = $wpdb->get_results( "SELECT id, name FROM {$services_table} WHERE slug = '' OR slug IS NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		foreach ( $services as $service ) {
+			$wpdb->update(
+				$services_table,
+				array( 'slug' => self::unique_service_slug( sanitize_title( $service->name ), $service->id ) ),
+				array( 'id' => $service->id )
+			);
+		}
 	}
 
 	/**
@@ -227,7 +271,10 @@ class ServiceManager {
 		}
 
 		$status = self::sanitize_status( $data['status'] ?? 'operational' );
-		$slug   = self::unique_service_slug( sanitize_title( $data['slug'] ?? $name ) );
+		// See the identical note in create_group(): $data['slug'] is always
+		// set (possibly to '') by the admin form, so `??` never falls back
+		// to the name for a blank/auto-generate slug field.
+		$slug   = self::unique_service_slug( sanitize_title( ! empty( $data['slug'] ) ? $data['slug'] : $name ) );
 
 		$wpdb->insert(
 			ssm_table( 'services' ),
@@ -249,6 +296,10 @@ class ServiceManager {
 				'updated_at'            => ssm_now(),
 			)
 		);
+
+		if ( ! $wpdb->insert_id ) {
+			return new \WP_Error( 'ssm_service_save_failed', __( 'The service could not be saved.', 'service-status-manager' ) . ( $wpdb->last_error ? ' ' . $wpdb->last_error : '' ) );
+		}
 
 		$id = (int) $wpdb->insert_id;
 		AuditLog::record( 'service_created', 'service', $id, null, $data );

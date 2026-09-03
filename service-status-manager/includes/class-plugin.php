@@ -53,6 +53,7 @@ class Plugin {
 		load_plugin_textdomain( SSM_TEXT_DOMAIN, false, dirname( SSM_PLUGIN_BASENAME ) . '/languages' );
 
 		$this->maybe_upgrade();
+		$this->maybe_repair_empty_slugs();
 
 		add_filter( 'cron_schedules', array( Cron::class, 'add_schedules' ) ); // phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 
@@ -107,5 +108,23 @@ class Plugin {
 		if ( $installed !== SSM_DB_VERSION ) {
 			Database::install();
 		}
+	}
+
+	/**
+	 * One-time data repair for service groups/services/status pages saved
+	 * with an empty slug - a bug (fixed in 1.11.5) where leaving the admin
+	 * "Slug" field blank stored an empty string instead of auto-generating
+	 * one from the name. Gated by an option flag so the three tables
+	 * involved are only ever queried once, not on every request.
+	 */
+	private function maybe_repair_empty_slugs() {
+		if ( get_option( 'ssm_empty_slugs_repaired', false ) ) {
+			return;
+		}
+
+		ServiceManager::repair_empty_slugs();
+		StatusPageManager::repair_empty_slugs();
+
+		update_option( 'ssm_empty_slugs_repaired', true, false );
 	}
 }
