@@ -239,6 +239,11 @@ class IncidentManager {
 			return new \WP_Error( 'ssm_invalid_incident', __( 'An incident title is required.', 'service-status-manager' ) );
 		}
 
+		$service_ids = array_values( array_filter( array_map( 'absint', (array) ( $data['service_ids'] ?? array() ) ) ) );
+		if ( empty( $service_ids ) ) {
+			return new \WP_Error( 'ssm_invalid_incident', __( 'At least one affected service is required.', 'service-status-manager' ) );
+		}
+
 		$severity = in_array( $data['severity'] ?? 'minor', self::SEVERITIES, true ) ? $data['severity'] : 'minor';
 		$status   = in_array( $data['status'] ?? 'investigating', self::STATUSES, true ) ? $data['status'] : 'investigating';
 		$slug     = self::unique_slug( sanitize_title( $title ) );
@@ -271,8 +276,8 @@ class IncidentManager {
 
 		$incident_id = (int) $wpdb->insert_id;
 
-		foreach ( (array) ( $data['service_ids'] ?? array() ) as $service_id ) {
-			$wpdb->insert( ssm_table( 'incident_services' ), array( 'incident_id' => $incident_id, 'service_id' => absint( $service_id ) ) );
+		foreach ( $service_ids as $service_id ) {
+			$wpdb->insert( ssm_table( 'incident_services' ), array( 'incident_id' => $incident_id, 'service_id' => $service_id ) );
 		}
 		foreach ( (array) ( $data['monitor_ids'] ?? array() ) as $monitor_id ) {
 			$wpdb->insert( ssm_table( 'incident_monitors' ), array( 'incident_id' => $incident_id, 'monitor_id' => absint( $monitor_id ) ) );
@@ -316,6 +321,10 @@ class IncidentManager {
 		$existing = self::get_incident( $id );
 		if ( ! $existing ) {
 			return new \WP_Error( 'ssm_not_found', __( 'Incident not found.', 'service-status-manager' ) );
+		}
+
+		if ( isset( $data['service_ids'] ) && empty( array_filter( array_map( 'absint', (array) $data['service_ids'] ) ) ) ) {
+			return new \WP_Error( 'ssm_invalid_incident', __( 'At least one affected service is required.', 'service-status-manager' ) );
 		}
 
 		$fields = array(

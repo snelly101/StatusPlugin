@@ -153,6 +153,11 @@ class MaintenanceManager {
 			return new \WP_Error( 'ssm_invalid_maintenance', __( 'A start and end time are required.', 'service-status-manager' ) );
 		}
 
+		$service_ids = array_values( array_filter( array_map( 'absint', (array) ( $data['service_ids'] ?? array() ) ) ) );
+		if ( empty( $service_ids ) ) {
+			return new \WP_Error( 'ssm_invalid_maintenance', __( 'At least one affected service is required.', 'service-status-manager' ) );
+		}
+
 		$slug = self::unique_slug( sanitize_title( $title ) );
 
 		$reminder_hours  = array_values( array_filter( array_map( 'absint', (array) ( $data['reminder_hours'] ?? ssm_get_setting( 'maintenance_reminder_hours', array( 24, 1 ) ) ) ) ) );
@@ -195,8 +200,8 @@ class MaintenanceManager {
 
 		$id = (int) $wpdb->insert_id;
 
-		foreach ( (array) ( $data['service_ids'] ?? array() ) as $service_id ) {
-			$wpdb->insert( ssm_table( 'maintenance_services' ), array( 'maintenance_id' => $id, 'service_id' => absint( $service_id ) ) );
+		foreach ( $service_ids as $service_id ) {
+			$wpdb->insert( ssm_table( 'maintenance_services' ), array( 'maintenance_id' => $id, 'service_id' => $service_id ) );
 		}
 		foreach ( (array) ( $data['monitor_ids'] ?? array() ) as $monitor_id ) {
 			$wpdb->insert( ssm_table( 'maintenance_monitors' ), array( 'maintenance_id' => $id, 'monitor_id' => absint( $monitor_id ) ) );
@@ -226,6 +231,10 @@ class MaintenanceManager {
 		$existing = self::get_maintenance( $id );
 		if ( ! $existing ) {
 			return new \WP_Error( 'ssm_not_found', __( 'Maintenance event not found.', 'service-status-manager' ) );
+		}
+
+		if ( isset( $data['service_ids'] ) && empty( array_filter( array_map( 'absint', (array) $data['service_ids'] ) ) ) ) {
+			return new \WP_Error( 'ssm_invalid_maintenance', __( 'At least one affected service is required.', 'service-status-manager' ) );
 		}
 
 		$was_extended = ! empty( $data['scheduled_end'] ) && $data['scheduled_end'] > $existing->scheduled_end && 'completed' !== $existing->status;

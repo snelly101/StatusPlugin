@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.12.0
+Stable tag: 1.12.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.12.1 =
+Creating an incident or a scheduled maintenance window now requires selecting at least one affected service - both the incident/maintenance forms and their underlying save logic reject a save with none picked (previously the service checklist was optional, so it was possible to create or edit down to an incident/maintenance with no services attached to it at all, which is never a useful state).
 
 = 1.12.0 =
 Active incidents now affect the status shown for the services they're linked to, instead of only monitors (or a manual override) being able to. Previously, a manually-created incident (one you added yourself, not one raised automatically by a monitor) had no effect at all on a service's displayed status - the overall banner and that service's own badge stayed "Operational" the entire time the incident was open, unless a monitor also happened to be failing or you separately, manually marked the service down. This was most visible when reassigning an active incident to a different service: the newly-affected service showed no impact, and the previously-affected one - correctly - showed nothing either, so the top of the page said everything was fine while the incident itself was still listed as active further down.

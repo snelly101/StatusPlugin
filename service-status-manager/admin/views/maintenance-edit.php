@@ -65,6 +65,7 @@ $can_manage      = current_user_can( Capabilities::MANAGE_INCIDENTS );
 			<tr>
 				<th><?php esc_html_e( 'Affected services', 'service-status-manager' ); ?></th>
 				<td>
+					<p class="description"><?php esc_html_e( 'At least one service is required.', 'service-status-manager' ); ?></p>
 					<?php foreach ( $services as $service ) : ?>
 						<label class="ssm-checkbox-row-admin">
 							<input type="checkbox" name="service_ids[]" value="<?php echo esc_attr( $service->id ); ?>" <?php checked( in_array( (int) $service->id, array_map( 'intval', $selected_services ), true ) ); ?> />
