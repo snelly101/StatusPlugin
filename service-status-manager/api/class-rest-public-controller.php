@@ -89,12 +89,18 @@ class RestPublicController {
 	 */
 	public function get_status( \WP_REST_Request $request ) {
 		$overall = ServiceManager::get_overall_status();
-		$def     = ssm_get_status_definition( $overall );
+		// The overall-status hero uses its own fuller wording ("All Systems
+		// Operational") rather than ssm_get_status_definition()'s plain
+		// per-service label ("Operational") - using that here previously
+		// meant the live-refresh script silently swapped the server-
+		// rendered hero title for the shorter per-service one on every
+		// background refresh.
+		$def = ssm_get_overall_status_definition( $overall );
 
 		return rest_ensure_response(
 			array(
 				'status'      => $overall,
-				'label'       => $def['label'],
+				'label'       => $def['title'],
 				'description' => $def['description'],
 				'updated_at'  => ssm_now(),
 			)

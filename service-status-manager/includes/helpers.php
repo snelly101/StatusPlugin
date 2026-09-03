@@ -121,6 +121,54 @@ function ssm_get_status_definition( $status ) {
 }
 
 /**
+ * The overall-status hero's title/description wording - deliberately
+ * separate from ssm_get_status_definitions()'s per-service labels (e.g.
+ * "Operational") since the hero reads better with fuller, page-level
+ * phrasing ("All Systems Operational"). Centralised here so the
+ * server-rendered hero (public/templates/summary.php) and the live-refresh
+ * REST response (GET /status) can never drift apart the way they
+ * previously did - the JS used to silently overwrite the friendlier
+ * server-rendered title with the plain per-service label on every refresh.
+ *
+ * @param string $status Overall status slug.
+ * @return array{title: string, description: string}
+ */
+function ssm_get_overall_status_definition( $status ) {
+	static $definitions = null;
+
+	if ( null === $definitions ) {
+		$definitions = array(
+			'operational'    => array(
+				'title'       => __( 'All Systems Operational', 'service-status-manager' ),
+				'description' => __( 'All monitored services are operating normally.', 'service-status-manager' ),
+			),
+			'degraded'       => array(
+				'title'       => __( 'Degraded Performance', 'service-status-manager' ),
+				'description' => __( 'Some services are experiencing degraded performance.', 'service-status-manager' ),
+			),
+			'partial_outage' => array(
+				'title'       => __( 'Partial System Outage', 'service-status-manager' ),
+				'description' => __( 'Some services are currently unavailable.', 'service-status-manager' ),
+			),
+			'major_outage'   => array(
+				'title'       => __( 'Major System Outage', 'service-status-manager' ),
+				'description' => __( 'We are aware of a significant service disruption and are working to resolve it.', 'service-status-manager' ),
+			),
+			'maintenance'    => array(
+				'title'       => __( 'Under Scheduled Maintenance', 'service-status-manager' ),
+				'description' => __( 'Scheduled maintenance is currently in progress.', 'service-status-manager' ),
+			),
+			'unknown'        => array(
+				'title'       => __( 'Status Unknown', 'service-status-manager' ),
+				'description' => __( 'We could not determine the current status of all services.', 'service-status-manager' ),
+			),
+		);
+	}
+
+	return $definitions[ $status ] ?? $definitions['unknown'];
+}
+
+/**
  * Generates a cryptographically secure URL-safe random token.
  *
  * @param int $bytes Number of random bytes to generate.
