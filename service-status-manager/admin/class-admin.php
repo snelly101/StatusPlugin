@@ -108,6 +108,7 @@ class Admin {
 			'maintenance'    => array( __( 'Maintenance', 'service-status-manager' ), Capabilities::VIEW, 'render_maintenance' ),
 			'subscribers'    => array( __( 'Subscribers', 'service-status-manager' ), Capabilities::MANAGE_SUBSCRIBERS, 'render_subscribers' ),
 			'notifications'  => array( __( 'Notifications', 'service-status-manager' ), Capabilities::MANAGE_SUBSCRIBERS, 'render_notifications' ),
+			'notification-engine' => array( __( 'Notification Engine', 'service-status-manager' ), Capabilities::MANAGE_INTEGRATIONS, 'render_notification_engine' ),
 			'reports'        => array( __( 'Reports', 'service-status-manager' ), Capabilities::VIEW, 'render_reports' ),
 			'settings'       => array( __( 'Settings', 'service-status-manager' ), Capabilities::MANAGE_SETTINGS, 'render_settings' ),
 			'logs'           => array( __( 'Logs', 'service-status-manager' ), Capabilities::MANAGE, 'render_logs' ),
@@ -248,6 +249,10 @@ class Admin {
 
 	public function render_notifications() {
 		$this->view( 'notifications' );
+	}
+
+	public function render_notification_engine() {
+		$this->view( 'notification-engine' );
 	}
 
 	public function render_reports() {

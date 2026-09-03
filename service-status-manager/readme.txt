@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.10.0
+Stable tag: 1.11.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -75,7 +75,7 @@ WordPress' built-in WP-Cron only runs when the site receives HTTP traffic. On a 
      `0 3 * * * cd /path/to/wordpress && wp service-status cleanup --quiet`
      `5,35 * * * * cd /path/to/wordpress && wp service-status aggregate --quiet`
 
-Available WP-CLI commands: `run-checks [--all]`, `process-notifications`, `aggregate`, `process-maintenance`, `cleanup`.
+Available WP-CLI commands: `run-checks [--all]`, `process [--channel=] [--time-budget=]` (the notification dispatcher; `process-notifications` still works as a deprecated alias), `aggregate`, `process-maintenance`, `cleanup`, `queue status [--channel=]`, `queue retry-failed [--channel=] [--limit=]`, `provider health [--channel=]`.
 
 == Email Setup ==
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.11.0 =
+Phase C of the notification engine work (final phase, following 1.9.0/1.10.0): adds a new **Notification Engine** admin page (Status administrator/Integration-manager access) showing live queue depth per channel, each provider's circuit-breaker state, recent dispatcher run history, and a warning banner if notifications appear to be backing up. New WP-CLI commands: `wp service-status process [--channel=] [--time-budget=]` (the dispatcher, replacing `process-notifications` as the primary command - the old name still works as an alias), `wp service-status queue status`, `wp service-status queue retry-failed`, and `wp service-status provider health`. Every throughput/resilience setting introduced in 1.9.0/1.10.0 (circuit breaker threshold/cooldown, per-provider rate limits and concurrency, dispatcher time budget/batch size, notification queue retention) is now a real settings-screen field under Settings > SMS Provider / Email Provider / Notification Engine / Data Retention, instead of only being changeable via a code filter. Also fixes a bug from 1.10.0: Twilio's concurrent SMS sending was using the "requests per second" setting as its concurrency limit instead of a dedicated one, conflating two different throughput controls.
 
 = 1.10.0 =
 Phase B of the notification engine work started in 1.9.0: adds SMTP2GO as an optional email transport (Settings > Email Provider), alongside a new concurrent-sending mechanism so a batch of notifications is sent with several requests in flight at once instead of one at a time. Email via wp_mail() remains the default and requires no changes; switching to SMTP2GO needs an SMTP2GO account and API key. If SMTP2GO appears to be down, sending automatically falls back to wp_mail until it recovers (this is optional and on by default). Twilio SMS and Microsoft Teams notifications also now send concurrently within a batch, for the same throughput benefit, with no configuration changes needed. Every provider still has an individual "send one" fallback path, used automatically for anything too small to be worth batching, so behavior is unchanged for low-volume sites. Also fixes a bug in the per-incident SMS limit (added in 1.9.0): a batch of messages larger than the configured limit would incorrectly cancel every message in it, because messages still in the same batch were being counted as if already sent.

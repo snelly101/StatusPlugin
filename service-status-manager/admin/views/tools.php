@@ -51,7 +51,12 @@ $active_providers[] = __( 'Microsoft Teams (Incoming Webhook)', 'service-status-
 	<p class="description"><?php esc_html_e( 'This URL includes a secret token - treat it like a password. It only ever returns aggregate counts, never monitor configuration or credentials.', 'service-status-manager' ); ?></p>
 	<p><strong><?php esc_html_e( 'Option B: WP-CLI', 'service-status-manager' ); ?></strong></p>
 	<p><code>* * * * * cd /path/to/wordpress &amp;&amp; wp service-status run-checks --quiet</code></p>
-	<p><code>*/5 * * * * cd /path/to/wordpress &amp;&amp; wp service-status process-notifications --quiet</code></p>
+	<p><code>*/5 * * * * cd /path/to/wordpress &amp;&amp; wp service-status process --quiet</code></p>
+	<p class="description"><?php echo wp_kses_post( sprintf(
+		/* translators: %s: link to the Notification Engine page */
+		__( 'More detail on queue depth, dispatcher run history, and provider health lives on the %s page, and via <code>wp service-status queue status</code> / <code>wp service-status provider health</code>.', 'service-status-manager' ),
+		'<a href="' . esc_url( admin_url( 'admin.php?page=service-status-manager-notification-engine' ) ) . '">' . esc_html__( 'Notification Engine', 'service-status-manager' ) . '</a>'
+	) ); ?></p>
 
 	<h2><?php esc_html_e( 'System information', 'service-status-manager' ); ?></h2>
 	<table class="wp-list-table widefat fixed striped">

@@ -49,20 +49,32 @@ class Cli {
 	/**
 	 * Fans out pending notification events and dispatches due notifications
 	 * from the queue - the same dispatcher the cron endpoint and WP-Cron
-	 * use, just run once from the command line. Since WP-CLI has no
-	 * execution time limit, this is given a larger time budget than a
-	 * typical web-triggered run so a single invocation gets further
-	 * through a large backlog before chaining to another hop.
+	 * use, just run once from the command line.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--channel=<channel>]
+	 * : Only process one channel (email|sms|teams). Defaults to all.
+	 *
+	 * [--time-budget=<seconds>]
+	 * : How long this run is allowed to work before handing off to a
+	 * chained run. Since WP-CLI has no execution time limit, this defaults
+	 * to a larger budget (60s) than a typical web-triggered run gets, so a
+	 * single invocation makes more progress through a large backlog.
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp service-status process-notifications
+	 *     wp service-status process
+	 *     wp service-status process --channel=sms --time-budget=120
 	 *
 	 * @param array $args       Positional arguments.
 	 * @param array $assoc_args Associative arguments.
 	 */
-	public function process_notifications( $args, $assoc_args ) {
-		$result = NotificationDispatcher::run_once( 'all', 60, 'cli' );
+	public function process( $args, $assoc_args ) {
+		$channel     = sanitize_key( $assoc_args['channel'] ?? 'all' );
+		$time_budget = isset( $assoc_args['time-budget'] ) ? max( 1, (int) $assoc_args['time-budget'] ) : 60;
+
+		$result = NotificationDispatcher::run_once( $channel, $time_budget, 'cli' );
 
 		\WP_CLI::success(
 			sprintf(
@@ -73,6 +85,22 @@ class Cli {
 				$result['chained'] ? ' More work remains and was handed off to a chained run.' : ''
 			)
 		);
+	}
+
+	/**
+	 * Deprecated alias for `process` (kept working for existing crontabs
+	 * written before that command existed).
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp service-status process-notifications
+	 *
+	 * @param array $args       Positional arguments.
+	 * @param array $assoc_args Associative arguments.
+	 */
+	public function process_notifications( $args, $assoc_args ) {
+		\WP_CLI::warning( '`process-notifications` is deprecated - use `wp service-status process` instead. This alias will keep working.' );
+		$this->process( $args, $assoc_args );
 	}
 
 	/**

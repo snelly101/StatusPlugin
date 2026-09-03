@@ -84,6 +84,8 @@ class Plugin {
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			\WP_CLI::add_command( 'service-status', Cli::class );
+			\WP_CLI::add_command( 'service-status queue', CliQueue::class );
+			\WP_CLI::add_command( 'service-status provider', CliProvider::class );
 		}
 
 		add_action( 'ssm_incident_created', array( WebhookDispatcher::class, 'dispatch_incident_created' ) );

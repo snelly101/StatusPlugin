@@ -82,7 +82,7 @@ class TeamsProvider implements NotificationProviderInterface, ConcurrentSendProv
 			return $results;
 		}
 
-		$http_results = ConcurrentHttpClient::send_many( $requests, (int) apply_filters( 'ssm_teams_max_concurrency', 10 ), 10 );
+		$http_results = ConcurrentHttpClient::send_many( $requests, max( 1, (int) apply_filters( 'ssm_teams_max_concurrency', \ssm_get_setting( 'teams_max_concurrency', 10 ) ) ), 10 );
 
 		foreach ( $requests as $key => $request ) {
 			$http_result      = $http_results[ $key ] ?? new HttpResult( false, null, '', __( 'Request did not complete.', 'service-status-manager' ) );

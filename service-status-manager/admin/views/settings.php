@@ -76,6 +76,12 @@ $outgoing_events = array(
 				<td><input type="email" id="ssm-smtp2go-reply-to" name="smtp2go_reply_to" class="regular-text" value="<?php echo esc_attr( $settings['smtp2go_reply_to'] ); ?>" /></td></tr>
 			<tr><th><?php esc_html_e( 'Fallback', 'service-status-manager' ); ?></th>
 				<td><label><input type="checkbox" name="smtp2go_fallback_to_wp_mail" value="1" <?php checked( $settings['smtp2go_fallback_to_wp_mail'] ); ?> /> <?php esc_html_e( 'If SMTP2GO appears to be down, automatically fall back to wp_mail until it recovers', 'service-status-manager' ); ?></label></td></tr>
+			<tr><th><label for="ssm-smtp2go-rps"><?php esc_html_e( 'Requests per second', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-smtp2go-rps" name="smtp2go_rate_limit_per_second" value="<?php echo esc_attr( $settings['smtp2go_rate_limit_per_second'] ); ?>" min="0" /> <span class="description"><?php esc_html_e( '0 = unlimited.', 'service-status-manager' ); ?></span></td></tr>
+			<tr><th><label for="ssm-smtp2go-concurrency"><?php esc_html_e( 'Max concurrent requests', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-smtp2go-concurrency" name="smtp2go_max_concurrency" value="<?php echo esc_attr( $settings['smtp2go_max_concurrency'] ); ?>" min="1" /></td></tr>
+			<tr><th><label for="ssm-smtp2go-timeout"><?php esc_html_e( 'Request timeout (seconds)', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-smtp2go-timeout" name="smtp2go_timeout" value="<?php echo esc_attr( $settings['smtp2go_timeout'] ); ?>" min="1" /></td></tr>
 			<tr><th><?php esc_html_e( 'Test', 'service-status-manager' ); ?></th>
 				<td><p class="description"><?php echo wp_kses_post( sprintf(
 					/* translators: %s: link to the Notifications page */
@@ -174,6 +180,28 @@ $outgoing_events = array(
 				<td><input type="number" id="ssm-sms-monthly" name="sms_monthly_limit" value="<?php echo esc_attr( $settings['sms_monthly_limit'] ); ?>" min="0" /> <span class="description"><?php esc_html_e( '0 = unlimited.', 'service-status-manager' ); ?></span></td></tr>
 			<tr><th><label for="ssm-sms-per-incident"><?php esc_html_e( 'Per-incident SMS limit', 'service-status-manager' ); ?></label></th>
 				<td><input type="number" id="ssm-sms-per-incident" name="sms_per_incident_limit" value="<?php echo esc_attr( $settings['sms_per_incident_limit'] ); ?>" min="0" /> <span class="description"><?php esc_html_e( '0 = unlimited.', 'service-status-manager' ); ?></span></td></tr>
+			<tr><th><label for="ssm-twilio-rps"><?php esc_html_e( 'Twilio requests per second', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-twilio-rps" name="twilio_rate_limit_per_second" value="<?php echo esc_attr( $settings['twilio_rate_limit_per_second'] ); ?>" min="0" /> <span class="description"><?php esc_html_e( '0 = unlimited. Match this to your Twilio account\'s actual throughput limit.', 'service-status-manager' ); ?></span></td></tr>
+			<tr><th><label for="ssm-twilio-concurrency"><?php esc_html_e( 'Twilio max concurrent requests', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-twilio-concurrency" name="twilio_max_concurrency" value="<?php echo esc_attr( $settings['twilio_max_concurrency'] ); ?>" min="1" /></td></tr>
+		</table>
+
+		<h2><?php esc_html_e( 'Notification Engine', 'service-status-manager' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Advanced throughput and resilience tuning for the notification dispatcher. The defaults work for most sites - only change these if you understand the trade-offs.', 'service-status-manager' ); ?></p>
+		<table class="form-table">
+			<tr><th><label for="ssm-teams-concurrency"><?php esc_html_e( 'Teams max concurrent requests', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-teams-concurrency" name="teams_max_concurrency" value="<?php echo esc_attr( $settings['teams_max_concurrency'] ); ?>" min="1" /></td></tr>
+			<tr><th><label for="ssm-cb-threshold"><?php esc_html_e( 'Circuit breaker: failures before tripping', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-cb-threshold" name="circuit_breaker_failure_threshold" value="<?php echo esc_attr( $settings['circuit_breaker_failure_threshold'] ); ?>" min="1" />
+				<p class="description"><?php esc_html_e( 'Consecutive transient failures (timeouts, 5xx, rate-limiting) from one provider before the plugin stops sending to it and waits for the cooldown below. A bad phone number or address never counts toward this.', 'service-status-manager' ); ?></p></td></tr>
+			<tr><th><label for="ssm-cb-cooldown"><?php esc_html_e( 'Circuit breaker: cooldown (seconds)', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-cb-cooldown" name="circuit_breaker_cooldown_seconds" value="<?php echo esc_attr( $settings['circuit_breaker_cooldown_seconds'] ); ?>" min="1" /></td></tr>
+			<tr><th><label for="ssm-dispatch-budget"><?php esc_html_e( 'Dispatcher time budget (seconds)', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-dispatch-budget" name="notification_dispatch_time_budget_seconds" value="<?php echo esc_attr( $settings['notification_dispatch_time_budget_seconds'] ); ?>" min="1" />
+				<p class="description"><?php esc_html_e( 'How long one dispatcher run works through the queue before handing off to another chained run. Automatically capped to your server\'s max execution time minus a safety margin, whichever is lower.', 'service-status-manager' ); ?></p></td></tr>
+			<tr><th><label for="ssm-dispatch-batch"><?php esc_html_e( 'Dispatcher batch size', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-dispatch-batch" name="notification_dispatch_batch_size" value="<?php echo esc_attr( $settings['notification_dispatch_batch_size'] ); ?>" min="1" />
+				<p class="description"><?php esc_html_e( 'Maximum rows claimed per channel on each pass.', 'service-status-manager' ); ?></p></td></tr>
 		</table>
 
 		<h2><?php esc_html_e( 'Data Retention', 'service-status-manager' ); ?></h2>
@@ -186,6 +214,10 @@ $outgoing_events = array(
 				<td><input type="number" id="ssm-ret-daily" name="daily_aggregate_retention_days" value="<?php echo esc_attr( $settings['daily_aggregate_retention_days'] ); ?>" min="1" /></td></tr>
 			<tr><th><label for="ssm-ret-notif"><?php esc_html_e( 'Notification logs (days)', 'service-status-manager' ); ?></label></th>
 				<td><input type="number" id="ssm-ret-notif" name="notification_log_retention_days" value="<?php echo esc_attr( $settings['notification_log_retention_days'] ); ?>" min="1" /></td></tr>
+			<tr><th><label for="ssm-ret-queue"><?php esc_html_e( 'Notification queue: sent/cancelled (days)', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-ret-queue" name="notification_queue_retention_days" value="<?php echo esc_attr( $settings['notification_queue_retention_days'] ); ?>" min="1" /></td></tr>
+			<tr><th><label for="ssm-ret-queue-failed"><?php esc_html_e( 'Notification queue: failed (days)', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-ret-queue-failed" name="notification_queue_failed_retention_days" value="<?php echo esc_attr( $settings['notification_queue_failed_retention_days'] ); ?>" min="1" /></td></tr>
 			<tr><th><label for="ssm-ret-audit"><?php esc_html_e( 'Audit log (days)', 'service-status-manager' ); ?></label></th>
 				<td><input type="number" id="ssm-ret-audit" name="audit_log_retention_days" value="<?php echo esc_attr( $settings['audit_log_retention_days'] ); ?>" min="1" /></td></tr>
 		</table>

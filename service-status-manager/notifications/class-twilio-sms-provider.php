@@ -130,7 +130,7 @@ class TwilioSmsProvider extends SmsProvider implements ConcurrentSendProviderInt
 			return $results;
 		}
 
-		$http_results = ConcurrentHttpClient::send_many( $requests, $this->get_rate_limit_per_second() ?: 10, 15 );
+		$http_results = ConcurrentHttpClient::send_many( $requests, $this->get_max_concurrency(), 15 );
 
 		foreach ( $requests as $key => $request ) {
 			$http_result = $http_results[ $key ] ?? new HttpResult( false, null, '', __( 'Request did not complete.', 'service-status-manager' ) );
@@ -150,7 +150,17 @@ class TwilioSmsProvider extends SmsProvider implements ConcurrentSendProviderInt
 	 * @return int
 	 */
 	public function get_rate_limit_per_second() {
-		return (int) apply_filters( 'ssm_twilio_rate_limit_per_second', 10 );
+		return (int) apply_filters( 'ssm_twilio_rate_limit_per_second', \ssm_get_setting( 'twilio_rate_limit_per_second', 10 ) );
+	}
+
+	/**
+	 * @return int Max requests in flight at once for a send_many() batch - a
+	 *             separate knob from get_rate_limit_per_second(), which
+	 *             governs how many rows a claim is allowed to grant capacity
+	 *             to per second, not how many of those run concurrently.
+	 */
+	private function get_max_concurrency() {
+		return max( 1, (int) apply_filters( 'ssm_twilio_max_concurrency', \ssm_get_setting( 'twilio_max_concurrency', 10 ) ) );
 	}
 
 	/**

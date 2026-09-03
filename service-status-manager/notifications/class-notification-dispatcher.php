@@ -90,7 +90,7 @@ class NotificationDispatcher {
 			$claimed_this_pass = 0;
 
 			foreach ( $channels as $ch ) {
-				$batch_size = (int) apply_filters( 'ssm_notification_dispatch_batch_size', 100, $ch );
+				$batch_size = (int) apply_filters( 'ssm_notification_dispatch_batch_size', \ssm_get_setting( 'notification_dispatch_batch_size', 100 ), $ch );
 				$rows       = NotificationQueue::claim_batch( $ch, $batch_size, $run_id );
 
 				if ( empty( $rows ) ) {
@@ -150,7 +150,7 @@ class NotificationDispatcher {
 			return max( 1.0, (float) $requested );
 		}
 
-		$default = (float) apply_filters( 'ssm_notification_dispatch_default_budget', 20 );
+		$default = (float) apply_filters( 'ssm_notification_dispatch_default_budget', \ssm_get_setting( 'notification_dispatch_time_budget_seconds', 20 ) );
 
 		$max_execution = (int) ini_get( 'max_execution_time' );
 		if ( $max_execution <= 0 ) {

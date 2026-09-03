@@ -103,7 +103,7 @@ class NotificationCircuitBreaker {
 		}
 
 		$failures  = (int) $state['consecutive_failures'] + 1;
-		$threshold = (int) apply_filters( 'ssm_circuit_breaker_threshold', 5, $provider_slug );
+		$threshold = (int) apply_filters( 'ssm_circuit_breaker_threshold', \ssm_get_setting( 'circuit_breaker_failure_threshold', 5 ), $provider_slug );
 
 		if ( $failures >= $threshold ) {
 			self::force_open( $provider_slug );
@@ -165,6 +165,6 @@ class NotificationCircuitBreaker {
 	 * @return int
 	 */
 	private static function cooldown_seconds( $provider_slug ) {
-		return (int) apply_filters( 'ssm_circuit_breaker_cooldown_seconds', 60, $provider_slug );
+		return (int) apply_filters( 'ssm_circuit_breaker_cooldown_seconds', \ssm_get_setting( 'circuit_breaker_cooldown_seconds', 60 ), $provider_slug );
 	}
 }
