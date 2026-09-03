@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.15.1
+Stable tag: 1.15.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.15.2 =
+Gave in-progress maintenance its own "Active maintenance" section on the public status page - previously the section was titled "Scheduled maintenance" and a window that was actually happening right now sat in the same unlabelled list as ones that hadn't started yet, with no heading calling out that it was active (same issue fixed for incidents back in 1.12.2). The section is now titled "Maintenance", with "Active maintenance" and "Upcoming maintenance" as separate headings above "Maintenance history", each shown only when there's something in it.
 
 = 1.15.1 =
 Fixed the overall status banner randomly switching its wording from "All Systems Operational" (and the equivalent fuller phrasing for other statuses) down to the plain "Operational" a short while after the page loaded. The initial server-rendered banner and the background live-refresh check were pulling their text from two different, disagreeing sources - the live-refresh REST response used the short per-service label instead of the banner's own fuller wording, so every time the page's live-refresh timer fired (by default, every 60 seconds) it silently swapped the friendlier text out from under you. Both now read from the same single source, so they can no longer drift apart.

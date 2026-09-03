@@ -219,13 +219,22 @@ class Shortcodes {
 	public function render_maintenance( $atts ) {
 		$atts = $this->normalize_atts( (array) $atts );
 
+		// get_upcoming() deliberately returns scheduled + in_progress
+		// together (both need to stay visible, and sorted by start time),
+		// but a window that's actually happening right now reads very
+		// differently from one that's merely booked in - split them here
+		// so the template can give "Active" its own heading instead of it
+		// silently sitting under "Upcoming"/"Scheduled".
 		$upcoming = MaintenanceManager::get_upcoming();
-		$past     = MaintenanceManager::get_recent_completed( (int) $atts['count'] );
+		$active    = array_values( array_filter( $upcoming, fn( $event ) => 'in_progress' === $event->status ) );
+		$scheduled = array_values( array_filter( $upcoming, fn( $event ) => 'in_progress' !== $event->status ) );
+		$past      = MaintenanceManager::get_recent_completed( (int) $atts['count'] );
 
 		return $this->render(
 			'maintenance',
 			array(
-				'upcoming_maintenance' => $upcoming,
+				'active_maintenance'   => $active,
+				'upcoming_maintenance' => $scheduled,
 				'past_maintenance'     => $past,
 				'atts'                 => $atts,
 			)

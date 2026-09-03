@@ -113,7 +113,7 @@ $overall_def   = ssm_get_status_definition( $overall );
 	</div>
 
 	<div class="ssm-page-section" id="ssm-maintenance">
-		<h2><?php esc_html_e( 'Scheduled maintenance', 'service-status-manager' ); ?></h2>
+		<h2><?php esc_html_e( 'Maintenance', 'service-status-manager' ); ?></h2>
 		<?php echo $shortcodes->render_maintenance( $atts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 	</div>
 

@@ -1,8 +1,9 @@
 <?php
 /**
- * Template: upcoming and recently completed scheduled maintenance.
+ * Template: active, upcoming and recently completed scheduled maintenance.
  *
- * Expects: $upcoming_maintenance, $past_maintenance (arrays), $atts.
+ * Expects: $active_maintenance, $upcoming_maintenance, $past_maintenance
+ * (arrays), $atts.
  *
  * @package ServiceStatusManager
  */
@@ -106,9 +107,17 @@ $render_event = function ( $event ) use ( $status_labels ) {
 };
 ?>
 <div class="ssm-maintenance-list">
+	<?php if ( ! empty( $active_maintenance ) ) : ?>
+		<h3><?php esc_html_e( 'Active maintenance', 'service-status-manager' ); ?></h3>
+		<?php foreach ( $active_maintenance as $event ) : $render_event( $event ); endforeach; ?>
+	<?php endif; ?>
+
 	<?php if ( ! empty( $upcoming_maintenance ) ) : ?>
+		<h3><?php esc_html_e( 'Upcoming maintenance', 'service-status-manager' ); ?></h3>
 		<?php foreach ( $upcoming_maintenance as $event ) : $render_event( $event ); endforeach; ?>
-	<?php else : ?>
+	<?php endif; ?>
+
+	<?php if ( empty( $active_maintenance ) && empty( $upcoming_maintenance ) ) : ?>
 		<?php
 		$empty_icon  = 'calendar';
 		$empty_title = __( 'No scheduled maintenance', 'service-status-manager' );
