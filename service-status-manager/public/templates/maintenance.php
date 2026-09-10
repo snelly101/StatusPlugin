@@ -52,8 +52,13 @@ $render_event = function ( $event ) use ( $status_labels, $impact_labels ) {
 	$pill_class  = 'overdue' === $event->status ? 'ssm-status-degraded' : 'ssm-status-maintenance';
 	$site_tz     = ssm_get_timezone()->getName();
 	$original_tz = $event->timezone;
+	$anchor_id   = 'ssm-maintenance-' . $event->slug;
+	// Only windows that haven't happened yet (or are in progress) are
+	// useful to add to a calendar - completed/cancelled ones have nothing
+	// left to remind anyone about.
+	$can_download_ics = in_array( $event->status, array( 'scheduled', 'in_progress' ), true );
 	?>
-	<article class="ssm-card ssm-maintenance<?php echo 'overdue' === $event->status ? ' ssm-maintenance--overdue' : ''; ?>">
+	<article class="ssm-card ssm-maintenance<?php echo 'overdue' === $event->status ? ' ssm-maintenance--overdue' : ''; ?>" id="<?php echo esc_attr( $anchor_id ); ?>">
 		<header class="ssm-maintenance-header<?php echo $collapsible ? ' ssm-is-expandable' : ''; ?>"
 			<?php if ( $collapsible ) : ?>
 			role="button" tabindex="0" aria-expanded="false" aria-controls="<?php echo esc_attr( $detail_id ); ?>"
@@ -62,6 +67,14 @@ $render_event = function ( $event ) use ( $status_labels, $impact_labels ) {
 			<span class="ssm-icon" aria-hidden="true"><?php echo ssm_icon( 'calendar' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
 			<h4><?php echo esc_html( $event->title ); ?></h4>
 			<span class="ssm-status-pill <?php echo esc_attr( $pill_class ); ?>"><?php echo esc_html( $status_labels[ $event->status ] ?? $event->status ); ?></span>
+			<?php if ( $can_download_ics ) : ?>
+				<a class="ssm-ics-download" href="<?php echo esc_url( add_query_arg( 'ssm_calendar', $event->slug, home_url( '/' ) ) ); ?>" aria-label="<?php esc_attr_e( 'Add to calendar', 'service-status-manager' ); ?>" title="<?php esc_attr_e( 'Add to calendar', 'service-status-manager' ); ?>">
+					<?php echo ssm_icon( 'download' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				</a>
+			<?php endif; ?>
+			<button type="button" class="ssm-copy-link" data-ssm-copy-link="#<?php echo esc_attr( $anchor_id ); ?>" aria-label="<?php esc_attr_e( 'Copy link to this maintenance window', 'service-status-manager' ); ?>" title="<?php esc_attr_e( 'Copy link to this maintenance window', 'service-status-manager' ); ?>">
+				<?php echo ssm_icon( 'link' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			</button>
 			<?php if ( $collapsible ) : ?>
 				<span class="ssm-maintenance-expand-icon"><?php echo ssm_icon( 'chevron-down' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
 			<?php endif; ?>

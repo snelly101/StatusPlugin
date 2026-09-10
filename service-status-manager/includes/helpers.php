@@ -272,6 +272,103 @@ function ssm_now() {
 }
 
 /**
+ * Escapes a value for use inside an iCalendar TEXT property, per RFC 5545 -
+ * backslashes, commas and semicolons are backslash-escaped, and newlines
+ * become literal "\n" sequences.
+ *
+ * @param string $text Raw text.
+ * @return string
+ */
+function ssm_ics_escape( $text ) {
+	$text = str_replace( array( '\\', ';', ',' ), array( '\\\\', '\\;', '\\,' ), (string) $text );
+	return str_replace( array( "\r\n", "\r", "\n" ), '\\n', $text );
+}
+
+/**
+ * Folds an iCalendar content line to 75 octets per line, as RFC 5545
+ * requires, continuation lines starting with a single space.
+ *
+ * @param string $line Unfolded line.
+ * @return string
+ */
+function ssm_ics_fold( $line ) {
+	if ( strlen( $line ) <= 75 ) {
+		return $line;
+	}
+
+	$folded = '';
+	while ( strlen( $line ) > 75 ) {
+		$folded .= substr( $line, 0, 75 ) . "\r\n ";
+		$line    = substr( $line, 75 );
+	}
+	return $folded . $line;
+}
+
+/**
+ * Converts a UTC MySQL datetime string into an iCalendar UTC date-time
+ * value (e.g. "20260121T140000Z").
+ *
+ * @param string $utc_datetime MySQL datetime string in UTC.
+ * @return string
+ */
+function ssm_ics_datetime( $utc_datetime ) {
+	$timestamp = strtotime( $utc_datetime . ' UTC' );
+	return gmdate( 'Ymd\THis\Z', $timestamp ?: time() );
+}
+
+/**
+ * Builds an RFC 5545 iCalendar (.ics) VEVENT for a scheduled maintenance
+ * window, so visitors can add it to their own calendar app. Pure
+ * formatting logic - takes already-loaded data rather than querying the
+ * database itself, so the same builder backs both the public download
+ * endpoint and unit tests.
+ *
+ * @param object $event Maintenance row (title, slug, description, impact,
+ *                       scheduled_start, scheduled_end - as stored, UTC).
+ * @param string $url   Full public URL visitors should follow for details.
+ * @return string
+ */
+function ssm_build_maintenance_ics( $event, $url = '' ) {
+	$impact_labels = array(
+		'minor' => __( 'Minor - brief or partial disruption possible', 'service-status-manager' ),
+		'major' => __( 'Major - services may be unavailable', 'service-status-manager' ),
+	);
+
+	$description = trim( wp_strip_all_tags( (string) $event->description ) );
+	if ( ! empty( $event->impact ) && isset( $impact_labels[ $event->impact ] ) ) {
+		$description .= ( $description ? "\n\n" : '' ) . $impact_labels[ $event->impact ];
+	}
+	if ( $url ) {
+		$description .= ( $description ? "\n\n" : '' ) . $url;
+	}
+
+	$lines = array(
+		'BEGIN:VCALENDAR',
+		'VERSION:2.0',
+		'PRODID:-//' . ssm_ics_escape( get_bloginfo( 'name' ) ) . '//Service Status Manager//EN',
+		'CALSCALE:GREGORIAN',
+		'BEGIN:VEVENT',
+		'UID:ssm-maintenance-' . sanitize_key( $event->slug ) . '@' . sanitize_key( get_bloginfo( 'name' ) ) . '.invalid',
+		'DTSTAMP:' . ssm_ics_datetime( ssm_now() ),
+		'DTSTART:' . ssm_ics_datetime( $event->scheduled_start ),
+		'DTEND:' . ssm_ics_datetime( $event->scheduled_end ),
+		'SUMMARY:' . ssm_ics_escape( $event->title ),
+	);
+
+	if ( $description ) {
+		$lines[] = 'DESCRIPTION:' . ssm_ics_escape( $description );
+	}
+	if ( $url ) {
+		$lines[] = 'URL:' . ssm_ics_escape( $url );
+	}
+
+	$lines[] = 'END:VEVENT';
+	$lines[] = 'END:VCALENDAR';
+
+	return implode( "\r\n", array_map( 'ssm_ics_fold', $lines ) ) . "\r\n";
+}
+
+/**
  * Retrieves the merged plugin settings array (single autoload:no option).
  *
  * @return array
@@ -497,6 +594,9 @@ function ssm_icon( $name, $classes = '' ) {
 		'moon'           => '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>',
 		'sun'            => '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/>',
 		'pin'            => '<path d="M12 2.5c-3 0-5.5 2.4-5.5 5.5 0 3.7 5.5 13.5 5.5 13.5S17.5 11.7 17.5 8c0-3.1-2.5-5.5-5.5-5.5z"/><circle cx="12" cy="8" r="2.2"/>',
+		'link'           => '<path d="M9.5 14.5l5-5"/><path d="M12 6.5l1-1a4 4 0 0 1 5.5 5.5l-2 2a4 4 0 0 1-5.5 0"/><path d="M12 17.5l-1 1a4 4 0 0 1-5.5-5.5l2-2a4 4 0 0 1 5.5 0"/>',
+		'star'           => '<path d="M12 3.5l2.6 5.3 5.9.8-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.8z" stroke-linejoin="round"/>',
+		'download'       => '<path d="M12 3.5v11"/><path d="M7.5 10l4.5 4.5 4.5-4.5"/><path d="M4.5 17.5v2a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-2"/>',
 	);
 
 	if ( ! isset( $paths[ $name ] ) ) {

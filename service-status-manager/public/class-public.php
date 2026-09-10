@@ -14,6 +14,7 @@ use ServiceStatusManager\RateLimiter;
 use ServiceStatusManager\StatusPageManager;
 use ServiceStatusManager\Capabilities;
 use ServiceStatusManager\AppearanceRenderer;
+use ServiceStatusManager\MaintenanceManager;
 use ServiceStatusManager\Notifications\NotificationQueue;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -32,6 +33,7 @@ class PublicController {
 		add_filter( 'query_vars', array( $this, 'add_query_vars' ) );
 		add_action( 'template_redirect', array( $this, 'guard_private_status_page' ), 5 );
 		add_action( 'template_redirect', array( $this, 'handle_token_actions' ) );
+		add_action( 'template_redirect', array( $this, 'handle_calendar_download' ) );
 
 		add_action( 'admin_post_nopriv_ssm_public_subscribe', array( $this, 'handle_subscribe' ) );
 		add_action( 'admin_post_ssm_public_subscribe', array( $this, 'handle_subscribe' ) );
@@ -52,6 +54,7 @@ class PublicController {
 		$vars[] = self::QUERY_VAR;
 		$vars[] = 'ssm_token';
 		$vars[] = 'ssm_id';
+		$vars[] = 'ssm_calendar';
 		return $vars;
 	}
 
@@ -85,6 +88,7 @@ class PublicController {
 					'selectChannel'   => __( 'Please select at least one notification channel.', 'service-status-manager' ),
 					'enterDestination' => __( 'Please fill in the highlighted field.', 'service-status-manager' ),
 					'consentRequired' => __( 'Please confirm your consent to continue.', 'service-status-manager' ),
+					'linkCopied'      => __( 'Link copied to clipboard.', 'service-status-manager' ),
 				),
 			)
 		);
@@ -182,6 +186,35 @@ class PublicController {
 		}
 
 		require SSM_PLUGIN_DIR . 'public/templates/subscription-result.php';
+		exit;
+	}
+
+	/**
+	 * Serves an iCalendar (.ics) file for a scheduled maintenance window,
+	 * reached via ?ssm_calendar=<slug> on any front-end page (the same
+	 * query-var approach as the token actions above, so no rewrite rules
+	 * or dedicated page are needed). Only public, non-draft windows that
+	 * haven't already finished are downloadable - there is nothing left to
+	 * remind anyone about once a window is completed or cancelled.
+	 */
+	public function handle_calendar_download() {
+		$slug = sanitize_key( get_query_var( 'ssm_calendar' ) );
+		if ( ! $slug ) {
+			return;
+		}
+
+		$event = MaintenanceManager::get_by_slug( $slug );
+		if ( ! $event || ! in_array( $event->status, array( 'scheduled', 'in_progress' ), true ) ) {
+			wp_die( esc_html__( 'This maintenance window is no longer available.', 'service-status-manager' ), '', array( 'response' => 404 ) );
+		}
+
+		$referer = wp_get_referer();
+		$url     = ( $referer ? $referer : home_url( '/' ) ) . '#ssm-maintenance-' . $event->slug;
+
+		nocache_headers();
+		header( 'Content-Type: text/calendar; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="maintenance-' . $event->slug . '.ics"' );
+		echo ssm_build_maintenance_ics( $event, $url ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		exit;
 	}
 

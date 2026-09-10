@@ -101,6 +101,17 @@ class MaintenanceManager {
 	}
 
 	/**
+	 * @param string $slug Maintenance slug.
+	 * @return object|null Only public, non-draft windows are returned - this
+	 *                     backs the public calendar download endpoint.
+	 */
+	public static function get_by_slug( $slug ) {
+		global $wpdb;
+		$table = ssm_table( 'maintenance' );
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE slug = %s AND is_public = 1 AND is_draft = 0", sanitize_key( $slug ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/**
 	 * @param int $maintenance_id Maintenance ID.
 	 * @return array Service rows.
 	 */

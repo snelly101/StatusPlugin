@@ -48,8 +48,9 @@ $render_incident = function ( $incident ) use ( $severity_labels, $status_labels
 	// since that detail is what visitors actually need right now.
 	$collapsible = $is_resolved;
 	$detail_id   = 'ssm-incident-detail-' . $incident->id;
+	$anchor_id   = 'ssm-incident-' . $incident->slug;
 	?>
-	<article class="ssm-card ssm-incident <?php echo esc_attr( $severity_class ); ?> <?php echo $is_resolved ? 'ssm-incident--resolved' : ''; ?> <?php echo $incident->is_pinned ? 'ssm-incident--pinned' : ''; ?>">
+	<article class="ssm-card ssm-incident <?php echo esc_attr( $severity_class ); ?> <?php echo $is_resolved ? 'ssm-incident--resolved' : ''; ?> <?php echo $incident->is_pinned ? 'ssm-incident--pinned' : ''; ?>" id="<?php echo esc_attr( $anchor_id ); ?>">
 		<header class="ssm-incident-header<?php echo $collapsible ? ' ssm-is-expandable' : ''; ?>"
 			<?php if ( $collapsible ) : ?>
 			role="button" tabindex="0" aria-expanded="false" aria-controls="<?php echo esc_attr( $detail_id ); ?>"
@@ -61,6 +62,9 @@ $render_incident = function ( $incident ) use ( $severity_labels, $status_labels
 			<?php endif; ?>
 			<span class="ssm-status-pill <?php echo esc_attr( $severity_class ); ?>"><?php echo esc_html( $severity_labels[ $incident->severity ] ?? $incident->severity ); ?></span>
 			<span class="ssm-status-pill <?php echo $is_resolved ? 'ssm-status-operational' : esc_attr( $severity_class ); ?>"><?php echo esc_html( $status_labels[ $incident->status ] ?? $incident->status ); ?></span>
+			<button type="button" class="ssm-copy-link" data-ssm-copy-link="#<?php echo esc_attr( $anchor_id ); ?>" aria-label="<?php esc_attr_e( 'Copy link to this incident', 'service-status-manager' ); ?>" title="<?php esc_attr_e( 'Copy link to this incident', 'service-status-manager' ); ?>">
+				<?php echo ssm_icon( 'link' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			</button>
 			<?php if ( $collapsible ) : ?>
 				<span class="ssm-incident-expand-icon"><?php echo ssm_icon( 'chevron-down' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
 			<?php endif; ?>

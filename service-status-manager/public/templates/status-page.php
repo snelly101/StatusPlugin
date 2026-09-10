@@ -126,7 +126,7 @@ $overall_def   = ssm_get_status_definition( $overall );
 
 	<?php if ( $page && ( $page->support_url || $page->privacy_url || $page->terms_url ) ) : ?>
 		<footer class="ssm-page-footer">
-			<?php if ( $page->support_url ) : ?><a href="<?php echo esc_url( $page->support_url ); ?>"><?php esc_html_e( 'Support', 'service-status-manager' ); ?></a><?php endif; ?>
+			<?php if ( $page->support_url ) : ?><a href="<?php echo esc_url( $page->support_url ); ?>" data-ssm-support-link data-ssm-support-base="<?php echo esc_url( $page->support_url ); ?>"><?php esc_html_e( 'Having problems? Contact support', 'service-status-manager' ); ?></a><?php endif; ?>
 			<?php if ( $page->privacy_url ) : ?><a href="<?php echo esc_url( $page->privacy_url ); ?>"><?php esc_html_e( 'Privacy Policy', 'service-status-manager' ); ?></a><?php endif; ?>
 			<?php if ( $page->terms_url ) : ?><a href="<?php echo esc_url( $page->terms_url ); ?>"><?php esc_html_e( 'Terms', 'service-status-manager' ); ?></a><?php endif; ?>
 		</footer>
