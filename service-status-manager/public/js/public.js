@@ -14,8 +14,7 @@
  *   7. Toasts
  *   8. Live status refresh (polls the existing public REST API)
  *   9. Resend-confirmation mini form toggle
- *  10. Favourites ("My services") - localStorage, no account required
- *  11. Copy-link / deep-link (shareable incident + maintenance URLs)
+ *  10. Copy-link / deep-link (shareable incident + maintenance URLs)
  */
 ( function () {
 	'use strict';
@@ -66,7 +65,6 @@
 		initSelectAllToggle( root );
 		initResendToggle( root );
 		initLiveRefresh( root );
-		initFavorites( root );
 		initCopyLink( root );
 		initDeepLink( root );
 	}
@@ -190,16 +188,10 @@
 
 	function initServiceRows( root ) {
 		on( root, 'click', '.ssm-service-heading.ssm-is-expandable', function ( e, heading ) {
-			if ( e.target.closest( '[data-ssm-favorite-toggle]' ) ) {
-				return;
-			}
 			toggleServiceRow( heading );
 		} );
 
 		on( root, 'keydown', '.ssm-service-heading.ssm-is-expandable', function ( e, heading ) {
-			if ( e.target.closest( '[data-ssm-favorite-toggle]' ) ) {
-				return;
-			}
 			if ( 'Enter' === e.key || ' ' === e.key ) {
 				e.preventDefault();
 				toggleServiceRow( heading );
@@ -817,89 +809,7 @@
 	}
 
 	/* ------------------------------------------------------------ *
-	 * 10. Favourites ("My services")
-	 * ------------------------------------------------------------ */
-
-	var FAVORITES_KEY = 'ssmFavoriteServices';
-
-	function getFavorites() {
-		try {
-			var parsed = JSON.parse( window.localStorage.getItem( FAVORITES_KEY ) || '[]' );
-			return Array.isArray( parsed ) ? parsed : [];
-		} catch ( err ) {
-			return [];
-		}
-	}
-
-	function setFavorites( ids ) {
-		try {
-			window.localStorage.setItem( FAVORITES_KEY, JSON.stringify( ids ) );
-		} catch ( err ) {
-			// Storage unavailable (private browsing, blocked) - favouriting
-			// still works for this page view, it just won't persist.
-		}
-	}
-
-	/**
-	 * A per-visitor "My services" list, stored only in this browser - no
-	 * account or server round-trip involved. Each service row gets a star
-	 * toggle; an additional filter button hides every non-favourited row.
-	 */
-	function initFavorites( root ) {
-		if ( ! qs( '[data-ssm-favorite-toggle]', root ) ) {
-			return;
-		}
-
-		var favorites = getFavorites();
-
-		function applyState() {
-			qsa( '.ssm-service-row', root ).forEach( function ( row ) {
-				var isFav = favorites.indexOf( row.getAttribute( 'data-ssm-service-id' ) ) !== -1;
-				row.classList.toggle( 'ssm-is-favorite', isFav );
-				var btn = qs( '[data-ssm-favorite-toggle]', row );
-				if ( btn ) {
-					btn.classList.toggle( 'ssm-is-active', isFav );
-					btn.setAttribute( 'aria-pressed', isFav ? 'true' : 'false' );
-				}
-			} );
-
-			var filterBtn = qs( '[data-ssm-favorites-filter]', root );
-			if ( filterBtn && ! favorites.length ) {
-				root.classList.remove( 'ssm-is-filtering-favorites' );
-				filterBtn.setAttribute( 'aria-pressed', 'false' );
-			}
-
-			var note = qs( '[data-ssm-no-favorites]', root );
-			if ( note ) {
-				note.hidden = ! ( root.classList.contains( 'ssm-is-filtering-favorites' ) && ! favorites.length );
-			}
-		}
-
-		applyState();
-
-		on( root, 'click', '[data-ssm-favorite-toggle]', function ( e, btn ) {
-			e.preventDefault();
-			var row = btn.closest( '.ssm-service-row' );
-			var id = row.getAttribute( 'data-ssm-service-id' );
-			var idx = favorites.indexOf( id );
-			if ( idx === -1 ) {
-				favorites.push( id );
-			} else {
-				favorites.splice( idx, 1 );
-			}
-			setFavorites( favorites );
-			applyState();
-		} );
-
-		on( root, 'click', '[data-ssm-favorites-filter]', function ( e, btn ) {
-			var active = root.classList.toggle( 'ssm-is-filtering-favorites' );
-			btn.setAttribute( 'aria-pressed', active ? 'true' : 'false' );
-			applyState();
-		} );
-	}
-
-	/* ------------------------------------------------------------ *
-	 * 11. Copy-link / deep-link
+	 * 10. Copy-link / deep-link
 	 * ------------------------------------------------------------ */
 
 	/**

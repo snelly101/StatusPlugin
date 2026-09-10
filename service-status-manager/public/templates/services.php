@@ -40,9 +40,6 @@ $render_service = function ( $service ) use ( $show_monitors ) {
 		>
 			<span class="ssm-service-icon"><?php echo ssm_icon( $service->icon && false === strpos( (string) $service->icon, 'dashicons' ) ? $service->icon : 'server' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
 			<span class="ssm-service-name"><?php echo esc_html( $service->name ); ?></span>
-			<button type="button" class="ssm-favorite-toggle" data-ssm-favorite-toggle aria-pressed="false" aria-label="<?php esc_attr_e( 'Add to My services', 'service-status-manager' ); ?>">
-				<?php echo ssm_icon( 'star' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			</button>
 			<span class="ssm-status-pill <?php echo esc_attr( $def['css_class'] ); ?>">
 				<span class="screen-reader-text"><?php echo esc_html( $def['description'] ); ?></span>
 				<?php echo esc_html( $def['label'] ); ?>
@@ -105,15 +102,6 @@ $render_service = function ( $service ) use ( $show_monitors ) {
 	<?php
 };
 ?>
-<?php if ( ! empty( $services ) ) : ?>
-	<div class="ssm-services-toolbar">
-		<button type="button" class="ssm-favorites-filter-toggle" data-ssm-favorites-filter aria-pressed="false">
-			<?php echo ssm_icon( 'star' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			<?php esc_html_e( 'My services', 'service-status-manager' ); ?>
-		</button>
-	</div>
-	<p class="ssm-no-favorites-note" data-ssm-no-favorites hidden><?php esc_html_e( "You haven't added any services to My services yet - click the star next to a service to add it.", 'service-status-manager' ); ?></p>
-<?php endif; ?>
 <div class="ssm-services">
 	<?php
 	if ( isset( $grouped[0] ) ) {

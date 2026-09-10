@@ -1832,77 +1832,44 @@
 }
 
 /* ---------------------------------------------------------------------
-   13. Copy-link, deep-link highlight, favourites, calendar download
+   13. Copy-link, calendar download, deep-link highlight
 --------------------------------------------------------------------- */
 
+/* Small ghost icon-buttons that sit inline among the status pills in an
+   incident/maintenance header - deliberately quiet (no border, no fill)
+   until hovered/focused, so they read as secondary utilities rather than
+   competing with the pills and title for attention. */
 .ssm-copy-link,
-.ssm-ics-download,
-.ssm-favorite-toggle {
+.ssm-ics-download {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 30px;
-	height: 30px;
+	width: 26px;
+	height: 26px;
 	flex-shrink: 0;
+	margin: 0;
 	padding: 0;
 	border: 0;
 	border-radius: var(--ssm-r-sm);
 	background: transparent;
 	color: var(--ssm-text-faint);
 	cursor: pointer;
+	text-decoration: none;
 	transition: background var(--ssm-fast) var(--ssm-ease), color var(--ssm-fast) var(--ssm-ease);
 }
 
+.ssm-copy-link .ssm-icon,
+.ssm-ics-download .ssm-icon {
+	width: 15px;
+	height: 15px;
+}
+
 .ssm-copy-link:hover,
+.ssm-copy-link:focus-visible,
 .ssm-ics-download:hover,
-.ssm-favorite-toggle:hover {
+.ssm-ics-download:focus-visible {
 	background: var(--ssm-surface-2);
-	color: var(--ssm-text);
-}
-
-.ssm-favorite-toggle.ssm-is-active {
 	color: var(--ssm-primary);
-}
-
-.ssm-services-toolbar {
-	display: flex;
-	justify-content: flex-end;
-	margin-bottom: var(--ssm-sp-3);
-}
-
-.ssm-favorites-filter-toggle {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--ssm-sp-1);
-	padding: var(--ssm-sp-1) var(--ssm-sp-3);
-	border: 1px solid var(--ssm-border);
-	border-radius: var(--ssm-r-pill);
-	background: var(--ssm-surface);
-	color: var(--ssm-text-muted);
-	font-size: .82rem;
-	font-weight: 600;
-	cursor: pointer;
-}
-
-.ssm-favorites-filter-toggle .ssm-icon {
-	width: 14px;
-	height: 14px;
-}
-
-.ssm-favorites-filter-toggle[aria-pressed="true"] {
-	background: var(--ssm-primary-tint);
-	border-color: var(--ssm-primary);
-	color: var(--ssm-primary);
-}
-
-.ssm-status-page.ssm-is-filtering-favorites .ssm-service-row:not(.ssm-is-favorite) {
-	display: none;
-}
-
-.ssm-no-favorites-note {
-	color: var(--ssm-text-faint);
-	font-size: .85rem;
-	margin: 0 0 var(--ssm-sp-3);
 }
 
 @keyframes ssm-deep-link-flash {
