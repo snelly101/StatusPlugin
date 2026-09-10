@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.18.1
+Stable tag: 1.18.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.18.2 =
+Fixed the "Copy link" and "Add to calendar" buttons rendering as large, theme-coloured boxes instead of the small icon buttons they were designed as - many themes apply their own global border/background/sizing to every plain button and link on the site, which was silently overriding this plugin's styling. These two are now defended the same way the plugin's other buttons already are, so they render consistently regardless of the active theme.
 
 = 1.18.1 =
 The "Copy link" and "Add to calendar" icon buttons introduced in 1.18.0 are now small, quiet icon buttons sized and styled to match the rest of the incident/maintenance header (no border, no fill until hovered/focused) instead of the oversized, out-of-place buttons they shipped as. Also removed the "My services" favourites feature added in 1.18.0 - it added more UI than it was worth for most sites; the star toggle, filter button and related storage code have all been removed.

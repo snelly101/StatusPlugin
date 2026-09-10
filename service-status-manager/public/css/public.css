@@ -1838,38 +1838,54 @@
 /* Small ghost icon-buttons that sit inline among the status pills in an
    incident/maintenance header - deliberately quiet (no border, no fill)
    until hovered/focused, so they read as secondary utilities rather than
-   competing with the pills and title for attention. */
-.ssm-copy-link,
-.ssm-ics-download {
-	display: inline-flex;
+   competing with the pills and title for attention. Defended with the
+   same !important pattern as .ssm-button above (scoped selector plus
+   !important on the properties a theme's own global button/link styling
+   most commonly sets) - without it, a theme rule of equal-or-higher
+   specificity can override the size/border/background here, producing
+   the oversized, theme-coloured box these are supposed to never look
+   like. */
+.ssm-status-page button.ssm-copy-link,
+.ssm-status-page a.ssm-ics-download {
+	display: inline-flex !important;
 	align-items: center;
 	justify-content: center;
-	width: 26px;
-	height: 26px;
+	width: 26px !important;
+	height: 26px !important;
+	min-width: 0 !important;
+	min-height: 0 !important;
+	max-width: none !important;
 	flex-shrink: 0;
-	margin: 0;
-	padding: 0;
-	border: 0;
-	border-radius: var(--ssm-r-sm);
-	background: transparent;
-	color: var(--ssm-text-faint);
+	margin: 0 !important;
+	padding: 0 !important;
+	border: 0 !important;
+	border-radius: var(--ssm-r-sm) !important;
+	background: transparent !important;
+	background-image: none !important;
+	box-shadow: none !important;
+	color: var(--ssm-text-faint) !important;
+	font-size: 0;
+	line-height: 1;
 	cursor: pointer;
-	text-decoration: none;
+	text-decoration: none !important;
+	text-transform: none;
+	appearance: none;
+	-webkit-appearance: none;
 	transition: background var(--ssm-fast) var(--ssm-ease), color var(--ssm-fast) var(--ssm-ease);
 }
 
-.ssm-copy-link .ssm-icon,
-.ssm-ics-download .ssm-icon {
-	width: 15px;
-	height: 15px;
+.ssm-status-page button.ssm-copy-link .ssm-icon,
+.ssm-status-page a.ssm-ics-download .ssm-icon {
+	width: 15px !important;
+	height: 15px !important;
 }
 
-.ssm-copy-link:hover,
-.ssm-copy-link:focus-visible,
-.ssm-ics-download:hover,
-.ssm-ics-download:focus-visible {
-	background: var(--ssm-surface-2);
-	color: var(--ssm-primary);
+.ssm-status-page button.ssm-copy-link:hover,
+.ssm-status-page button.ssm-copy-link:focus-visible,
+.ssm-status-page a.ssm-ics-download:hover,
+.ssm-status-page a.ssm-ics-download:focus-visible {
+	background: var(--ssm-surface-2) !important;
+	color: var(--ssm-primary) !important;
 }
 
 @keyframes ssm-deep-link-flash {
