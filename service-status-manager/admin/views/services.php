@@ -55,7 +55,7 @@ $statuses = ssm_get_status_definitions();
 				<td><span class="ssm-badge <?php echo esc_attr( $status_def['css_class'] ); ?>"><?php echo esc_html( $status_def['label'] ); ?></span></td>
 				<td><?php echo esc_html( ucfirst( $service->status_mode ) ); ?></td>
 				<td><a href="<?php echo esc_url( admin_url( 'admin.php?page=service-status-manager-monitors&service_id=' . $service->id ) ); ?>"><?php echo esc_html( $monitor_count ); ?></a></td>
-				<td><?php echo esc_html( number_format_i18n( $uptime, 2 ) ); ?>%</td>
+				<td><?php echo null !== $uptime ? esc_html( number_format_i18n( $uptime, 2 ) . '%' ) : esc_html__( 'Insufficient data', 'service-status-manager' ); ?></td>
 				<td><?php echo esc_html( $subscriber_count ); ?></td>
 				<td><?php echo esc_html( ssm_format_datetime( $service->updated_at ) ); ?></td>
 				<td class="ssm-quick-actions">

@@ -870,6 +870,11 @@
 	white-space: nowrap;
 }
 
+.ssm-monitor-meta.ssm-is-stale {
+	color: var(--ssm-degraded);
+	font-weight: 600;
+}
+
 /* ---------------------------------------------------------------------
    6. Uptime bars + tooltip
 --------------------------------------------------------------------- */
@@ -1161,6 +1166,20 @@
 .ssm-maintenance {
 	padding: var(--ssm-sp-5);
 	border-left: 3px solid var(--ssm-maintenance);
+}
+
+.ssm-maintenance--overdue {
+	border-left-color: var(--ssm-degraded);
+}
+
+.ssm-maintenance-section-note {
+	color: var(--ssm-text-faint);
+	font-size: .82rem;
+	margin: calc(var(--ssm-sp-2) * -1) 0 var(--ssm-sp-2);
+}
+
+.ssm-maintenance-original-tz {
+	color: var(--ssm-text-faint);
 }
 
 .ssm-maintenance-header {

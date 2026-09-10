@@ -8,6 +8,7 @@
  */
 
 use ServiceStatusManager\MonitorManager;
+use ServiceStatusManager\ServiceManager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -26,7 +27,7 @@ $show_monitors = 'yes' === $atts['show_monitors'];
  * @param object $service Service row.
  */
 $render_service = function ( $service ) use ( $show_monitors ) {
-	$def      = ssm_get_status_definition( $service->status );
+	$def      = ssm_get_status_definition( ServiceManager::get_display_status( $service ) );
 	$monitors = $show_monitors ? array_values( array_filter( MonitorManager::get_monitors_for_service( $service->id ), fn( $m ) => $m->is_public ) ) : array();
 	$has_detail = ! empty( $monitors ) || $service->description;
 	$row_id   = 'ssm-service-' . $service->id;
@@ -57,12 +58,37 @@ $render_service = function ( $service ) use ( $show_monitors ) {
 
 					<?php if ( ! empty( $monitors ) ) : ?>
 						<ul class="ssm-monitor-list">
-							<?php foreach ( $monitors as $monitor ) : $mdef = ssm_get_status_definition( $monitor->current_state ); ?>
+							<?php
+							foreach ( $monitors as $monitor ) :
+								$is_stale = MonitorManager::is_stale( $monitor );
+								// A stale monitor's own last-known state is no
+								// longer trustworthy - show it as Unknown here
+								// too, matching the service-level treatment in
+								// ServiceManager::get_display_status(), rather
+								// than a per-monitor pill silently disagreeing
+								// with the service pill above it.
+								$mdef = ssm_get_status_definition( $is_stale ? 'unknown' : $monitor->current_state );
+								?>
 								<li class="ssm-monitor-row">
 									<span class="ssm-status-dot <?php echo esc_attr( $mdef['css_class'] ); ?>"></span>
 									<span class="ssm-monitor-name"><?php echo esc_html( $monitor->name ); ?></span>
-									<?php if ( $monitor->last_response_time_ms ) : ?>
+									<?php if ( $monitor->last_response_time_ms && ! $is_stale ) : ?>
 										<span class="ssm-monitor-meta"><?php echo esc_html( $monitor->last_response_time_ms ); ?> ms</span>
+									<?php endif; ?>
+									<?php if ( $monitor->last_checked_at ) : ?>
+										<span class="ssm-monitor-meta ssm-monitor-checked<?php echo $is_stale ? ' ssm-is-stale' : ''; ?>" title="<?php echo esc_attr( ssm_format_datetime( $monitor->last_checked_at ) . ' ' . ssm_get_timezone()->getName() ); ?>">
+											<?php
+											echo esc_html(
+												$is_stale
+													/* translators: %s: how long ago the monitor was last checked, e.g. "3 hours ago" */
+													? sprintf( __( 'Stale - last checked %s', 'service-status-manager' ), ssm_time_ago( $monitor->last_checked_at ) )
+													/* translators: %s: how long ago the monitor was last checked, e.g. "30 seconds ago" */
+													: sprintf( __( 'Checked %s', 'service-status-manager' ), ssm_time_ago( $monitor->last_checked_at ) )
+											);
+											?>
+										</span>
+									<?php elseif ( 'manual' !== $monitor->type ) : ?>
+										<span class="ssm-monitor-meta ssm-is-stale"><?php esc_html_e( 'Not yet checked', 'service-status-manager' ); ?></span>
 									<?php endif; ?>
 									<span class="ssm-status-pill <?php echo esc_attr( $mdef['css_class'] ); ?>"><?php echo esc_html( $mdef['label'] ); ?></span>
 								</li>

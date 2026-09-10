@@ -97,6 +97,7 @@ trait AdminIncidentsTrait {
 			'timezone'            => wp_unslash( $_POST['timezone'] ?? wp_timezone_string() ),
 			'impact'              => wp_unslash( $_POST['impact'] ?? 'none' ),
 			'is_public'           => ! empty( $_POST['is_public'] ),
+			'is_draft'            => ! empty( $_POST['is_draft'] ),
 			'notify_on_announce'  => ! empty( $_POST['notify_on_announce'] ),
 			'notify_on_start'     => ! empty( $_POST['notify_on_start'] ),
 			'notify_on_complete'  => ! empty( $_POST['notify_on_complete'] ),

@@ -423,6 +423,11 @@ class ServiceManager {
 	 * attached would never show as anything other than operational no
 	 * matter how severe an incident against it is.
 	 *
+	 * Persists the result. Event-triggered (a monitor state change, an
+	 * incident being created/resolved, a maintenance transition) - see
+	 * get_display_status() for why that alone isn't enough to catch a
+	 * monitor simply going stale with no new event to trigger this.
+	 *
 	 * @param int $service_id Service ID.
 	 */
 	public static function recalculate_status( $service_id ) {
@@ -432,8 +437,29 @@ class ServiceManager {
 			return;
 		}
 
-		$monitors = MonitorManager::get_monitors_for_service( $service_id );
-		$states   = wp_list_pluck( array_filter( $monitors, fn( $m ) => $m->is_active ), 'current_state' );
+		self::set_status( $service_id, self::compute_status( $service_id ) );
+	}
+
+	/**
+	 * Pure computation of what an automatic-mode service's status
+	 * currently should be - the same logic recalculate_status() persists,
+	 * factored out so it can also be used to answer "what should this
+	 * service show *right now*" without writing anything (see
+	 * get_display_status()).
+	 *
+	 * @param int $service_id Service ID.
+	 * @return string Status slug.
+	 */
+	private static function compute_status( $service_id ) {
+		$monitors = array_filter( MonitorManager::get_monitors_for_service( $service_id ), fn( $m ) => $m->is_active );
+		// A stale monitor's cached current_state can no longer be trusted -
+		// treat it as "unknown" rather than silently keep reporting
+		// whatever it last observed (see MonitorManager::is_stale()), so a
+		// dead check cycle can never masquerade as "still operational".
+		$states = array_map(
+			fn( $m ) => MonitorManager::is_stale( $m ) ? 'unknown' : $m->current_state,
+			array_values( $monitors )
+		);
 
 		$candidates = array();
 
@@ -453,11 +479,36 @@ class ServiceManager {
 			// incident (or an ended maintenance window) on a
 			// monitor-less service actually clear back to normal instead
 			// of staying stuck at whatever it last showed.
-			self::set_status( $service_id, 'operational' );
-			return;
+			return 'operational';
 		}
 
-		self::set_status( $service_id, StatusCalculator::highest_priority( $candidates ) );
+		return StatusCalculator::highest_priority( $candidates );
+	}
+
+	/**
+	 * The status a service should actually be shown as *right now*,
+	 * independent of whatever is cached in its status column.
+	 *
+	 * recalculate_status() only re-runs when something happens (a monitor
+	 * check, an incident change, a maintenance transition) - it has no way
+	 * to notice a monitor that simply stopped being checked (a dead cron,
+	 * an unreachable host) with no new event to trigger a recalculation.
+	 * Left alone, a service could keep showing its last-known "Operational"
+	 * indefinitely even though the data behind it is now stale. Calling
+	 * this at render/API-response time closes that gap without needing a
+	 * dedicated polling job: it always re-derives live for automatic-mode
+	 * services (manual-mode is always the admin's explicit word, never
+	 * second-guessed).
+	 *
+	 * @param object $service Service row (as returned by get_service()/get_services()).
+	 * @return string Status slug.
+	 */
+	public static function get_display_status( $service ) {
+		if ( ! $service || 'automatic' !== $service->status_mode ) {
+			return $service->status;
+		}
+
+		return self::compute_status( $service->id );
 	}
 
 	/**
@@ -512,6 +563,15 @@ class ServiceManager {
 	 */
 	public static function get_overall_status() {
 		$services = self::get_services( array( 'show_on_status_page' => 1 ) );
+
+		// Re-derive each service's live status (see get_display_status())
+		// rather than trusting the stored column, so a monitor that has
+		// simply gone stale since the last recalculation can never leave
+		// the overall banner claiming "Operational" on outdated data.
+		foreach ( $services as $service ) {
+			$service->status = self::get_display_status( $service );
+		}
+
 		return StatusCalculator::calculate_overall_status( $services );
 	}
 }

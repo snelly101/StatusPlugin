@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.15.3
+Stable tag: 1.16.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,15 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.16.0 =
+Maintenance lifecycle correctness: a window is no longer auto-marked "Completed" just because its scheduled end time passed - it now moves to a new "Overdue" ("Awaiting update") state instead, stays there (flagged on the admin Dashboard and Maintenance list) until an admin explicitly confirms it finished, and affected services correctly stay showing "Under maintenance" in the meantime rather than silently reverting on a guess. Added a Draft toggle on the Maintenance screen so test/preview entries are always hidden from the public page and never send notifications, without deleting anything. The public maintenance section is now titled "Maintenance" with separate "Active", "Awaiting update" and "Upcoming" headings, and shows an explicit timezone (plus the window's originally-scheduled timezone, if different from the site's current one) and a plain-language impact description.
+
+Monitoring freshness: a new configurable "stale data threshold" (Settings -> Monitoring, default 60 minutes) means an automated monitor that hasn't been checked recently is now shown as "Unknown" instead of trusting a possibly-outdated cached result - this now also feeds into service and overall status, so the status page can no longer claim "Operational" (or any other status) based on stale monitoring data. The public services list shows "Checked X ago" (with the exact time and timezone on hover) for every automated monitor, and flags stale ones. Manual monitors are unaffected, since they have no automated check cycle for "stale" to apply to.
+
+Uptime accuracy: a service or monitor with no recorded check history now correctly shows "Insufficient data" instead of an invented 100% uptime figure, on the public history view and the admin Services list.
+
+Requires a database schema update (adds one column to the maintenance table); this runs automatically on upgrade via the plugin's existing migration path, same as always - no manual steps, and all existing maintenance/service/subscriber data is preserved untouched.
 
 = 1.15.3 =
 Maintenance SMS notifications (announced, started, completed, extended, cancelled, updated, and reminders) now show the scheduled window's date in short UK d/m/y form - e.g. "21/1/26 3:00pm" instead of the site's full date format (e.g. "21 January 2026 3:00 pm"), which was eating into SMS's tight character budget. Email and Microsoft Teams notifications are unaffected - they still show the fuller date as before, since only SMS has a length constraint that makes the short form worth it.

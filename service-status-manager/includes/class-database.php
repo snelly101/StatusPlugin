@@ -223,6 +223,7 @@ class Database {
 			timezone VARCHAR(64) DEFAULT NULL,
 			impact VARCHAR(20) NOT NULL DEFAULT 'none',
 			is_public TINYINT(1) NOT NULL DEFAULT 1,
+			is_draft TINYINT(1) NOT NULL DEFAULT 0,
 			notify_settings LONGTEXT DEFAULT NULL,
 			reminders_sent LONGTEXT DEFAULT NULL,
 			created_by BIGINT UNSIGNED DEFAULT NULL,

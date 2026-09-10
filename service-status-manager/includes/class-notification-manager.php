@@ -599,7 +599,11 @@ class NotificationManager {
 	 *                                 description when present (mirrors notify_for_incident()).
 	 */
 	private static function notify_for_maintenance( $maintenance, $event, $prefix, $update = null ) {
-		if ( ! $maintenance->is_public ) {
+		// A draft is a test/preview entry - it must never reach a real
+		// subscriber regardless of what triggered this (a manual update,
+		// or process_transitions()'s automatic scheduled->in_progress
+		// and in_progress->overdue transitions).
+		if ( ! $maintenance->is_public || ! empty( $maintenance->is_draft ) ) {
 			return;
 		}
 

@@ -24,13 +24,25 @@ $range_days = in_array( $range_days, array( 30, 60, 90 ), true ) ? $range_days :
 			if ( empty( $monitors ) ) :
 				$uptime = UptimeAggregator::get_service_uptime_percentage( $service->id, $range_days );
 				?>
-				<p class="ssm-uptime-percentage"><?php echo esc_html( number_format_i18n( $uptime, 2 ) ); ?>% <span class="ssm-uptime-range-label"><?php echo esc_html( sprintf( /* translators: %d: number of days */ __( '· last %d days', 'service-status-manager' ), $range_days ) ); ?></span></p>
+				<p class="ssm-uptime-percentage">
+					<?php if ( null !== $uptime ) : ?>
+						<?php echo esc_html( number_format_i18n( $uptime, 2 ) ); ?>% <span class="ssm-uptime-range-label"><?php echo esc_html( sprintf( /* translators: %d: number of days */ __( '· last %d days', 'service-status-manager' ), $range_days ) ); ?></span>
+					<?php else : ?>
+						<span class="ssm-uptime-insufficient"><?php esc_html_e( 'Insufficient data', 'service-status-manager' ); ?></span>
+					<?php endif; ?>
+				</p>
 			<?php else : ?>
-				<?php foreach ( $monitors as $monitor ) : ?>
+				<?php foreach ( $monitors as $monitor ) : $monitor_uptime = UptimeAggregator::get_monitor_uptime_percentage( $monitor->id, $range_days ); ?>
 					<div class="ssm-history-monitor">
 						<div class="ssm-history-monitor-head">
 							<span><?php echo esc_html( $monitor->name ); ?></span>
-							<span class="ssm-uptime-percentage"><?php echo esc_html( number_format_i18n( UptimeAggregator::get_monitor_uptime_percentage( $monitor->id, $range_days ), 2 ) ); ?>% <span class="ssm-uptime-range-label"><?php echo esc_html( sprintf( __( '· last %d days', 'service-status-manager' ), $range_days ) ); ?></span></span>
+							<span class="ssm-uptime-percentage">
+								<?php if ( null !== $monitor_uptime ) : ?>
+									<?php echo esc_html( number_format_i18n( $monitor_uptime, 2 ) ); ?>% <span class="ssm-uptime-range-label"><?php echo esc_html( sprintf( __( '· last %d days', 'service-status-manager' ), $range_days ) ); ?></span>
+								<?php else : ?>
+									<span class="ssm-uptime-insufficient"><?php esc_html_e( 'Insufficient data', 'service-status-manager' ); ?></span>
+								<?php endif; ?>
+							</span>
 						</div>
 						<div class="ssm-uptime-bars" data-ssm-uptime-bars role="img" aria-label="<?php echo esc_attr( sprintf(
 							/* translators: 1: monitor name, 2: number of days */

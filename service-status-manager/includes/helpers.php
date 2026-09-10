@@ -234,6 +234,35 @@ function ssm_format_datetime( $utc_datetime, $format = '' ) {
 }
 
 /**
+ * A short "X ago" relative time string (e.g. "30 seconds ago", "5 minutes
+ * ago"), for showing monitor/service freshness at a glance - the exact
+ * timestamp (with timezone) is always available separately, typically as
+ * a title attribute, since a relative string alone can't be verified or
+ * compared by a visitor.
+ *
+ * @param string $utc_datetime MySQL datetime string in UTC.
+ * @return string Empty string if $utc_datetime is empty/invalid.
+ */
+function ssm_time_ago( $utc_datetime ) {
+	if ( empty( $utc_datetime ) ) {
+		return '';
+	}
+
+	$timestamp = strtotime( $utc_datetime . ' UTC' );
+	if ( ! $timestamp ) {
+		return '';
+	}
+
+	$diff = time() - $timestamp;
+	if ( $diff < 10 ) {
+		return __( 'just now', 'service-status-manager' );
+	}
+
+	/* translators: %s: human-readable time difference, e.g. "5 minutes" */
+	return sprintf( __( '%s ago', 'service-status-manager' ), human_time_diff( $timestamp, time() ) );
+}
+
+/**
  * Returns the current UTC time as a MySQL datetime string.
  *
  * @return string
@@ -256,6 +285,10 @@ function ssm_get_settings() {
 			'from_email'                 => get_option( 'admin_email' ),
 			'public_team_name'           => get_bloginfo( 'name' ) . ' ' . __( 'Status Team', 'service-status-manager' ),
 			'overall_status_excludes'    => array(),
+			// How long a monitor's last check can go without refreshing
+			// before its data is treated as stale (shown as "Unknown"
+			// rather than trusting a possibly-outdated cached state).
+			'stale_data_threshold_minutes' => 60,
 			'raw_check_retention_days'   => 35,
 			'hourly_aggregate_retention_days' => 400,
 			'daily_aggregate_retention_days'  => 1825,

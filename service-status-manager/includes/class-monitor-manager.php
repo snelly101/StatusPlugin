@@ -55,6 +55,39 @@ class MonitorManager {
 	}
 
 	/**
+	 * Whether a monitor's last check is old enough that its current_state
+	 * can no longer be trusted as an accurate picture of "right now" -
+	 * used so the public page can show "Unknown" (and never silently keep
+	 * claiming "Operational") once a monitor stops actually being checked
+	 * (e.g. cron died, the host is unreachable), rather than trusting a
+	 * cached state indefinitely.
+	 *
+	 * A "manual" monitor is never stale - it has no automated check cycle
+	 * for "last checked" to even mean anything, its state is only ever
+	 * set directly by an admin.
+	 *
+	 * @param object $monitor Monitor row (must have type/is_active/last_checked_at).
+	 * @return bool
+	 */
+	public static function is_stale( $monitor ) {
+		if ( ! $monitor || 'manual' === $monitor->type || empty( $monitor->is_active ) ) {
+			return false;
+		}
+
+		if ( empty( $monitor->last_checked_at ) ) {
+			// Active and automated, but never actually checked yet (e.g.
+			// just created, or cron has never run) - that is stale, not
+			// merely "no data yet": nothing about it can be trusted.
+			return true;
+		}
+
+		$threshold_minutes = max( 1, absint( ssm_get_setting( 'stale_data_threshold_minutes', 60 ) ) );
+		$last_checked_ts    = strtotime( $monitor->last_checked_at . ' UTC' );
+
+		return ( time() - $last_checked_ts ) > ( $threshold_minutes * MINUTE_IN_SECONDS );
+	}
+
+	/**
 	 * Returns every active monitor whose next check is due.
 	 *
 	 * @param int $limit Maximum number of monitors to return (batching).

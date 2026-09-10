@@ -25,6 +25,13 @@ $can_manage      = current_user_can( Capabilities::MANAGE_INCIDENTS );
 <div class="wrap ssm-wrap">
 	<h1><?php echo $event ? esc_html__( 'Edit Maintenance', 'service-status-manager' ) : esc_html__( 'New Maintenance', 'service-status-manager' ); ?></h1>
 
+	<?php if ( ! empty( $event->is_draft ) ) : ?>
+		<div class="notice notice-info inline"><p><?php esc_html_e( 'This is a draft - it is hidden from the public status page and no notifications are sent for it.', 'service-status-manager' ); ?></p></div>
+	<?php endif; ?>
+	<?php if ( isset( $event->status ) && 'overdue' === $event->status ) : ?>
+		<div class="notice notice-warning inline"><p><?php esc_html_e( 'This window\'s scheduled end time has passed and it is still marked "Overdue" - post an update below with status "Completed" (or "Cancelled") once you\'ve confirmed the work is actually finished.', 'service-status-manager' ); ?></p></div>
+	<?php endif; ?>
+
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 		<?php wp_nonce_field( 'ssm_save_maintenance' ); ?>
 		<input type="hidden" name="action" value="ssm_save_maintenance" />
@@ -94,6 +101,13 @@ $can_manage      = current_user_can( Capabilities::MANAGE_INCIDENTS );
 			<tr>
 				<th><?php esc_html_e( 'Visibility', 'service-status-manager' ); ?></th>
 				<td><label><input type="checkbox" name="is_public" value="1" <?php checked( $event->is_public ?? 1, 1 ); ?> /> <?php esc_html_e( 'Show on public status page', 'service-status-manager' ); ?></label></td>
+			</tr>
+			<tr>
+				<th><?php esc_html_e( 'Draft', 'service-status-manager' ); ?></th>
+				<td>
+					<label><input type="checkbox" name="is_draft" value="1" <?php checked( $event->is_draft ?? 0, 1 ); ?> /> <?php esc_html_e( 'Draft / test entry - always hidden from the public page, regardless of the setting above', 'service-status-manager' ); ?></label>
+					<p class="description"><?php esc_html_e( 'Use this for entries you are still preparing or testing. No notifications are sent for a draft. Nothing is deleted when you untick this later.', 'service-status-manager' ); ?></p>
+				</td>
 			</tr>
 		</table>
 

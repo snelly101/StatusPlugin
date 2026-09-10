@@ -104,6 +104,33 @@ if ( ! function_exists( 'sanitize_hex_color' ) ) {
 if ( ! function_exists( 'wp_json_encode' ) ) {
 	function wp_json_encode( $data, $options = 0 ) { return json_encode( $data, $options ); } // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 }
+if ( ! function_exists( 'human_time_diff' ) ) {
+	/**
+	 * Minimal stand-in for WP core's human_time_diff() - same signature
+	 * and rounding behaviour (whole units, "a minute"/"an hour" only for
+	 * the number 1, otherwise "N units"), just without every locale-aware
+	 * edge case core's version handles.
+	 */
+	function human_time_diff( $from, $to = 0 ) {
+		$to   = $to ?: time();
+		$diff = max( 0, (int) $to - (int) $from );
+
+		if ( $diff < MINUTE_IN_SECONDS ) {
+			$secs = max( 1, $diff );
+			return $secs . ' second' . ( 1 === $secs ? '' : 's' );
+		}
+		if ( $diff < HOUR_IN_SECONDS ) {
+			$mins = (int) round( $diff / MINUTE_IN_SECONDS );
+			return $mins . ' minute' . ( 1 === $mins ? '' : 's' );
+		}
+		if ( $diff < DAY_IN_SECONDS ) {
+			$hours = (int) round( $diff / HOUR_IN_SECONDS );
+			return $hours . ' hour' . ( 1 === $hours ? '' : 's' );
+		}
+		$days = (int) round( $diff / DAY_IN_SECONDS );
+		return $days . ' day' . ( 1 === $days ? '' : 's' );
+	}
+}
 if ( ! function_exists( 'esc_url_raw' ) ) {
 	function esc_url_raw( $url ) { return filter_var( (string) $url, FILTER_VALIDATE_URL ) ? $url : ''; }
 }
@@ -156,3 +183,4 @@ require_once __DIR__ . '/../notifications/class-notification-queue.php';
 require_once __DIR__ . '/../includes/class-maintenance-manager.php';
 require_once __DIR__ . '/../includes/class-appearance-settings.php';
 require_once __DIR__ . '/../includes/class-appearance-renderer.php';
+require_once __DIR__ . '/../includes/class-monitor-manager.php';

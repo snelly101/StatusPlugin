@@ -24,6 +24,28 @@ $result = MaintenanceManager::query_for_admin( array( 'paged' => $paged ) );
 	<?php endif; ?>
 	<hr class="wp-header-end" />
 
+	<?php $overdue_count = MaintenanceManager::count_overdue(); ?>
+	<?php if ( $overdue_count > 0 ) : ?>
+		<div class="notice notice-warning inline">
+			<p>
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %d: number of overdue maintenance windows */
+						_n(
+							'%d maintenance window has passed its scheduled end time and is awaiting confirmation that it actually finished.',
+							'%d maintenance windows have passed their scheduled end time and are awaiting confirmation that they actually finished.',
+							$overdue_count,
+							'service-status-manager'
+						),
+						$overdue_count
+					)
+				);
+				?>
+			</p>
+		</div>
+	<?php endif; ?>
+
 	<table class="wp-list-table widefat fixed striped">
 		<thead><tr>
 			<th><?php esc_html_e( 'Title', 'service-status-manager' ); ?></th>
@@ -39,8 +61,13 @@ $result = MaintenanceManager::query_for_admin( array( 'paged' => $paged ) );
 		<?php endif; ?>
 		<?php foreach ( $result['items'] as $event ) : ?>
 			<tr>
-				<td><a href="<?php echo esc_url( add_query_arg( 'maintenance_id', $event->id, remove_query_arg( 'action' ) ) ); ?>"><?php echo esc_html( $event->title ); ?></a></td>
-				<td><?php echo esc_html( ucfirst( str_replace( '_', ' ', $event->status ) ) ); ?></td>
+				<td>
+					<a href="<?php echo esc_url( add_query_arg( 'maintenance_id', $event->id, remove_query_arg( 'action' ) ) ); ?>"><?php echo esc_html( $event->title ); ?></a>
+					<?php if ( ! empty( $event->is_draft ) ) : ?>
+						<span class="ssm-badge-draft"><?php esc_html_e( 'Draft', 'service-status-manager' ); ?></span>
+					<?php endif; ?>
+				</td>
+				<td<?php echo 'overdue' === $event->status ? ' class="ssm-status-overdue-cell"' : ''; ?>><?php echo esc_html( ucfirst( str_replace( '_', ' ', $event->status ) ) ); ?></td>
 				<td><?php echo esc_html( ssm_format_datetime( $event->scheduled_start ) ); ?></td>
 				<td><?php echo esc_html( ssm_format_datetime( $event->scheduled_end ) ); ?></td>
 				<td><?php echo esc_html( ucfirst( $event->impact ) ); ?></td>

@@ -60,6 +60,31 @@ $overall_def = ssm_get_status_definition( $overall );
 		</span>
 	</div>
 
+	<?php $overdue_maintenance_count = MaintenanceManager::count_overdue(); ?>
+	<?php if ( $overdue_maintenance_count > 0 ) : ?>
+		<div class="notice notice-warning inline">
+			<p>
+				<?php
+				echo wp_kses(
+					sprintf(
+						/* translators: 1: number of overdue maintenance windows, 2: opening link tag, 3: closing link tag */
+						_n(
+							'%1$d maintenance window has passed its scheduled end time without being confirmed complete. %2$sReview it%3$s.',
+							'%1$d maintenance windows have passed their scheduled end time without being confirmed complete. %2$sReview them%3$s.',
+							$overdue_maintenance_count,
+							'service-status-manager'
+						),
+						$overdue_maintenance_count,
+						'<a href="' . esc_url( add_query_arg( array( 'page' => 'service-status-manager-maintenance' ), admin_url( 'admin.php' ) ) ) . '">',
+						'</a>'
+					),
+					array( 'a' => array( 'href' => array() ) )
+				);
+				?>
+			</p>
+		</div>
+	<?php endif; ?>
+
 	<div class="ssm-stat-grid">
 		<?php
 		$stat_cards = array(

@@ -56,6 +56,15 @@ $outgoing_events = array(
 				<td><label><input type="checkbox" name="retain_ip_addresses" value="1" <?php checked( $settings['retain_ip_addresses'] ); ?> /> <?php esc_html_e( 'Store subscriber/audit-log IP addresses', 'service-status-manager' ); ?></label></td></tr>
 		</table>
 
+		<h2><?php esc_html_e( 'Monitoring', 'service-status-manager' ); ?></h2>
+		<table class="form-table">
+			<tr><th><label for="ssm-stale-threshold"><?php esc_html_e( 'Stale data threshold', 'service-status-manager' ); ?></label></th>
+				<td>
+					<input type="number" id="ssm-stale-threshold" name="stale_data_threshold_minutes" min="1" style="width:100px;" value="<?php echo esc_attr( $settings['stale_data_threshold_minutes'] ); ?>" /> <?php esc_html_e( 'minutes', 'service-status-manager' ); ?>
+					<p class="description"><?php esc_html_e( 'If an automated monitor has not been checked within this many minutes (e.g. cron stopped running, or the host became unreachable), it - and any service that depends on it - is shown as "Unknown" instead of its last cached result. This never affects manual monitors, which have no automated check cycle.', 'service-status-manager' ); ?></p>
+				</td></tr>
+		</table>
+
 		<h2><?php esc_html_e( 'Email Provider', 'service-status-manager' ); ?></h2>
 		<p class="description"><?php esc_html_e( 'Where notification emails are sent from. WordPress mail (wp_mail) is fully serial - fine at low subscriber counts, but slow at high volume. The SMTP2GO API sends concurrently and is the recommended choice for large subscriber lists.', 'service-status-manager' ); ?></p>
 		<table class="form-table">

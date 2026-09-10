@@ -125,7 +125,16 @@ class Shortcodes {
 			$uptime_values = array();
 			foreach ( $services as $service ) {
 				if ( empty( $service->exclude_from_overall ) ) {
-					$uptime_values[] = \ServiceStatusManager\UptimeAggregator::get_service_uptime_percentage( $service->id, 90 );
+					$value = \ServiceStatusManager\UptimeAggregator::get_service_uptime_percentage( $service->id, 90 );
+					// null means "insufficient data" (no checks recorded yet
+					// for this service) - excluded from the average rather
+					// than counted as 0% or 100%, neither of which would be
+					// true; if every service lacks data the overall figure
+					// is correctly null too (hidden by the template) rather
+					// than a meaningless one.
+					if ( null !== $value ) {
+						$uptime_values[] = $value;
+					}
 				}
 			}
 			$overall_uptime = $uptime_values ? array_sum( $uptime_values ) / count( $uptime_values ) : null;
@@ -219,21 +228,26 @@ class Shortcodes {
 	public function render_maintenance( $atts ) {
 		$atts = $this->normalize_atts( (array) $atts );
 
-		// get_upcoming() deliberately returns scheduled + in_progress
-		// together (both need to stay visible, and sorted by start time),
-		// but a window that's actually happening right now reads very
-		// differently from one that's merely booked in - split them here
-		// so the template can give "Active" its own heading instead of it
-		// silently sitting under "Upcoming"/"Scheduled".
-		$upcoming = MaintenanceManager::get_upcoming();
+		// get_upcoming() deliberately returns scheduled + in_progress +
+		// overdue together (all need to stay visible, sorted by start
+		// time), but each reads very differently - split them here so the
+		// template can give each its own heading instead of them silently
+		// sitting under one undifferentiated "Upcoming"/"Scheduled" list.
+		// "overdue" gets its own bucket rather than folding into "active":
+		// it means the scheduled end has passed with nobody confirming the
+		// work actually finished, which visitors deserve to see labelled
+		// as such rather than presented as a normal, on-track window.
+		$upcoming  = MaintenanceManager::get_upcoming();
 		$active    = array_values( array_filter( $upcoming, fn( $event ) => 'in_progress' === $event->status ) );
-		$scheduled = array_values( array_filter( $upcoming, fn( $event ) => 'in_progress' !== $event->status ) );
+		$overdue   = array_values( array_filter( $upcoming, fn( $event ) => 'overdue' === $event->status ) );
+		$scheduled = array_values( array_filter( $upcoming, fn( $event ) => 'scheduled' === $event->status ) );
 		$past      = MaintenanceManager::get_recent_completed( (int) $atts['count'] );
 
 		return $this->render(
 			'maintenance',
 			array(
 				'active_maintenance'   => $active,
+				'overdue_maintenance'  => $overdue,
 				'upcoming_maintenance' => $scheduled,
 				'past_maintenance'     => $past,
 				'atts'                 => $atts,

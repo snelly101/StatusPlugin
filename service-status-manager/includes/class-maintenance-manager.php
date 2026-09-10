@@ -15,28 +15,45 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class MaintenanceManager {
 
-	const STATUSES = array( 'scheduled', 'in_progress', 'completed', 'cancelled' );
+	// "overdue" is not a state an admin ever picks directly - it is where
+	// process_transitions() puts a window whose scheduled_end has passed
+	// while still in_progress, instead of guessing that it finished on
+	// time. It stays there, flagged for attention, until an admin
+	// explicitly posts a "completed" (or "cancelled") update.
+	const STATUSES = array( 'scheduled', 'in_progress', 'overdue', 'completed', 'cancelled' );
 	const IMPACTS   = array( 'none', 'minor', 'major' );
 
 	/**
-	 * @return array Public, scheduled or in-progress maintenance, soonest first.
+	 * @return array Public, non-draft, scheduled/in-progress/overdue
+	 *               maintenance, soonest first.
 	 */
 	public static function get_upcoming() {
 		global $wpdb;
 		$table = ssm_table( 'maintenance' );
-		$sql   = "SELECT * FROM {$table} WHERE status IN ('scheduled','in_progress') AND is_public = 1 ORDER BY scheduled_start ASC";
+		$sql   = "SELECT * FROM {$table} WHERE status IN ('scheduled','in_progress','overdue') AND is_public = 1 AND is_draft = 0 ORDER BY scheduled_start ASC";
 		return $wpdb->get_results( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
 
 	/**
 	 * @param int $limit Maximum number of events to return.
-	 * @return array Recently completed public maintenance.
+	 * @return array Recently completed public, non-draft maintenance.
 	 */
 	public static function get_recent_completed( $limit = 5 ) {
 		global $wpdb;
 		$table = ssm_table( 'maintenance' );
-		$sql   = "SELECT * FROM {$table} WHERE status = 'completed' AND is_public = 1 ORDER BY actual_end DESC LIMIT %d";
+		$sql   = "SELECT * FROM {$table} WHERE status = 'completed' AND is_public = 1 AND is_draft = 0 ORDER BY actual_end DESC LIMIT %d";
 		return $wpdb->get_results( $wpdb->prepare( $sql, max( 1, absint( $limit ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/**
+	 * @return int Count of maintenance windows currently awaiting an
+	 *             admin's confirmation that they actually finished - for
+	 *             an admin-side "needs attention" flag.
+	 */
+	public static function count_overdue() {
+		global $wpdb;
+		$table = ssm_table( 'maintenance' );
+		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE status = 'overdue'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
 
 	/**
@@ -183,6 +200,7 @@ class MaintenanceManager {
 				'timezone'        => sanitize_text_field( $data['timezone'] ?? wp_timezone_string() ),
 				'impact'          => in_array( $data['impact'] ?? 'none', self::IMPACTS, true ) ? $data['impact'] : 'none',
 				'is_public'       => isset( $data['is_public'] ) && ! $data['is_public'] ? 0 : 1,
+				'is_draft'        => empty( $data['is_draft'] ) ? 0 : 1,
 				'notify_settings' => wp_json_encode( $notify_settings ),
 				// Pre-mark any lead time the window is already too close to
 				// honour (e.g. a "1 hour before" reminder on a window
@@ -209,7 +227,7 @@ class MaintenanceManager {
 
 		AuditLog::record( 'maintenance_created', 'maintenance', $id, null, $data );
 
-		if ( $notify_settings['on_announce'] ) {
+		if ( $notify_settings['on_announce'] && empty( $data['is_draft'] ) ) {
 			do_action( 'ssm_maintenance_announced', self::get_maintenance( $id ) );
 		}
 
@@ -246,6 +264,7 @@ class MaintenanceManager {
 			'scheduled_end'   => ! empty( $data['scheduled_end'] ) ? $data['scheduled_end'] : $existing->scheduled_end,
 			'impact'          => isset( $data['impact'] ) && in_array( $data['impact'], self::IMPACTS, true ) ? $data['impact'] : $existing->impact,
 			'is_public'       => isset( $data['is_public'] ) ? ( empty( $data['is_public'] ) ? 0 : 1 ) : $existing->is_public,
+			'is_draft'        => isset( $data['is_draft'] ) ? ( empty( $data['is_draft'] ) ? 0 : 1 ) : $existing->is_draft,
 			'updated_at'      => ssm_now(),
 		);
 
@@ -470,7 +489,14 @@ class MaintenanceManager {
 	private static function apply_transition_side_effects( $maintenance_id, $new_status, $impact ) {
 		$services = self::get_services_for_maintenance( $maintenance_id );
 
-		if ( 'in_progress' === $new_status ) {
+		if ( in_array( $new_status, array( 'in_progress', 'overdue' ), true ) ) {
+			// "overdue" is treated the same as "in_progress" here
+			// deliberately: the window's scheduled end has passed, but
+			// nobody has confirmed it actually finished, so keeping
+			// affected services showing "under maintenance" is the honest
+			// choice - reverting them to "operational" on a guess would be
+			// exactly the kind of unconfirmed assumption this state exists
+			// to avoid.
 			foreach ( $services as $service ) {
 				if ( 'automatic' === $service->status_mode && 'none' !== $impact ) {
 					ServiceManager::set_status( $service->id, 'maintenance' );
@@ -500,11 +526,18 @@ class MaintenanceManager {
 
 	/**
 	 * Cron entry point (runs every five minutes): moves scheduled events
-	 * into "in_progress" and "completed" as their windows arrive (each via
-	 * add_update(), so the automatic transition also produces a timeline
-	 * entry and respects the same on_start/on_complete notify settings a
-	 * manual update would), and sends configured reminder notifications
-	 * ahead of the start time.
+	 * into "in_progress" as their windows arrive, and flags in_progress
+	 * events whose scheduled_end has passed as "overdue" (each transition
+	 * via add_update(), so it produces a normal timeline entry and
+	 * respects the same on_start notify setting a manual update would).
+	 *
+	 * Deliberately does NOT auto-complete anything: a window ending on
+	 * schedule is an assumption, not an observation, and guessing wrong
+	 * (real-world maintenance frequently overruns) would show visitors a
+	 * false "completed" while work might still be in progress. "overdue"
+	 * exists so that risk never has to be taken - an admin always posts
+	 * the actual "completed" (or "cancelled") update themselves; see
+	 * count_overdue() for the admin-side flag that prompts them to.
 	 */
 	public static function process_transitions() {
 		global $wpdb;
@@ -516,9 +549,15 @@ class MaintenanceManager {
 			self::add_update( $row->id, 'in_progress', '', false, ssm_get_setting( 'public_team_name' ) );
 		}
 
-		$ending = $wpdb->get_results( $wpdb->prepare( "SELECT id FROM {$table} WHERE status = 'in_progress' AND scheduled_end <= %s", $now ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		foreach ( $ending as $row ) {
-			self::add_update( $row->id, 'completed', '', false, ssm_get_setting( 'public_team_name' ) );
+		$overdue = $wpdb->get_results( $wpdb->prepare( "SELECT id FROM {$table} WHERE status = 'in_progress' AND scheduled_end <= %s", $now ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		foreach ( $overdue as $row ) {
+			self::add_update(
+				$row->id,
+				'overdue',
+				__( "This maintenance window's scheduled end time has passed. We're confirming its status and will post an update shortly.", 'service-status-manager' ),
+				false,
+				ssm_get_setting( 'public_team_name' )
+			);
 		}
 
 		self::send_due_reminders();

@@ -250,7 +250,11 @@ class UptimeAggregator {
 	 *
 	 * @param int $monitor_id Monitor ID.
 	 * @param int $days       Number of days.
-	 * @return float
+	 * @return float|null Null means insufficient data - no aggregated
+	 *                     checks exist for this monitor in the requested
+	 *                     range (e.g. it was only just created), which is
+	 *                     a materially different thing from a verified
+	 *                     100% record and must never be presented as one.
 	 */
 	public static function get_monitor_uptime_percentage( $monitor_id, $days = 90 ) {
 		global $wpdb;
@@ -266,7 +270,7 @@ class UptimeAggregator {
 		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		if ( ! $row || ! $row->total ) {
-			return 100.0;
+			return null;
 		}
 
 		return round( ( ( $row->up + $row->degraded ) / $row->total ) * 100, 2 );
@@ -278,13 +282,18 @@ class UptimeAggregator {
 	 *
 	 * @param int $service_id Service ID.
 	 * @param int $days       Number of days.
-	 * @return float
+	 * @return float|null Null means insufficient data - no monitors, only
+	 *                     manual ones (which carry no check history), or
+	 *                     none of its monitors have any aggregated checks
+	 *                     yet in the requested range. Never invented as
+	 *                     100%, the same reasoning as
+	 *                     get_monitor_uptime_percentage().
 	 */
 	public static function get_service_uptime_percentage( $service_id, $days = 90 ) {
 		$monitors = MonitorManager::get_monitors_for_service( $service_id );
 
 		if ( empty( $monitors ) ) {
-			return 100.0;
+			return null;
 		}
 
 		$total = 0.0;
@@ -293,10 +302,14 @@ class UptimeAggregator {
 			if ( 'manual' === $monitor->type ) {
 				continue;
 			}
-			$total += self::get_monitor_uptime_percentage( $monitor->id, $days );
+			$monitor_pct = self::get_monitor_uptime_percentage( $monitor->id, $days );
+			if ( null === $monitor_pct ) {
+				continue;
+			}
+			$total += $monitor_pct;
 			++$count;
 		}
 
-		return $count > 0 ? round( $total / $count, 2 ) : 100.0;
+		return $count > 0 ? round( $total / $count, 2 ) : null;
 	}
 }

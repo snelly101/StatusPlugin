@@ -32,6 +32,7 @@ trait AdminSettingsTrait {
 			'privacy_notice'                  => wp_kses_post( $post['privacy_notice'] ?? '' ),
 			'consent_wording_version'         => sanitize_text_field( $post['consent_wording_version'] ?? '1.0' ),
 			'retain_ip_addresses'             => ! empty( $post['retain_ip_addresses'] ),
+			'stale_data_threshold_minutes'    => max( 1, absint( $post['stale_data_threshold_minutes'] ?? 60 ) ),
 			'min_notify_severity'             => sanitize_key( $post['min_notify_severity'] ?? 'informational' ),
 			'suppress_short_incident_recovery_minutes' => absint( $post['suppress_short_incident_recovery_minutes'] ?? 0 ),
 			'quiet_hours_start'               => sanitize_text_field( $post['quiet_hours_start'] ?? '' ),
