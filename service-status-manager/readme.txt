@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.16.0
+Stable tag: 1.17.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.17.0 =
+Phase 2 (subscription usability + UI readability): the "Get status updates" modal is now a clear 4-step flow - Channels -> Services -> Contact details -> Confirm - with a step title and progress indicator that actually update as you move through it (previously a single fixed title and unlabelled progress dots stayed the same throughout all 3 steps). The severity dropdown now explains what each threshold actually means in plain language as you select it. A new Confirm step reviews everything you picked (channels, what you're following, severity, contact details) before the final Subscribe, with consent moved there as the last gate. Added a basic keyboard focus trap so Tab/Shift+Tab cycle within the open modal instead of escaping to the page behind it. All existing selections are still preserved as you move back and forth between steps, and the underlying subscribe/confirm/manage flow and field names are completely unchanged. Also trimmed excessive vertical spacing in the page header/hero and empty-state sections (e.g. "No incidents reported") on the public status page.
 
 = 1.16.0 =
 Maintenance lifecycle correctness: a window is no longer auto-marked "Completed" just because its scheduled end time passed - it now moves to a new "Overdue" ("Awaiting update") state instead, stays there (flagged on the admin Dashboard and Maintenance list) until an admin explicitly confirms it finished, and affected services correctly stay showing "Under maintenance" in the meantime rather than silently reverting on a guess. Added a Draft toggle on the Maintenance screen so test/preview entries are always hidden from the public page and never send notifications, without deleting anything. The public maintenance section is now titled "Maintenance" with separate "Active", "Awaiting update" and "Upcoming" headings, and shows an explicit timezone (plus the window's originally-scheduled timezone, if different from the site's current one) and a plain-language impact description.

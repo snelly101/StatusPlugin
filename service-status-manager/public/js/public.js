@@ -354,7 +354,16 @@
 		var submitBtn = qs( '[data-ssm-submit]', modal );
 		var errorBox = qs( '[data-ssm-wizard-error]', modal );
 		var confirmation = qs( '[data-ssm-confirmation]', modal );
+		var titleEl = qs( '[data-ssm-step-title]', modal );
+		var announceEl = qs( '[data-ssm-step-announce]', modal );
+		var lastStep = steps.length;
 		var current = 1;
+		var stepTitles = {};
+		try {
+			stepTitles = JSON.parse( wizard.getAttribute( 'data-ssm-step-titles' ) || '{}' );
+		} catch ( err ) {
+			stepTitles = {};
+		}
 
 		on( modal, 'click', '[data-ssm-close-modal]', function () {
 			closeModal( modal );
@@ -396,6 +405,95 @@
 			} );
 		} );
 
+		// A checked checkbox/radio's visible text is its <label>, not the
+		// input itself - used to build the plain-language review on the
+		// Confirm step from whatever the visitor actually picked.
+		function checkedLabels( selector ) {
+			return qsa( selector, modal ).filter( function ( input ) {
+				return input.checked;
+			} ).map( function ( input ) {
+				var label = input.closest( 'label' );
+				return label ? label.textContent.trim() : input.value;
+			} );
+		}
+
+		function updateReview() {
+			var review = qs( '[data-ssm-review]', modal );
+			if ( ! review ) {
+				return;
+			}
+
+			var channels = checkedLabels( 'input[data-ssm-channel]' );
+			qs( '[data-ssm-review="channels"]', modal ).textContent = channels.length ? channels.join( ', ' ) : '—';
+
+			var selectAll = qs( '[data-ssm-select-all]', modal );
+			var following;
+			if ( selectAll && selectAll.checked ) {
+				following = selectAll.closest( 'label' ).textContent.trim();
+			} else {
+				var picked = checkedLabels( '[data-ssm-selectable]' );
+				following = picked.length ? picked.join( ', ' ) : '—';
+			}
+			qs( '[data-ssm-review="following"]', modal ).textContent = following;
+
+			var severitySelect = qs( '[data-ssm-severity-select]', modal );
+			qs( '[data-ssm-review="severity"]', modal ).textContent = severitySelect.options[ severitySelect.selectedIndex ].textContent;
+
+			var contactParts = [];
+			qsa( '[data-ssm-destination]', modal ).forEach( function ( field ) {
+				if ( field.hidden ) {
+					return;
+				}
+				var input = qs( 'input', field );
+				if ( input && input.value.trim() ) {
+					contactParts.push( input.value.trim() );
+				}
+			} );
+			qs( '[data-ssm-review="contact"]', modal ).textContent = contactParts.length ? contactParts.join( ', ' ) : '—';
+		}
+
+		function updateSeverityExplainer() {
+			var select = qs( '[data-ssm-severity-select]', modal );
+			var explainer = qs( '[data-ssm-severity-explainer]', modal );
+			if ( ! select || ! explainer ) {
+				return;
+			}
+			var texts = {};
+			try {
+				texts = JSON.parse( explainer.getAttribute( 'data-ssm-severity-text' ) || '{}' );
+			} catch ( err ) {
+				texts = {};
+			}
+			explainer.textContent = texts[ select.value ] || '';
+		}
+
+		on( modal, 'change', '[data-ssm-severity-select]', updateSeverityExplainer );
+
+		// A simple focus trap: while the modal is open, Tab/Shift+Tab only
+		// cycle through the currently visible step's focusable elements
+		// (plus the close button and nav buttons) rather than escaping to
+		// the page behind it.
+		modal.addEventListener( 'keydown', function ( e ) {
+			if ( 'Tab' !== e.key || ! modal.classList.contains( 'ssm-is-open' ) ) {
+				return;
+			}
+			var focusable = qsa( 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])', modal ).filter( function ( el ) {
+				return ! el.hidden && el.offsetParent !== null;
+			} );
+			if ( ! focusable.length ) {
+				return;
+			}
+			var first = focusable[ 0 ];
+			var last = focusable[ focusable.length - 1 ];
+			if ( e.shiftKey && document.activeElement === first ) {
+				e.preventDefault();
+				last.focus();
+			} else if ( ! e.shiftKey && document.activeElement === last ) {
+				e.preventDefault();
+				first.focus();
+			}
+		} );
+
 		function goToStep( n ) {
 			steps.forEach( function ( step ) {
 				step.classList.toggle( 'ssm-is-active', parseInt( step.getAttribute( 'data-step' ), 10 ) === n );
@@ -406,10 +504,20 @@
 				dot.classList.toggle( 'ssm-is-done', dotStep < n );
 			} );
 			backBtn.hidden = n === 1;
-			nextBtn.hidden = n === steps.length;
-			submitBtn.hidden = n !== steps.length;
+			nextBtn.hidden = n === lastStep;
+			submitBtn.hidden = n !== lastStep;
 			current = n;
 			hideError();
+
+			if ( titleEl && stepTitles[ n ] ) {
+				titleEl.textContent = stepTitles[ n ];
+			}
+			if ( announceEl && stepTitles[ n ] ) {
+				announceEl.textContent = stepTitles[ n ];
+			}
+			if ( n === lastStep ) {
+				updateReview();
+			}
 
 			var firstField = qs( '.ssm-step.ssm-is-active input, .ssm-step.ssm-is-active select', modal );
 			if ( firstField ) {
@@ -448,6 +556,8 @@
 					showError( ( window.ssmPublic && window.ssmPublic.i18n && window.ssmPublic.i18n.enterDestination ) || 'Please fill in the highlighted field.' );
 					return false;
 				}
+			}
+			if ( lastStep === n ) {
 				var consent = qs( 'input[name="consent"]', modal );
 				if ( consent && ! consent.checked ) {
 					showError( ( window.ssmPublic && window.ssmPublic.i18n && window.ssmPublic.i18n.consentRequired ) || 'Please confirm your consent to continue.' );
@@ -471,7 +581,7 @@
 		if ( form ) {
 			form.addEventListener( 'submit', function ( e ) {
 				e.preventDefault();
-				if ( ! validateStep( 3 ) ) {
+				if ( ! validateStep( lastStep ) ) {
 					return;
 				}
 
@@ -524,6 +634,7 @@
 					f.hidden = true;
 				} );
 			}
+			updateSeverityExplainer();
 		} );
 	}
 

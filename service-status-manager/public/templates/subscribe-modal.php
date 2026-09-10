@@ -1,14 +1,15 @@
 <?php
 /**
- * Template: the "Get status updates" modal - a 3-step guided flow
- * (channels -> what to follow -> destination + consent) that submits to
+ * Template: the "Get status updates" modal - a 4-step guided flow
+ * (Channels -> Services -> Contact details -> Confirm) that submits to
  * exactly the same admin-post handler and field names as the standalone
  * [service_status_subscribe] form (see SubscriberManager::
  * handle_public_subscription()). JavaScript only changes how the fields
  * are *presented* (one step at a time, with client-side validation
- * between steps); the server-side contract, and the no-JS fallback
- * rendered as a plain form via <noscript> next to the trigger button,
- * are unchanged.
+ * between steps, and a plain-language review built from whatever was
+ * actually selected on the Confirm step); the server-side contract, and
+ * the no-JS fallback rendered as a plain form via <noscript> next to the
+ * trigger button, are unchanged.
  *
  * @package ServiceStatusManager
  */
@@ -23,6 +24,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 $groups   = ServiceManager::get_groups();
 $services = ServiceManager::get_services( array( 'show_on_status_page' => 1 ) );
 $settings = ssm_get_settings();
+
+$step_titles = array(
+	1 => __( 'Channels', 'service-status-manager' ),
+	2 => __( 'Services', 'service-status-manager' ),
+	3 => __( 'Contact details', 'service-status-manager' ),
+	4 => __( 'Confirm', 'service-status-manager' ),
+);
+
+$severity_explainers = array(
+	'informational' => __( "You'll hear about everything - incidents at every severity, plus general updates.", 'service-status-manager' ),
+	'minor'         => __( "You'll be notified about incidents rated Minor or worse - small glitches with no real impact are left out.", 'service-status-manager' ),
+	'major'         => __( "You'll only hear about Major incidents and above - significant problems affecting a service.", 'service-status-manager' ),
+	'critical'      => __( "You'll only be notified about Critical incidents - the most severe, service-down-level problems.", 'service-status-manager' ),
+);
 ?>
 <div class="ssm-modal-overlay" id="ssm-subscribe-modal" data-ssm-modal aria-hidden="true">
 	<div class="ssm-modal" role="dialog" aria-modal="true" aria-labelledby="ssm-modal-title">
@@ -30,19 +45,23 @@ $settings = ssm_get_settings();
 			<?php echo ssm_icon( 'x' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</button>
 
-		<div data-ssm-wizard>
+		<div data-ssm-wizard data-ssm-step-titles="<?php echo esc_attr( wp_json_encode( $step_titles ) ); ?>">
 			<div class="ssm-modal-header">
 				<p class="ssm-modal-eyebrow"><?php esc_html_e( 'Get status updates', 'service-status-manager' ); ?></p>
-				<h2 class="ssm-modal-title" id="ssm-modal-title"><?php esc_html_e( 'How would you like to be notified?', 'service-status-manager' ); ?></h2>
+				<h2 class="ssm-modal-title" id="ssm-modal-title" data-ssm-step-title><?php echo esc_html( $step_titles[1] ); ?></h2>
 			</div>
 
-			<div class="ssm-step-progress">
-				<span class="ssm-is-active" data-ssm-progress="1"></span>
-				<span data-ssm-progress="2"></span>
-				<span data-ssm-progress="3"></span>
-			</div>
+			<ol class="ssm-step-progress" aria-hidden="true">
+				<?php foreach ( $step_titles as $n => $label ) : ?>
+					<li class="<?php echo 1 === $n ? 'ssm-is-active' : ''; ?>" data-ssm-progress="<?php echo esc_attr( $n ); ?>">
+						<span class="ssm-step-progress-dot"><?php echo esc_html( $n ); ?></span>
+						<span class="ssm-step-progress-label"><?php echo esc_html( $label ); ?></span>
+					</li>
+				<?php endforeach; ?>
+			</ol>
+			<p class="screen-reader-text" role="status" aria-live="polite" data-ssm-step-announce></p>
 
-			<div class="ssm-notice ssm-notice-error" data-ssm-wizard-error hidden></div>
+			<div class="ssm-notice ssm-notice-error" data-ssm-wizard-error role="alert" hidden></div>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-ssm-subscribe-form novalidate>
 				<?php wp_nonce_field( 'ssm_public_subscribe' ); ?>
@@ -106,12 +125,13 @@ $settings = ssm_get_settings();
 
 					<div class="ssm-form-row" style="margin-top:16px;">
 						<label for="ssm-modal-severity"><?php esc_html_e( 'Minimum incident severity', 'service-status-manager' ); ?></label>
-						<select id="ssm-modal-severity" name="min_severity">
+						<select id="ssm-modal-severity" name="min_severity" data-ssm-severity-select>
 							<option value="informational"><?php esc_html_e( 'All updates', 'service-status-manager' ); ?></option>
 							<option value="minor"><?php esc_html_e( 'Minor and above', 'service-status-manager' ); ?></option>
 							<option value="major"><?php esc_html_e( 'Major and above', 'service-status-manager' ); ?></option>
 							<option value="critical"><?php esc_html_e( 'Critical only', 'service-status-manager' ); ?></option>
 						</select>
+						<p class="ssm-severity-explainer" data-ssm-severity-explainer data-ssm-severity-text="<?php echo esc_attr( wp_json_encode( $severity_explainers ) ); ?>"><?php echo esc_html( $severity_explainers['informational'] ); ?></p>
 					</div>
 					<label class="ssm-checkbox-row">
 						<input type="checkbox" name="maintenance_notifications" value="1" checked />
@@ -119,7 +139,7 @@ $settings = ssm_get_settings();
 					</label>
 				</section>
 
-				<!-- Step 3: destination + consent -->
+				<!-- Step 3: contact details -->
 				<section class="ssm-step" data-step="3">
 					<div class="ssm-form-row">
 						<label for="ssm-modal-name"><?php esc_html_e( 'Name (optional)', 'service-status-manager' ); ?></label>
@@ -137,6 +157,29 @@ $settings = ssm_get_settings();
 						<label for="ssm-modal-phone"><?php esc_html_e( 'Mobile number', 'service-status-manager' ); ?></label>
 						<input type="tel" id="ssm-modal-phone" name="phone" autocomplete="tel" placeholder="+44 7700 900000" />
 					</div>
+				</section>
+
+				<!-- Step 4: review + consent -->
+				<section class="ssm-step" data-step="4">
+					<dl class="ssm-subscribe-review" data-ssm-review>
+						<div class="ssm-subscribe-review-row">
+							<dt><?php esc_html_e( 'Channels', 'service-status-manager' ); ?></dt>
+							<dd data-ssm-review="channels"></dd>
+						</div>
+						<div class="ssm-subscribe-review-row">
+							<dt><?php esc_html_e( 'Following', 'service-status-manager' ); ?></dt>
+							<dd data-ssm-review="following"></dd>
+						</div>
+						<div class="ssm-subscribe-review-row">
+							<dt><?php esc_html_e( 'Minimum severity', 'service-status-manager' ); ?></dt>
+							<dd data-ssm-review="severity"></dd>
+						</div>
+						<div class="ssm-subscribe-review-row">
+							<dt><?php esc_html_e( 'Contact', 'service-status-manager' ); ?></dt>
+							<dd data-ssm-review="contact"></dd>
+						</div>
+					</dl>
+					<p class="ssm-subscribe-review-edit"><?php esc_html_e( 'Something not right? Use Back to change it before subscribing.', 'service-status-manager' ); ?></p>
 
 					<div class="ssm-privacy-notice">
 						<p><?php echo wp_kses_post( $settings['privacy_notice'] ); ?></p>

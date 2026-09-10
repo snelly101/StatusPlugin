@@ -359,7 +359,7 @@
 
 .ssm-page-header {
 	text-align: center;
-	margin-bottom: var(--ssm-sp-6);
+	margin-bottom: var(--ssm-sp-5);
 }
 
 .ssm-page-logo {
@@ -388,8 +388,8 @@
 	display: flex;
 	align-items: center;
 	gap: var(--ssm-sp-5);
-	padding: var(--ssm-sp-6) var(--ssm-sp-6);
-	margin-bottom: var(--ssm-sp-6);
+	padding: var(--ssm-sp-5) var(--ssm-sp-6);
+	margin-bottom: var(--ssm-sp-5);
 	border-radius: var(--ssm-r-xl);
 	border: 1px solid var(--ssm-border);
 	background:
@@ -722,6 +722,49 @@
 	background: var(--ssm-surface-2);
 	border-radius: var(--ssm-r-md);
 	padding: var(--ssm-sp-4);
+}
+
+.ssm-severity-explainer {
+	margin: var(--ssm-sp-1) 0 0;
+	font-size: .8rem;
+	color: var(--ssm-text-faint);
+}
+
+.ssm-subscribe-review {
+	margin: 0 0 var(--ssm-sp-3);
+	border: 1px solid var(--ssm-border);
+	border-radius: var(--ssm-r-md);
+	overflow: hidden;
+}
+
+.ssm-subscribe-review-row {
+	display: flex;
+	gap: var(--ssm-sp-3);
+	padding: var(--ssm-sp-3) var(--ssm-sp-4);
+}
+
+.ssm-subscribe-review-row + .ssm-subscribe-review-row {
+	border-top: 1px solid var(--ssm-border);
+}
+
+.ssm-subscribe-review-row dt {
+	flex: 0 0 130px;
+	font-weight: 600;
+	color: var(--ssm-text-muted);
+	font-size: .85rem;
+}
+
+.ssm-subscribe-review-row dd {
+	margin: 0;
+	font-size: .85rem;
+	color: var(--ssm-text);
+	word-break: break-word;
+}
+
+.ssm-subscribe-review-edit {
+	margin: 0 0 var(--ssm-sp-4);
+	font-size: .8rem;
+	color: var(--ssm-text-faint);
 }
 
 .ssm-honeypot {
@@ -1383,20 +1426,55 @@
 .ssm-step-progress {
 	display: flex;
 	gap: var(--ssm-sp-2);
-	margin-bottom: var(--ssm-sp-5);
+	margin: 0 0 var(--ssm-sp-5);
+	padding: 0;
+	list-style: none;
 }
 
-.ssm-step-progress span {
+.ssm-step-progress li {
 	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--ssm-sp-1);
+	min-width: 0;
+}
+
+.ssm-step-progress li::before {
+	content: "";
+	display: block;
+	width: 100%;
 	height: 4px;
 	border-radius: var(--ssm-r-pill);
 	background: var(--ssm-border);
 	transition: background var(--ssm-normal) var(--ssm-ease);
 }
 
-.ssm-step-progress span.ssm-is-done,
-.ssm-step-progress span.ssm-is-active {
+.ssm-step-progress li.ssm-is-done::before,
+.ssm-step-progress li.ssm-is-active::before {
 	background: var(--ssm-primary);
+}
+
+.ssm-step-progress-dot {
+	display: none;
+}
+
+.ssm-step-progress-label {
+	font-size: .72rem;
+	color: var(--ssm-text-faint);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
+}
+
+.ssm-step-progress li.ssm-is-active .ssm-step-progress-label {
+	color: var(--ssm-primary);
+	font-weight: 600;
+}
+
+.ssm-step-progress li.ssm-is-done .ssm-step-progress-label {
+	color: var(--ssm-text-muted);
 }
 
 .ssm-step {
@@ -1546,7 +1624,7 @@
 	align-items: center;
 	text-align: center;
 	gap: var(--ssm-sp-3);
-	padding: var(--ssm-sp-7) var(--ssm-sp-5);
+	padding: var(--ssm-sp-5);
 	color: var(--ssm-text-muted);
 }
 
@@ -1658,6 +1736,19 @@
 	.ssm-status-page {
 		padding: var(--ssm-sp-4) var(--ssm-sp-3) var(--ssm-sp-7);
 		font-size: 15px;
+	}
+
+	.ssm-subscribe-review-row {
+		flex-direction: column;
+		gap: var(--ssm-sp-1);
+	}
+
+	.ssm-subscribe-review-row dt {
+		flex-basis: auto;
+	}
+
+	.ssm-step-progress-label {
+		display: none;
 	}
 
 	/* background-attachment: fixed is a known source of jank/rendering
