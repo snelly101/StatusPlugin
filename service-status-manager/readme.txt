@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.18.2
+Stable tag: 1.18.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.18.3 =
+Found and fixed the same theme-styling bleed from 1.18.2 on three more buttons that were missing the same protection: the dark-mode toggle, the mobile menu toggle in the sticky header, and the subscribe modal's close button. All of the plugin's custom buttons are now consistently defended against themes that apply their own global border/background/sizing to every button on the site.
 
 = 1.18.2 =
 Fixed the "Copy link" and "Add to calendar" buttons rendering as large, theme-coloured boxes instead of the small icon buttons they were designed as - many themes apply their own global border/background/sizing to every plain button and link on the site, which was silently overriding this plugin's styling. These two are now defended the same way the plugin's other buttons already are, so they render consistently regardless of the active theme.

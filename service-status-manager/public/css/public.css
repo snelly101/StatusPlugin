@@ -310,34 +310,48 @@
 	flex-shrink: 0;
 }
 
-.ssm-site-header-toggle {
+/* Scoped + !important-guarded the same way as .ssm-button (see the note
+   above it) - these are real <button> elements, so a theme's own global
+   button styling can otherwise override their size/border/background. */
+.ssm-status-page button.ssm-site-header-toggle {
 	display: none;
-	background: none;
-	border: 1px solid var(--ssm-border);
-	border-radius: var(--ssm-r-sm);
-	padding: var(--ssm-sp-2);
-	color: var(--ssm-text);
+	background: none !important;
+	background-image: none !important;
+	border: 1px solid var(--ssm-border) !important;
+	border-radius: var(--ssm-r-sm) !important;
+	padding: var(--ssm-sp-2) !important;
+	color: var(--ssm-text) !important;
+	box-shadow: none !important;
 	cursor: pointer;
+	appearance: none;
+	-webkit-appearance: none;
 }
 
-.ssm-theme-toggle {
-	display: flex;
+.ssm-status-page button.ssm-theme-toggle {
+	display: flex !important;
 	align-items: center;
 	justify-content: center;
-	width: 36px;
-	height: 36px;
-	background: none;
-	border: 1px solid var(--ssm-border);
-	border-radius: var(--ssm-r-sm);
-	color: var(--ssm-text-muted);
+	width: 36px !important;
+	height: 36px !important;
+	min-width: 0 !important;
+	min-height: 0 !important;
+	background: none !important;
+	background-image: none !important;
+	border: 1px solid var(--ssm-border) !important;
+	border-radius: var(--ssm-r-sm) !important;
+	padding: 0 !important;
+	color: var(--ssm-text-muted) !important;
+	box-shadow: none !important;
 	cursor: pointer;
 	flex-shrink: 0;
+	appearance: none;
+	-webkit-appearance: none;
 	transition: background var(--ssm-fast) var(--ssm-ease), color var(--ssm-fast) var(--ssm-ease);
 }
 
-.ssm-theme-toggle:hover {
-	background: var(--ssm-surface-2);
-	color: var(--ssm-text);
+.ssm-status-page button.ssm-theme-toggle:hover {
+	background: var(--ssm-surface-2) !important;
+	color: var(--ssm-text) !important;
 }
 
 .ssm-theme-toggle .ssm-icon {
@@ -1383,24 +1397,33 @@
 	transform: translateY(0) scale(1);
 }
 
-.ssm-modal-close {
+/* Scoped + !important-guarded the same way as .ssm-button - see the note
+   above it. */
+.ssm-status-page button.ssm-modal-close {
 	position: absolute;
 	top: var(--ssm-sp-4);
 	right: var(--ssm-sp-4);
-	width: 32px;
-	height: 32px;
-	display: flex;
+	width: 32px !important;
+	height: 32px !important;
+	min-width: 0 !important;
+	min-height: 0 !important;
+	display: flex !important;
 	align-items: center;
 	justify-content: center;
-	border-radius: 50%;
-	border: none;
-	background: var(--ssm-surface-2);
-	color: var(--ssm-text-muted);
+	padding: 0 !important;
+	border-radius: 50% !important;
+	border: none !important;
+	background: var(--ssm-surface-2) !important;
+	background-image: none !important;
+	box-shadow: none !important;
+	color: var(--ssm-text-muted) !important;
 	cursor: pointer;
+	appearance: none;
+	-webkit-appearance: none;
 }
 
-.ssm-modal-close:hover {
-	background: var(--ssm-border);
+.ssm-status-page button.ssm-modal-close:hover {
+	background: var(--ssm-border) !important;
 }
 
 .ssm-modal-header {
@@ -1778,8 +1801,8 @@
 		display: flex;
 	}
 
-	.ssm-site-header-toggle {
-		display: flex;
+	.ssm-status-page button.ssm-site-header-toggle {
+		display: flex !important;
 	}
 
 	.ssm-hero {
