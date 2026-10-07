@@ -57,7 +57,7 @@ class Smtp {
 		$phpmailer->Port       = max( 1, (int) $settings['smtp_port'] ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 		$phpmailer->SMTPAuth   = ! empty( $settings['smtp_auth'] ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
-		$encryption = in_array( $settings['smtp_encryption'] ?? 'tls', array( 'none', 'ssl', 'tls' ), true ) ? $settings['smtp_encryption'] : 'tls';
+		$encryption = in_array( $settings['smtp_encryption'] ?? 'tls', array( 'none', 'ssl', 'tls' ), true ) ? $settings['smtp_encryption'] ?? 'tls' : 'tls';
 		if ( 'none' === $encryption ) {
 			$phpmailer->SMTPSecure  = ''; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 			$phpmailer->SMTPAutoTLS = false; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase

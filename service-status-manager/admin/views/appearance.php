@@ -111,27 +111,32 @@ $optional_color_field = function ( $key, $label, $description ) use ( $s ) {
 				$color_field( 'bg_alt_color', __( 'Secondary background', 'service-status-manager' ), __( 'Used for subtle section fills, the decorative grid pattern below, and alternating stripes.', 'service-status-manager' ) );
 				?>
 				<tr>
-					<th><label for="ssm-a-background_pattern"><?php esc_html_e( 'Background pattern', 'service-status-manager' ); ?></label></th>
-					<td>
-						<select id="ssm-a-background_pattern" name="background_pattern">
-							<option value="default" <?php selected( $s['background_pattern'], 'default' ); ?>><?php esc_html_e( 'Grid + soft glow (default)', 'service-status-manager' ); ?></option>
-							<option value="grid" <?php selected( $s['background_pattern'], 'grid' ); ?>><?php esc_html_e( 'Fine grid only', 'service-status-manager' ); ?></option>
-							<option value="glow" <?php selected( $s['background_pattern'], 'glow' ); ?>><?php esc_html_e( 'Soft glow only', 'service-status-manager' ); ?></option>
-							<option value="none" <?php selected( $s['background_pattern'], 'none' ); ?>><?php esc_html_e( 'None (flat)', 'service-status-manager' ); ?></option>
-						</select>
-						<p class="description"><?php esc_html_e( 'A subtle decorative texture behind the page content.', 'service-status-manager' ); ?></p>
-					</td>
-				</tr>
-				<tr>
 					<th><label for="ssm-a-background_style"><?php esc_html_e( 'Background style', 'service-status-manager' ); ?></label></th>
 					<td>
 						<select id="ssm-a-background_style" name="background_style">
 							<option value="solid" <?php selected( $s['background_style'], 'solid' ); ?>><?php esc_html_e( 'Solid colour (default)', 'service-status-manager' ); ?></option>
 							<option value="gradient" <?php selected( $s['background_style'], 'gradient' ); ?>><?php esc_html_e( 'Gradient', 'service-status-manager' ); ?></option>
 							<option value="image" <?php selected( $s['background_style'], 'image' ); ?>><?php esc_html_e( 'Image', 'service-status-manager' ); ?></option>
+							<option value="transparent" <?php selected( $s['background_style'], 'transparent' ); ?>><?php esc_html_e( 'Match page (no background)', 'service-status-manager' ); ?></option>
 						</select>
+						<p class="description"><?php esc_html_e( "With \u{201c}Match page\u{201d}, the plugin paints no background of its own - the page/theme's own background shows through instead (cards keep their own surface colour either way), and the pattern below is disabled.", 'service-status-manager' ); ?></p>
+						<p class="description"><strong><?php esc_html_e( 'Dark mode note:', 'service-status-manager' ); ?></strong> <?php esc_html_e( 'headings and text that sit directly on the page (not inside a card) still use the dark-mode colours below when a visitor switches to dark mode. If your theme’s page background is light, only offer dark mode here if you’ve checked it still reads clearly - or leave this on a solid/gradient/image style instead, which always provides its own matching background.', 'service-status-manager' ); ?></p>
 					</td>
 				</tr>
+				<tbody id="ssm-a-pattern-field">
+					<tr>
+						<th><label for="ssm-a-background_pattern"><?php esc_html_e( 'Background pattern', 'service-status-manager' ); ?></label></th>
+						<td>
+							<select id="ssm-a-background_pattern" name="background_pattern">
+								<option value="default" <?php selected( $s['background_pattern'], 'default' ); ?>><?php esc_html_e( 'Grid + soft glow (default)', 'service-status-manager' ); ?></option>
+								<option value="grid" <?php selected( $s['background_pattern'], 'grid' ); ?>><?php esc_html_e( 'Fine grid only', 'service-status-manager' ); ?></option>
+								<option value="glow" <?php selected( $s['background_pattern'], 'glow' ); ?>><?php esc_html_e( 'Soft glow only', 'service-status-manager' ); ?></option>
+								<option value="none" <?php selected( $s['background_pattern'], 'none' ); ?>><?php esc_html_e( 'None (flat)', 'service-status-manager' ); ?></option>
+							</select>
+							<p class="description"><?php esc_html_e( 'A subtle decorative texture behind the page content.', 'service-status-manager' ); ?></p>
+						</td>
+					</tr>
+				</tbody>
 				<tbody id="ssm-a-gradient-fields">
 					<?php
 					$color_field( 'gradient_start_color', __( 'Gradient start colour', 'service-status-manager' ) );

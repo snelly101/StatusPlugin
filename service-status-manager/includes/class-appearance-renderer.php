@@ -164,7 +164,14 @@ class AppearanceRenderer {
 		$vars['--ssm-shadow-md'] = $shadow['md'];
 		$vars['--ssm-shadow-lg'] = $shadow['lg'];
 
-		$vars['--ssm-bg-decoration'] = self::BACKGROUND_PATTERNS[ $s['background_pattern'] ] ?? self::BACKGROUND_PATTERNS['default'];
+		// "Match page" paints nothing at all - the decorative pattern would
+		// just float over whatever colour the surrounding theme happens to
+		// use, so it's forced off here regardless of the saved pattern
+		// choice (which is left untouched, in case the admin switches back
+		// to a painted style later).
+		$vars['--ssm-bg-decoration'] = 'transparent' === $s['background_style']
+			? 'none'
+			: ( self::BACKGROUND_PATTERNS[ $s['background_pattern'] ] ?? self::BACKGROUND_PATTERNS['default'] );
 		$vars['--ssm-bg-final']      = self::background_fill_css( $s );
 
 		if ( 'image' === $s['background_style'] && '' !== $s['background_image_url'] ) {
@@ -210,6 +217,10 @@ class AppearanceRenderer {
 	 * @return string
 	 */
 	private static function background_fill_css( array $s ) {
+		if ( 'transparent' === $s['background_style'] ) {
+			return 'transparent';
+		}
+
 		if ( 'gradient' !== $s['background_style'] ) {
 			return 'var(--ssm-bg)';
 		}

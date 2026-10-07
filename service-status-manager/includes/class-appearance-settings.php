@@ -24,7 +24,7 @@ class AppearanceSettings {
 	const RADIUS_SCALES        = array( 'square', 'small', 'medium', 'standard', 'rounded', 'xl' );
 	const SHADOW_PRESETS       = array( 'none', 'subtle', 'soft', 'elevated' );
 	const BACKGROUND_PATTERNS  = array( 'none', 'grid', 'glow', 'default' );
-	const BACKGROUND_STYLES    = array( 'solid', 'gradient', 'image' );
+	const BACKGROUND_STYLES    = array( 'solid', 'gradient', 'image', 'transparent' );
 	const GRADIENT_DIRECTIONS  = array( 'to-bottom', 'to-right', 'diagonal', 'radial' );
 	const IMAGE_POSITIONS      = array( 'center', 'top', 'bottom', 'left', 'right' );
 	const IMAGE_SIZES          = array( 'cover', 'contain', 'auto' );

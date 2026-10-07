@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.18.3
+Stable tag: 1.19.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,13 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.19.0 =
+Verified the 1.18.x button fixes end-to-end on a real WordPress install, including against a simulated aggressive theme stylesheet - all confirmed fixed (copy-link, calendar download, dark-mode toggle, mobile nav toggle, subscribe modal close).
+
+Added a new "Match page (no background)" Background style (Appearance screen) - the plugin paints no background of its own, so the surrounding page/theme's own background shows through instead; cards keep their own surface colour either way, and it works correctly with both light and dark mode (a note on the screen explains the one case worth checking: page-level headings use dark-mode text colours too, so pair this with a dark-mode toggle only if your theme's page background is itself dark, or already checked to read clearly).
+
+Fixed a class of bugs where several settings (service visibility/status mode, incident severity/status, maintenance impact, SMTP encryption, monitor HTTP method, subscribe-page theme default) could be saved as blank/undefined instead of falling back to their intended default, when a caller omitted the field entirely rather than submitting an invalid value - found while building an automated end-to-end test for this release. The normal admin screens were never affected (their form fields are always present); this only protected other callers (e.g. future integrations) from the same trap.
 
 = 1.18.3 =
 Found and fixed the same theme-styling bleed from 1.18.2 on three more buttons that were missing the same protection: the dark-mode toggle, the mobile menu toggle in the sticky header, and the subscribe modal's close button. All of the plugin's custom buttons are now consistently defended against themes that apply their own global border/background/sizing to every button on the site.

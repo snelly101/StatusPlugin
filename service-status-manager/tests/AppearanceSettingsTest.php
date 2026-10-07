@@ -182,6 +182,24 @@ final class AppearanceSettingsTest extends TestCase {
 		$this->assertStringContainsString( 'radial-gradient(circle at 30% 0%, #111111, #222222)', $css );
 	}
 
+	public function test_sanitize_accepts_transparent_background_style() {
+		$sanitized = AppearanceSettings::sanitize( array( 'background_style' => 'transparent' ) );
+		$this->assertSame( 'transparent', $sanitized['background_style'] );
+	}
+
+	public function test_renderer_transparent_background_paints_no_fill() {
+		$css = AppearanceRenderer::build_css( array( 'background_style' => 'transparent' ) );
+		$this->assertStringContainsString( '--ssm-bg-final:transparent;', $css );
+	}
+
+	public function test_renderer_transparent_background_also_disables_the_decorative_pattern() {
+		// The pattern setting is left untouched (default) so switching back
+		// to a painted style later restores it - it's just suppressed at
+		// render time while the style is "transparent".
+		$css = AppearanceRenderer::build_css( array( 'background_style' => 'transparent', 'background_pattern' => 'default' ) );
+		$this->assertStringContainsString( '--ssm-bg-decoration:none;', $css );
+	}
+
 	public function test_renderer_background_pattern_presets_map_to_expected_layers() {
 		$css = AppearanceRenderer::build_css( array( 'background_pattern' => 'none' ) );
 		$this->assertStringContainsString( '--ssm-bg-decoration:none;', $css );

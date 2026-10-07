@@ -244,8 +244,8 @@ class IncidentManager {
 			return new \WP_Error( 'ssm_invalid_incident', __( 'At least one affected service is required.', 'service-status-manager' ) );
 		}
 
-		$severity = in_array( $data['severity'] ?? 'minor', self::SEVERITIES, true ) ? $data['severity'] : 'minor';
-		$status   = in_array( $data['status'] ?? 'investigating', self::STATUSES, true ) ? $data['status'] : 'investigating';
+		$severity = in_array( $data['severity'] ?? 'minor', self::SEVERITIES, true ) ? $data['severity'] ?? 'minor' : 'minor';
+		$status   = in_array( $data['status'] ?? 'investigating', self::STATUSES, true ) ? $data['status'] ?? 'investigating' : 'investigating';
 		$slug     = self::unique_slug( sanitize_title( $title ) );
 
 		$wpdb->insert(

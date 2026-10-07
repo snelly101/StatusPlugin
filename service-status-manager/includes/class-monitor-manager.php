@@ -318,7 +318,7 @@ class MonitorManager {
 
 		if ( 'http' === $type ) {
 			$clean['url']              = esc_url_raw( $settings['url'] ?? '' );
-			$clean['method']           = in_array( strtoupper( $settings['method'] ?? 'GET' ), array( 'GET', 'HEAD', 'POST' ), true ) ? strtoupper( $settings['method'] ) : 'GET';
+			$clean['method']           = in_array( strtoupper( $settings['method'] ?? 'GET' ), array( 'GET', 'HEAD', 'POST' ), true ) ? strtoupper( $settings['method'] ?? 'GET' ) : 'GET';
 			$clean['expected_status']  = isset( $settings['expected_status'] ) && '' !== $settings['expected_status'] ? absint( $settings['expected_status'] ) : 200;
 			$clean['required_text']   = sanitize_text_field( $settings['required_text'] ?? '' );
 			$clean['forbidden_text']  = sanitize_text_field( $settings['forbidden_text'] ?? '' );

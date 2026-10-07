@@ -137,6 +137,7 @@
 		var backgroundStyle = $( '#ssm-a-background_style' ).val();
 		toggleSection( $( '#ssm-a-gradient-fields' ), 'gradient' === backgroundStyle );
 		toggleSection( $( '#ssm-a-image-fields' ), 'image' === backgroundStyle );
+		toggleSection( $( '#ssm-a-pattern-field' ), 'transparent' !== backgroundStyle );
 		toggleSection( $( '.ssm-appearance-dark-fields' ), $( '#ssm-a-dark_mode_custom' ).is( ':checked' ) );
 	}
 

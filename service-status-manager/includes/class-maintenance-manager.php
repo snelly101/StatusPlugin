@@ -209,7 +209,7 @@ class MaintenanceManager {
 				'scheduled_start' => $data['scheduled_start'],
 				'scheduled_end'   => $data['scheduled_end'],
 				'timezone'        => sanitize_text_field( $data['timezone'] ?? wp_timezone_string() ),
-				'impact'          => in_array( $data['impact'] ?? 'none', self::IMPACTS, true ) ? $data['impact'] : 'none',
+				'impact'          => in_array( $data['impact'] ?? 'none', self::IMPACTS, true ) ? $data['impact'] ?? 'none' : 'none',
 				'is_public'       => isset( $data['is_public'] ) && ! $data['is_public'] ? 0 : 1,
 				'is_draft'        => empty( $data['is_draft'] ) ? 0 : 1,
 				'notify_settings' => wp_json_encode( $notify_settings ),
