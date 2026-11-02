@@ -44,7 +44,9 @@ class NotificationRetryPolicy {
 	 * @return string One of self::TRANSIENT, self::PERMANENT_RECIPIENT, self::PERMANENT_ACCOUNT.
 	 */
 	public static function classify( $http_code, $error_message = '', $provider_slug = '' ) {
-		$classification = self::classify_by_status( $http_code );
+		$classification = self::is_missing_destination( $error_message )
+			? self::PERMANENT_RECIPIENT
+			: self::classify_by_status( $http_code );
 
 		/**
 		 * Filters the default HTTP-status-based classification, so a
@@ -57,6 +59,31 @@ class NotificationRetryPolicy {
 		 * @param string   $error_message  Provider/transport error message.
 		 */
 		return apply_filters( "ssm_notification_retry_classify_{$provider_slug}", $classification, $http_code, $error_message );
+	}
+
+	/**
+	 * Whether a failure is one of the providers' own pre-flight "this
+	 * subscriber has no address/number/webhook for this channel" rejections.
+	 * Those never reach the provider's API, so they carry no HTTP status
+	 * and would otherwise be classified as a transient connection failure -
+	 * retried five times with backoff, and counted against the provider's
+	 * circuit breaker, for something that can never succeed and has
+	 * nothing to do with the provider being healthy.
+	 *
+	 * Matched against the same translatable strings the providers emit
+	 * (via __()), so it stays correct in any locale.
+	 *
+	 * @param string $error_message Error from the SendResult.
+	 * @return bool
+	 */
+	public static function is_missing_destination( $error_message ) {
+		$known = array(
+			__( 'Subscriber has no valid email address.', 'service-status-manager' ),
+			__( 'Subscriber has no mobile number.', 'service-status-manager' ),
+			__( 'Subscriber has no Microsoft Teams destination configured.', 'service-status-manager' ),
+		);
+
+		return in_array( (string) $error_message, $known, true );
 	}
 
 	/**

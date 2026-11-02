@@ -898,6 +898,13 @@ class NotificationManager {
 	 * @param string $token         Raw management token.
 	 */
 	public static function on_management_link_requested( $subscriber_id, $token ) {
+		$channel = self::pick_management_link_channel( SubscriberManager::get_channels( $subscriber_id ) );
+
+		if ( null === $channel ) {
+			ssm_log( sprintf( 'Management link for subscriber #%d not queued: no active channel to deliver it to.', $subscriber_id ), 'warning' );
+			return;
+		}
+
 		$link = add_query_arg(
 			array( 'ssm_action' => 'manage', 'ssm_id' => $subscriber_id, 'ssm_token' => $token ),
 			home_url( '/' )
@@ -916,7 +923,7 @@ class NotificationManager {
 		NotificationQueue::enqueue(
 			array(
 				'subscriber_id'  => $subscriber_id,
-				'channel'        => 'email',
+				'channel'        => $channel,
 				'event_type'     => 'management_link',
 				'reference_type' => 'subscriber',
 				'reference_id'   => $subscriber_id,
@@ -925,5 +932,37 @@ class NotificationManager {
 				'dedup_key'      => 'manage-link-' . $subscriber_id . '-' . substr( md5( $token ), 0, 8 ),
 			)
 		);
+	}
+
+	/**
+	 * Chooses which one channel a subscriber's management link goes to.
+	 * The link used to be hard-wired to email, which queued a guaranteed
+	 * failure ("Subscriber has no valid email address", retried five
+	 * times) for anyone who signed up with SMS or Teams only.
+	 *
+	 * One channel, not all of them: a management link only needs to
+	 * arrive once, and SMS is billed per message. Email is preferred when
+	 * available (free, and a link reads best there), then SMS, then
+	 * Teams. A verified channel beats an unverified one; an inactive
+	 * channel is never used.
+	 *
+	 * @param array $channels Rows from SubscriberManager::get_channels():
+	 *                        objects with channel, is_active, verified.
+	 * @return string|null Channel slug, or null if there is nowhere to send.
+	 */
+	public static function pick_management_link_channel( array $channels ) {
+		$order = array( 'email', 'sms', 'teams' );
+
+		foreach ( array( true, false ) as $require_verified ) {
+			foreach ( $order as $slug ) {
+				foreach ( $channels as $row ) {
+					if ( $row->channel === $slug && ! empty( $row->is_active ) && ( ! $require_verified || ! empty( $row->verified ) ) ) {
+						return $slug;
+					}
+				}
+			}
+		}
+
+		return null;
 	}
 }
