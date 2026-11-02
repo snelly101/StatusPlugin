@@ -65,6 +65,7 @@ class Admin {
 			'ssm_add_maintenance_update' => 'handle_add_maintenance_update',
 			'ssm_save_subscriber'   => 'handle_save_subscriber',
 			'ssm_delete_subscriber' => 'handle_delete_subscriber',
+			'ssm_verify_channel'    => 'handle_verify_channel',
 			'ssm_retry_notification' => 'handle_retry_notification',
 			'ssm_cancel_notification' => 'handle_cancel_notification',
 			'ssm_send_test_notification' => 'handle_send_test_notification',

@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.23.2
+Stable tag: 1.24.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.24.0 =
+Admins can now verify a subscriber's email, mobile number or Teams channel by hand - for when a confirmation message never arrived, or a number was confirmed out-of-band. The Subscribers list shows each channel's verified state with a tick, and an unverified channel has a "Verify" button next to it. Verifying this way does exactly what clicking the confirmation link would: the channel is marked verified, a pending subscriber becomes active, and they're sent their management link. Recorded in the audit log.
 
 = 1.23.2 =
 Subscriber links (confirm/manage/unsubscribe) could still open on a white page: automatic status-page detection only looks at Pages, so if the shortcode lives in a block template, a post or a custom type, the standalone fallback was used - a content-width box on the theme's white body. Added a "Status page" picker under Settings -> General (defaults to automatic detection, and shows which page is currently resolved, or warns if none is). The standalone fallback itself now fills the whole screen with the plugin's own background - dark in dark mode - instead of a box on white, and is always opaque even when the Appearance "Match page" style is selected.

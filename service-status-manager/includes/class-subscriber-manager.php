@@ -351,6 +351,40 @@ class SubscriberManager {
 	}
 
 	/**
+	 * Lets an administrator verify a subscriber's channel by hand - e.g.
+	 * when a confirmation email never arrived, or a number was confirmed
+	 * out-of-band. Routes through the same mark_channel_verified() the
+	 * real confirmation link uses, so the outcome is identical: the
+	 * channel is verified, a pending subscriber becomes active, and the
+	 * usual "here is your management link" message goes out.
+	 *
+	 * @param int    $subscriber_id Subscriber ID.
+	 * @param string $channel       email|sms|teams.
+	 * @return true|\WP_Error
+	 */
+	public static function admin_verify_channel( $subscriber_id, $channel ) {
+		global $wpdb;
+
+		$channel = sanitize_key( $channel );
+		if ( ! in_array( $channel, array( 'email', 'sms', 'teams' ), true ) ) {
+			return new \WP_Error( 'ssm_invalid_channel', __( 'Unknown channel.', 'service-status-manager' ) );
+		}
+
+		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT id, verified FROM ' . ssm_table( 'subscriber_channels' ) . ' WHERE subscriber_id = %d AND channel = %s', absint( $subscriber_id ), $channel ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		if ( ! $row ) {
+			return new \WP_Error( 'ssm_no_channel', __( 'This subscriber has not signed up for that channel.', 'service-status-manager' ) );
+		}
+		if ( (int) $row->verified ) {
+			return new \WP_Error( 'ssm_already_verified', __( 'That channel is already verified.', 'service-status-manager' ) );
+		}
+
+		self::mark_channel_verified( absint( $subscriber_id ), $channel );
+		AuditLog::record( 'subscriber_channel_verified_by_admin', 'subscriber', absint( $subscriber_id ), null, array( 'channel' => $channel ) );
+
+		return true;
+	}
+
+	/**
 	 * Applies changes submitted from the self-service "manage
 	 * subscription" form: name, channel/service selections, severity,
 	 * pause state, or one of unsubscribe/export/erase.

@@ -92,6 +92,20 @@ $split_selections = function ( array $selections ) {
 				<table class="form-table">
 					<tr><th><?php esc_html_e( 'Email', 'service-status-manager' ); ?></th><td><?php echo esc_html( $editing->email ?: '—' ); ?></td></tr>
 					<tr><th><?php esc_html_e( 'Phone', 'service-status-manager' ); ?></th><td><?php echo esc_html( $editing->phone ?: '—' ); ?></td></tr>
+					<tr><th><?php esc_html_e( 'Channels', 'service-status-manager' ); ?></th>
+						<td>
+							<?php
+							$editing_channels = array_filter( SubscriberManager::get_channels( $editing->id ), fn( $c ) => $c->is_active );
+							if ( empty( $editing_channels ) ) {
+								echo '—';
+							}
+							foreach ( $editing_channels as $ch ) {
+								echo '<div>' . esc_html( ucfirst( $ch->channel ) ) . ' &mdash; ' . ( $ch->verified ? esc_html__( 'verified', 'service-status-manager' ) : '<em>' . esc_html__( 'unverified', 'service-status-manager' ) . '</em>' ) . '</div>';
+							}
+							?>
+							<p class="description"><?php esc_html_e( 'To verify a channel by hand (e.g. the confirmation email never arrived), use the Verify button next to it in the list below.', 'service-status-manager' ); ?></p>
+						</td>
+					</tr>
 					<tr><th><label for="ssm-s-name"><?php esc_html_e( 'Name', 'service-status-manager' ); ?></label></th><td><input type="text" id="ssm-s-name" name="name" value="<?php echo esc_attr( $editing->name ); ?>" /></td></tr>
 					<tr><th><label for="ssm-s-status"><?php esc_html_e( 'Status', 'service-status-manager' ); ?></label></th>
 						<td>
@@ -165,13 +179,28 @@ $split_selections = function ( array $selections ) {
 				<td><?php echo esc_html( $subscriber->phone ?: '—' ); ?></td>
 				<td>
 					<?php
-					$channels = wp_list_pluck( array_filter( SubscriberManager::get_channels( $subscriber->id ), fn( $c ) => $c->is_active ), 'verified', 'channel' );
-					$labels   = array();
-					foreach ( $channels as $channel => $verified ) {
-						$labels[] = ucfirst( $channel ) . ( $verified ? '' : ' (' . esc_html__( 'unverified', 'service-status-manager' ) . ')' );
+					$channels = array_filter( SubscriberManager::get_channels( $subscriber->id ), fn( $c ) => $c->is_active );
+					if ( empty( $channels ) ) {
+						echo '—';
 					}
-					echo esc_html( implode( ', ', $labels ) ?: '—' );
-					?>
+					foreach ( $channels as $ch ) :
+						?>
+						<div style="white-space:nowrap;">
+							<?php echo esc_html( ucfirst( $ch->channel ) ); ?>
+							<?php if ( $ch->verified ) : ?>
+								<span style="color:#00a32a;" title="<?php esc_attr_e( 'Verified', 'service-status-manager' ); ?>">&#10003;</span>
+							<?php else : ?>
+								<em><?php esc_html_e( '(unverified)', 'service-status-manager' ); ?></em>
+								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline" onsubmit="return confirm('<?php echo esc_js( sprintf( /* translators: %s: channel name */ __( 'Mark this %s channel as verified? The subscriber will be activated and sent their management link, exactly as if they had clicked the confirmation link.', 'service-status-manager' ), ucfirst( $ch->channel ) ) ); ?>');">
+									<?php wp_nonce_field( 'ssm_verify_channel' ); ?>
+									<input type="hidden" name="action" value="ssm_verify_channel" />
+									<input type="hidden" name="id" value="<?php echo esc_attr( $subscriber->id ); ?>" />
+									<input type="hidden" name="channel" value="<?php echo esc_attr( $ch->channel ); ?>" />
+									<button type="submit" class="button-link"><?php esc_html_e( 'Verify', 'service-status-manager' ); ?></button>
+								</form>
+							<?php endif; ?>
+						</div>
+					<?php endforeach; ?>
 				</td>
 				<td>
 					<?php

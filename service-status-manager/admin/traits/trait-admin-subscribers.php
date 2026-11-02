@@ -57,6 +57,18 @@ trait AdminSubscribersTrait {
 		$this->redirect_with_notice( 'subscribers', __( 'Subscriber updated.', 'service-status-manager' ) );
 	}
 
+	public function handle_verify_channel() {
+		$this->guard( 'ssm_verify_channel', Capabilities::MANAGE_SUBSCRIBERS );
+
+		$result = SubscriberManager::admin_verify_channel( absint( $_POST['id'] ?? 0 ), sanitize_key( wp_unslash( $_POST['channel'] ?? '' ) ) );
+
+		if ( is_wp_error( $result ) ) {
+			$this->redirect_with_notice( 'subscribers', $result->get_error_message(), 'error' );
+		}
+
+		$this->redirect_with_notice( 'subscribers', __( 'Channel verified.', 'service-status-manager' ) );
+	}
+
 	public function handle_delete_subscriber() {
 		$this->guard( 'ssm_delete_subscriber', Capabilities::MANAGE_SUBSCRIBERS );
 		SubscriberManager::admin_delete_subscriber( absint( $_POST['id'] ?? 0 ) );
