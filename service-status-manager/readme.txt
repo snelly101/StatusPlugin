@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.20.2
+Stable tag: 1.20.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.20.3 =
+Raised the "Send a test notification" rate limit from 10 to 100 per 10 minutes (per admin user), so iterating on provider settings isn't throttled - a ceiling is kept since every SMS test is a real, billed message.
 
 = 1.20.2 =
 Confirmed root cause of the SMTP2GO SMS test failure: the number wasn't in international format (e.g. "07780118777" instead of "+447780118777"), which SMS providers require. Phone numbers are now automatically normalised to the "Default country" set under Settings -> SMS Provider (GB by default) - "07780118777" becomes "+447780118777" for a GB default, "2025550123" becomes "+12025550123" for a US default, and so on for every supported country. This applies both to subscribers' own numbers when they sign up and to the SMS test-notification field; a number already given in international format (starting "+" or "00") is always left untouched.

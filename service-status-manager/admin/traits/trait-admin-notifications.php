@@ -33,7 +33,10 @@ trait AdminNotificationsTrait {
 	public function handle_send_test_notification() {
 		$this->guard( 'ssm_send_test_notification', Capabilities::MANAGE_INTEGRATIONS );
 
-		if ( ! RateLimiter::allow( 'test_notification_' . get_current_user_id(), 10, 10 * MINUTE_IN_SECONDS ) ) {
+		// Generous: an admin iterating on provider settings needs to be able
+		// to retry freely, but a ceiling still bounds a runaway loop, since
+		// every SMS test is a real, billed message.
+		if ( ! RateLimiter::allow( 'test_notification_' . get_current_user_id(), 100, 10 * MINUTE_IN_SECONDS ) ) {
 			$this->redirect_with_notice( 'notifications', __( 'Too many test notifications sent recently. Please wait a few minutes.', 'service-status-manager' ), 'error' );
 		}
 
