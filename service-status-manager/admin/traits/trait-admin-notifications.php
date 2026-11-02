@@ -10,6 +10,7 @@ namespace ServiceStatusManager\Admin;
 use ServiceStatusManager\Capabilities;
 use ServiceStatusManager\Notifications\NotificationQueue;
 use ServiceStatusManager\RateLimiter;
+use ServiceStatusManager\SubscriberManager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -38,6 +39,17 @@ trait AdminNotificationsTrait {
 
 		$channel     = sanitize_key( wp_unslash( $_POST['channel'] ?? '' ) );
 		$destination = sanitize_text_field( wp_unslash( $_POST['destination'] ?? '' ) );
+
+		// For SMS, strip any spaces/dashes/parentheses a human naturally
+		// types (e.g. "+1 202-555-0123") the same way a real subscriber's
+		// number already is when it's first saved - sending those
+		// formatting characters through untouched is a real-world way to
+		// trip an SMS provider's strict E.164 validation on the test form
+		// specifically, since it is the one path that never went through
+		// that normalisation.
+		if ( 'sms' === $channel ) {
+			$destination = SubscriberManager::sanitize_phone( $destination );
+		}
 
 		$provider = NotificationQueue::get_provider( $channel );
 		if ( ! $provider ) {

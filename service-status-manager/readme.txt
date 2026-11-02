@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.20.0
+Stable tag: 1.20.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.20.1 =
+Fixed the SMTP2GO SMS test notification failing with "An error occurred processing the json data you sent with the request..." - confirmed by testing directly against SMTP2GO's live API that this exact message is what they return for an empty/malformed request body. The test destination field now has the same phone-number formatting cleanup (stripping spaces/dashes/parentheses) a real subscriber's number already gets when saved, since that field was the one path that skipped it; a missing destination or a request that genuinely can't be encoded as JSON now fails with a specific, actionable message instead of reaching SMTP2GO at all; and SMTP2GO's more detailed field-level validation message is now included in the error shown, so any future failure is self-diagnosing instead of just the generic preamble sentence.
 
 = 1.20.0 =
 Added SMTP2GO as an SMS provider option (Settings -> SMS Provider), alongside Twilio. It uses the SMTP2GO API (https://developers.smtp2go.com/) and the same API key already configured under Email Provider - one SMTP2GO account and key covers both email and SMS, so switching the SMS Provider dropdown to SMTP2GO never requires entering a second key. Requires a paid SMTP2GO plan with SMS enabled. Supports concurrent sending, its own requests-per-second/concurrency/timeout limits, and a connectivity health check via `wp service-status provider health`, the same as the existing Twilio and SMTP2GO email providers.

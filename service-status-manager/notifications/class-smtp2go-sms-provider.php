@@ -48,10 +48,20 @@ class Smtp2goSmsProvider extends SmsProvider implements ConcurrentSendProviderIn
 	 * {@inheritDoc}
 	 */
 	protected function send_raw( $to, $message ) {
+		if ( '' === trim( (string) $to ) ) {
+			return new SendResult( false, '', __( 'No destination number was given.', 'service-status-manager' ) );
+		}
+
 		$api_key = $this->get_api_key();
 
 		if ( empty( $api_key ) ) {
 			return new SendResult( false, '', __( 'SMTP2GO is not configured (missing API key).', 'service-status-manager' ) );
+		}
+
+		$body_json = wp_json_encode( $this->build_body( array( $to ), $message ) );
+
+		if ( false === $body_json ) {
+			return new SendResult( false, '', __( 'Could not encode the SMS request as JSON - check the Sender number / ID field for invalid characters.', 'service-status-manager' ) );
 		}
 
 		$response = wp_remote_post(
@@ -59,7 +69,7 @@ class Smtp2goSmsProvider extends SmsProvider implements ConcurrentSendProviderIn
 			array(
 				'timeout' => (int) \ssm_get_setting( 'smtp2go_sms_timeout', 15 ),
 				'headers' => $this->build_headers( $api_key ),
-				'body'    => wp_json_encode( $this->build_body( array( $to ), $message ) ),
+				'body'    => $body_json,
 			)
 		);
 
@@ -118,10 +128,17 @@ class Smtp2goSmsProvider extends SmsProvider implements ConcurrentSendProviderIn
 				continue;
 			}
 
+			$body_json = wp_json_encode( $this->build_body( array( $subscriber->phone ), $this->build_text( $item['payload'] ) ) );
+
+			if ( false === $body_json ) {
+				$results[ $key ] = new SendResult( false, '', __( 'Could not encode the SMS request as JSON - check the Sender number / ID field for invalid characters.', 'service-status-manager' ) );
+				continue;
+			}
+
 			$requests[ $key ] = array(
 				'url'     => $endpoint,
 				'headers' => $headers,
-				'body'    => wp_json_encode( $this->build_body( array( $subscriber->phone ), $this->build_text( $item['payload'] ) ) ),
+				'body'    => $body_json,
 			);
 		}
 
@@ -267,6 +284,16 @@ class Smtp2goSmsProvider extends SmsProvider implements ConcurrentSendProviderIn
 		if ( ! $error ) {
 			/* translators: %d: HTTP status code */
 			$error = sprintf( __( 'SMTP2GO returned HTTP %d.', 'service-status-manager' ), (int) $http_code );
+		}
+
+		// SMTP2GO's generic "error occurred processing the json data" message
+		// (returned for, among other things, a missing/empty required field)
+		// is often accompanied by a much more specific field_validation_errors
+		// object naming exactly which field and why - append it when present
+		// so a failure is self-diagnosing instead of just the generic preamble.
+		$field_error = is_array( $decoded ) ? ( $decoded['data']['field_validation_errors']['message'] ?? '' ) : '';
+		if ( $field_error ) {
+			$error .= ' ' . $field_error;
 		}
 
 		return new SendResult( false, '', $error, $http_code );
