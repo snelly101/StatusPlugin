@@ -766,8 +766,8 @@
 					if ( heroDesc && data.description ) {
 						heroDesc.textContent = data.description;
 					}
-					if ( heroUpdated && data.updated_at ) {
-						heroUpdated.textContent = new Date( data.updated_at.replace( ' ', 'T' ) + 'Z' ).toLocaleString();
+					if ( heroUpdated && data.updated_at_formatted ) {
+						heroUpdated.textContent = data.updated_at_formatted;
 					}
 					if ( headerPill ) {
 						applyStatusClass( headerPill, 'ssm-status-' + data.status.replace( /_/g, '-' ) );

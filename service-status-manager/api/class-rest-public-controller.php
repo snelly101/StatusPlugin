@@ -97,12 +97,24 @@ class RestPublicController {
 		// background refresh.
 		$def = ssm_get_overall_status_definition( $overall );
 
+		$now = ssm_now();
+
 		return rest_ensure_response(
 			array(
-				'status'      => $overall,
-				'label'       => $def['title'],
-				'description' => $def['description'],
-				'updated_at'  => ssm_now(),
+				'status'            => $overall,
+				'label'             => $def['title'],
+				'description'       => $def['description'],
+				'updated_at'        => $now,
+				// Same reasoning as $def above: the "Last checked" time is
+				// originally server-rendered using the site's configured
+				// date/time format and display timezone - the live-refresh
+				// script used to reformat $updated_at with the browser's own
+				// toLocaleString() instead, which uses the visitor's device
+				// locale/timezone, not the site's. That silently swapped a
+				// word-format site date for a numeric browser-locale one (and
+				// could show the wrong hour) on every background refresh.
+				// Sending the already-formatted string keeps it identical.
+				'updated_at_formatted' => ssm_format_datetime( $now ),
 			)
 		);
 	}

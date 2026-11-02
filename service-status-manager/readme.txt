@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.19.0
+Stable tag: 1.19.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.19.1 =
+Fixed the "Last checked" date on the hero banner randomly flipping between the site's configured date format (e.g. "November 2, 2026") and a numeric, browser-locale one (e.g. "11/2/2026") every time the page's live-refresh ran. The background refresh was reformatting the timestamp with the browser's own locale/timezone instead of reusing the site's configured format and timezone - it now reuses the exact same formatted string the page was first rendered with, every time.
 
 = 1.19.0 =
 Verified the 1.18.x button fixes end-to-end on a real WordPress install, including against a simulated aggressive theme stylesheet - all confirmed fixed (copy-link, calendar download, dark-mode toggle, mobile nav toggle, subscribe modal close).
