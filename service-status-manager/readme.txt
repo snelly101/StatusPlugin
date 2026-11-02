@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.22.1
+Stable tag: 1.23.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.23.0 =
+Confirmation, unsubscribe and "manage my subscription" links now open on your actual status page (the page containing [service_status_page]) with the outcome shown at the top of it, instead of on a bare white standalone page. That gives them the theme's real page layout plus the plugin's own background, header and light/dark preference, the same as the rest of the status page. The links sent out in emails and texts now point straight at the status page too; older links that still point at the site root are redirected there automatically. If a site has no page with the shortcode on it, the standalone page is still used as a fallback - now with the light/dark preference applied.
 
 = 1.22.1 =
 Fixed a service staying "Operational" while one of its maintenance windows was in progress. The window did mark the service as under maintenance when it started, but the live status shown on the page is re-derived from the service's monitors on every load (added in 1.16.0 to catch stale monitoring data), and that derivation didn't know about maintenance windows - so it overwrote the maintenance status with "Operational" straight away. A live window (in progress or awaiting confirmation, public, not a draft, with an expected impact) is now a status signal in its own right, ranked above Operational but below a genuine outage. The status is now labelled "Maintenance in progress" and uses the plugin's indigo maintenance colour rather than the same blue as links.

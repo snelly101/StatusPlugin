@@ -263,6 +263,62 @@ function ssm_time_ago( $utc_datetime ) {
 }
 
 /**
+ * The front-end page that hosts the full status page - the first published
+ * page containing [service_status_page]. Subscriber links (confirm,
+ * unsubscribe, manage) are sent there and rendered inside it, so they get
+ * the theme's real page layout plus the plugin's own background, header
+ * and light/dark preference, instead of a bare standalone template.
+ *
+ * Cached for a day; cleared whenever a page is saved (see
+ * Publicweb\PublicController::register()).
+ *
+ * @return array{id: int, url: string} Both empty if no such page exists.
+ */
+function ssm_get_status_page() {
+	$cached = get_transient( 'ssm_status_page_lookup' );
+	if ( is_array( $cached ) && isset( $cached['id'], $cached['url'] ) ) {
+		return $cached;
+	}
+
+	$found = array( 'id' => 0, 'url' => '' );
+
+	$pages = get_posts(
+		array(
+			'post_type'      => 'page',
+			'post_status'    => 'publish',
+			'posts_per_page' => 50,
+			's'              => '[service_status_page',
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+		)
+	);
+
+	foreach ( $pages as $page_id ) {
+		$page = get_post( $page_id );
+		if ( $page && has_shortcode( $page->post_content, 'service_status_page' ) ) {
+			$found = array( 'id' => (int) $page_id, 'url' => (string) get_permalink( $page_id ) );
+			break;
+		}
+	}
+
+	set_transient( 'ssm_status_page_lookup', $found, DAY_IN_SECONDS );
+
+	return $found;
+}
+
+/**
+ * Base URL for subscriber-facing links: the status page if one exists,
+ * otherwise the site front page (where the plugin still handles them, just
+ * without a surrounding page layout).
+ *
+ * @return string
+ */
+function ssm_get_subscriber_link_base() {
+	$page = ssm_get_status_page();
+	return $page['url'] ? $page['url'] : home_url( '/' );
+}
+
+/**
  * Returns the current UTC time as a MySQL datetime string.
  *
  * @return string

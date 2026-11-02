@@ -26,10 +26,29 @@ class PublicController {
 	const QUERY_VAR = 'ssm_action';
 
 	/**
+	 * The outcome of this request's confirm/unsubscribe/manage/teams-verify
+	 * link, if any, for the status page template to render inline.
+	 *
+	 * @var array{action: string, result: mixed, subscriber_id: int}|null
+	 */
+	private static $pending_token_result = null;
+
+	/**
+	 * @return array{action: string, result: mixed, subscriber_id: int}|null
+	 */
+	public static function pending_token_result() {
+		return self::$pending_token_result;
+	}
+
+	/**
 	 * Registers public-facing hooks.
 	 */
 	public function register() {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		// The cached "which page holds [service_status_page]" lookup (see
+		// ssm_get_status_page()) must not outlive an edit that adds or
+		// removes the shortcode.
+		add_action( 'save_post_page', fn() => delete_transient( 'ssm_status_page_lookup' ) );
 		add_filter( 'query_vars', array( $this, 'add_query_vars' ) );
 		add_action( 'template_redirect', array( $this, 'guard_private_status_page' ), 5 );
 		add_action( 'template_redirect', array( $this, 'handle_token_actions' ) );
@@ -175,6 +194,26 @@ class PublicController {
 			wp_die( esc_html__( 'Too many attempts. Please try again later.', 'service-status-manager' ), '', array( 'response' => 429 ) );
 		}
 
+		// Render the outcome inside the real status page wherever one
+		// exists, so it gets the theme's page layout plus the plugin's own
+		// background, header and light/dark preference - not a bare page.
+		// The redirect happens *before* the action runs: a confirmation
+		// token is single-use, so running it here and again after the
+		// redirect would turn a successful confirm into an "invalid link".
+		$status_page = ssm_get_status_page();
+		$on_status_page = $status_page['id'] && is_page( $status_page['id'] );
+
+		if ( $status_page['id'] && ! $on_status_page ) {
+			wp_safe_redirect(
+				add_query_arg(
+					array( self::QUERY_VAR => $action, 'ssm_id' => $subscriber_id, 'ssm_token' => $token ),
+					$status_page['url']
+				),
+				302
+			);
+			exit;
+		}
+
 		$result = SubscriberManager::handle_token_action( $action, $subscriber_id, $token );
 
 		if ( ! is_wp_error( $result ) && in_array( $action, array( 'confirm', 'teams_verify' ), true ) ) {
@@ -183,6 +222,14 @@ class PublicController {
 			// it immediately rather than waiting on cron, same reasoning
 			// as the subscribe/resend flows.
 			NotificationQueue::process_for_subscriber( $subscriber_id );
+		}
+
+		self::$pending_token_result = array( 'action' => $action, 'result' => $result, 'subscriber_id' => $subscriber_id );
+
+		if ( $on_status_page ) {
+			// Let WordPress render the page normally; status-page.php picks
+			// the outcome up via pending_token_result().
+			return;
 		}
 
 		require SSM_PLUGIN_DIR . 'public/templates/subscription-result.php';

@@ -1,11 +1,14 @@
 <?php
 /**
- * Template: result page for confirm/unsubscribe/manage/teams-verify links.
- *
- * Expects: $action (string), $result (array from SubscriberManager), $subscriber_id, $token.
+ * Template: standalone fallback for confirm/unsubscribe/manage/teams-verify
+ * links, used only when the site has no page containing
+ * [service_status_page] to render the outcome inside (see
+ * PublicController::handle_token_actions()).
  *
  * @package ServiceStatusManager
  */
+
+use ServiceStatusManager\StatusPageManager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -13,27 +16,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 get_header();
 
-$messages = array(
-	'confirm'      => __( 'Your subscription has been confirmed. Thank you.', 'service-status-manager' ),
-	'unsubscribe'  => __( 'You have been unsubscribed from all Service Status Manager notifications.', 'service-status-manager' ),
-	'manage'       => __( 'Manage your subscription below.', 'service-status-manager' ),
-	'teams_verify' => __( 'Your Microsoft Teams destination has been verified.', 'service-status-manager' ),
-);
+$page          = StatusPageManager::get_page_by_slug( 'main' );
+$page_settings = $page ? ( json_decode( (string) $page->settings, true ) ?: array() ) : array();
+$theme_default = in_array( $page_settings['theme_default'] ?? 'system', array( 'light', 'dark' ), true ) ? $page_settings['theme_default'] : 'auto';
 ?>
-<div class="ssm-status-page ssm-subscription-result">
-	<?php if ( is_wp_error( $result ) ) : ?>
-		<div class="ssm-notice ssm-notice-error" role="alert">
-			<p><?php echo esc_html( $result->get_error_message() ); ?></p>
-		</div>
-	<?php else : ?>
-		<div class="ssm-notice ssm-notice-success" role="status">
-			<p><?php echo esc_html( $messages[ $action ] ?? __( 'Done.', 'service-status-manager' ) ); ?></p>
-		</div>
-
-		<?php if ( 'manage' === $action && ! empty( $result['subscriber'] ) ) : ?>
-			<?php require SSM_PLUGIN_DIR . 'public/templates/manage-subscription.php'; ?>
-		<?php endif; ?>
-	<?php endif; ?>
+<div class="ssm-status-page" data-ssm-theme="<?php echo esc_attr( $theme_default ); ?>" data-ssm-theme-preference="<?php echo esc_attr( $page_settings['theme_default'] ?? 'system' ); ?>">
+	<?php require SSM_PLUGIN_DIR . 'public/templates/parts/subscription-result-body.php'; ?>
+	<div class="ssm-toast-region" data-ssm-toast-region aria-live="polite"></div>
 </div>
 <?php
 get_footer();

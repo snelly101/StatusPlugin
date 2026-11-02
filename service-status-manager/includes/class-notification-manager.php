@@ -820,7 +820,7 @@ class NotificationManager {
 		$token = SubscriberManager::generate_token( $subscriber_id, 'manage', SubscriberManager::TOKEN_TTL_MANAGE );
 		return add_query_arg(
 			array( 'ssm_action' => 'manage', 'ssm_id' => $subscriber_id, 'ssm_token' => $token ),
-			home_url( '/' )
+			ssm_get_subscriber_link_base()
 		);
 	}
 
@@ -832,7 +832,7 @@ class NotificationManager {
 		$token = SubscriberManager::generate_token( $subscriber_id, 'unsubscribe', SubscriberManager::TOKEN_TTL_MANAGE );
 		return add_query_arg(
 			array( 'ssm_action' => 'unsubscribe', 'ssm_id' => $subscriber_id, 'ssm_token' => $token ),
-			home_url( '/' )
+			ssm_get_subscriber_link_base()
 		);
 	}
 
@@ -849,7 +849,7 @@ class NotificationManager {
 		$link_action = 'teams' === $channel ? 'teams_verify' : 'confirm';
 		$link        = add_query_arg(
 			array( 'ssm_action' => $link_action, 'ssm_id' => $subscriber_id, 'ssm_token' => $token ),
-			home_url( '/' )
+			ssm_get_subscriber_link_base()
 		);
 
 		$payload = array(
@@ -907,7 +907,7 @@ class NotificationManager {
 
 		$link = add_query_arg(
 			array( 'ssm_action' => 'manage', 'ssm_id' => $subscriber_id, 'ssm_token' => $token ),
-			home_url( '/' )
+			ssm_get_subscriber_link_base()
 		);
 
 		$payload = array(

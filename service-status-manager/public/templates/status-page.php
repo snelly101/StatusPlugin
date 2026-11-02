@@ -85,6 +85,8 @@ $overall_def   = ssm_get_status_definition( $overall );
 		</header>
 	<?php endif; ?>
 
+	<?php require SSM_PLUGIN_DIR . 'public/templates/parts/subscription-result-body.php'; ?>
+
 	<?php if ( 'yes' === $atts['show_subscribe'] ) : ?>
 		<div class="ssm-top-subscribe" id="ssm-subscribe">
 			<button type="button" class="ssm-button ssm-button-primary ssm-button-lg" data-ssm-open-modal="subscribe">
