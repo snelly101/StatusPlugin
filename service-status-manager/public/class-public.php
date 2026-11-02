@@ -74,6 +74,7 @@ class PublicController {
 		$vars[] = 'ssm_token';
 		$vars[] = 'ssm_id';
 		$vars[] = 'ssm_calendar';
+		$vars[] = 'ssm_redirected';
 		return $vars;
 	}
 
@@ -190,28 +191,42 @@ class PublicController {
 			wp_die( esc_html__( 'This link is invalid.', 'service-status-manager' ), '', array( 'response' => 400 ) );
 		}
 
-		if ( ! RateLimiter::allow( 'token_action_' . $subscriber_id, 20, HOUR_IN_SECONDS ) ) {
-			wp_die( esc_html__( 'Too many attempts. Please try again later.', 'service-status-manager' ), '', array( 'response' => 429 ) );
-		}
-
 		// Render the outcome inside the real status page wherever one
 		// exists, so it gets the theme's page layout plus the plugin's own
 		// background, header and light/dark preference - not a bare page.
 		// The redirect happens *before* the action runs: a confirmation
 		// token is single-use, so running it here and again after the
 		// redirect would turn a successful confirm into an "invalid link".
-		$status_page = ssm_get_status_page();
-		$on_status_page = $status_page['id'] && is_page( $status_page['id'] );
+		//
+		// It is also strictly one-shot: the redirect target carries
+		// ssm_redirected=1, and a request already carrying it is never
+		// redirected again, whatever is_page() says. Deciding "am I on the
+		// status page yet?" purely from is_page() looped on some setups
+		// (e.g. the cached lookup resolving to a different page than the
+		// one being viewed), each hop burning a rate-limit count until the
+		// visitor hit "Too many attempts".
+		$status_page        = ssm_get_status_page();
+		$on_status_page     = $status_page['id'] && ( is_page( $status_page['id'] ) || get_queried_object_id() === (int) $status_page['id'] );
+		$already_redirected = '' !== (string) get_query_var( 'ssm_redirected' );
 
-		if ( $status_page['id'] && ! $on_status_page ) {
+		if ( $status_page['id'] && ! $on_status_page && ! $already_redirected ) {
 			wp_safe_redirect(
 				add_query_arg(
-					array( self::QUERY_VAR => $action, 'ssm_id' => $subscriber_id, 'ssm_token' => $token ),
+					array( self::QUERY_VAR => $action, 'ssm_id' => $subscriber_id, 'ssm_token' => $token, 'ssm_redirected' => '1' ),
 					$status_page['url']
 				),
 				302
 			);
 			exit;
+		}
+
+		// Counted only when the action actually runs - never for the
+		// redirect hop above. 60/hour: a manage-page save round-trips back
+		// through this handler, so a visitor editing their preferences a
+		// few times could otherwise hit the ceiling. The key is versioned
+		// so counts accrued under the old, looping behaviour are ignored.
+		if ( ! RateLimiter::allow( 'token_action_v2_' . $subscriber_id, 60, HOUR_IN_SECONDS ) ) {
+			wp_die( esc_html__( 'Too many attempts. Please try again later.', 'service-status-manager' ), '', array( 'response' => 429 ) );
 		}
 
 		$result = SubscriberManager::handle_token_action( $action, $subscriber_id, $token );
