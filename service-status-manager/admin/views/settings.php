@@ -54,6 +54,32 @@ $outgoing_events = array(
 				<p class="description"><?php esc_html_e( 'Increment this whenever you materially change the privacy notice, so you can identify which wording a subscriber consented to.', 'service-status-manager' ); ?></p></td></tr>
 			<tr><th><?php esc_html_e( 'Retain IP addresses', 'service-status-manager' ); ?></th>
 				<td><label><input type="checkbox" name="retain_ip_addresses" value="1" <?php checked( $settings['retain_ip_addresses'] ); ?> /> <?php esc_html_e( 'Store subscriber/audit-log IP addresses', 'service-status-manager' ); ?></label></td></tr>
+			<tr><th><label for="ssm-status-page-id"><?php esc_html_e( 'Status page', 'service-status-manager' ); ?></label></th>
+				<td>
+					<?php
+					wp_dropdown_pages(
+						array(
+							'name'              => 'status_page_id',
+							'id'                => 'ssm-status-page-id',
+							'selected'          => absint( $settings['status_page_id'] ?? 0 ),
+							'show_option_none'  => __( '— Detect automatically —', 'service-status-manager' ),
+							'option_none_value' => 0,
+						)
+					);
+					$detected = ssm_get_status_page();
+					?>
+					<p class="description">
+						<?php esc_html_e( 'The page subscriber links (confirm, unsubscribe, manage) open on, so they get this page\'s layout and background. Automatic detection finds the first published Page containing [service_status_page]; choose the page explicitly if the shortcode lives somewhere else (a block template, a post) or detection picks the wrong one.', 'service-status-manager' ); ?>
+						<?php if ( $detected['id'] ) : ?>
+							<br /><?php
+							/* translators: %s: page URL */
+							echo wp_kses_post( sprintf( __( 'Currently resolving to: %s', 'service-status-manager' ), '<a href="' . esc_url( $detected['url'] ) . '">' . esc_html( $detected['url'] ) . '</a>' ) );
+							?>
+						<?php else : ?>
+							<br /><strong><?php esc_html_e( 'No status page is currently detected - subscriber links will fall back to a standalone page. Choose one above.', 'service-status-manager' ); ?></strong>
+						<?php endif; ?>
+					</p>
+				</td></tr>
 		</table>
 
 		<h2><?php esc_html_e( 'Monitoring', 'service-status-manager' ); ?></h2>

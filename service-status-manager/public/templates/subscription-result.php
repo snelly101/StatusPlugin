@@ -20,7 +20,7 @@ $page          = StatusPageManager::get_page_by_slug( 'main' );
 $page_settings = $page ? ( json_decode( (string) $page->settings, true ) ?: array() ) : array();
 $theme_default = in_array( $page_settings['theme_default'] ?? 'system', array( 'light', 'dark' ), true ) ? $page_settings['theme_default'] : 'auto';
 ?>
-<div class="ssm-status-page" data-ssm-theme="<?php echo esc_attr( $theme_default ); ?>" data-ssm-theme-preference="<?php echo esc_attr( $page_settings['theme_default'] ?? 'system' ); ?>">
+<div class="ssm-status-page ssm-standalone" data-ssm-theme="<?php echo esc_attr( $theme_default ); ?>" data-ssm-theme-preference="<?php echo esc_attr( $page_settings['theme_default'] ?? 'system' ); ?>">
 	<?php require SSM_PLUGIN_DIR . 'public/templates/parts/subscription-result-body.php'; ?>
 	<div class="ssm-toast-region" data-ssm-toast-region aria-live="polite"></div>
 </div>

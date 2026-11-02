@@ -275,6 +275,15 @@ function ssm_time_ago( $utc_datetime ) {
  * @return array{id: int, url: string} Both empty if no such page exists.
  */
 function ssm_get_status_page() {
+	// An explicitly chosen page (Settings -> General -> Status page) always
+	// wins over auto-detection - the detection below only ever looks at
+	// Pages, so a shortcode placed in a block template, a post, or a custom
+	// post type would otherwise never be found.
+	$chosen_id = absint( ssm_get_setting( 'status_page_id', 0 ) );
+	if ( $chosen_id && 'publish' === get_post_status( $chosen_id ) ) {
+		return array( 'id' => $chosen_id, 'url' => (string) get_permalink( $chosen_id ) );
+	}
+
 	$cached = get_transient( 'ssm_status_page_lookup' );
 	if ( is_array( $cached ) && isset( $cached['id'], $cached['url'] ) ) {
 		return $cached;
@@ -452,6 +461,7 @@ function ssm_get_settings() {
 			'ssrf_allow_private_ips'     => false,
 			'ssrf_allowlist'             => array(),
 			'cron_secret'                => '',
+			'status_page_id'             => 0,
 			'quiet_hours_start'          => '',
 			'quiet_hours_end'            => '',
 			'quiet_hours_timezone'       => wp_timezone_string(),

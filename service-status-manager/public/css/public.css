@@ -173,6 +173,22 @@
 	background-attachment: local;
 }
 
+/* Standalone subscriber-link page (confirm/manage/unsubscribe when the
+   site has no status page to render inside): fill the viewport with the
+   plugin's own background - dark in dark mode via --ssm-bg - rather than
+   sitting as a content-width box on the theme's bare body. Horizontal
+   padding centres the content at the usual max width. An opaque
+   background is forced even when the Appearance "Match page" style is
+   chosen, since on a standalone page there is no surrounding page design
+   to match. */
+.ssm-status-page.ssm-standalone {
+	max-width: none;
+	min-height: 100vh;
+	margin: 0;
+	padding: var(--ssm-sp-7) max(var(--ssm-sp-4), calc((100% - var(--ssm-content-max-width, 920px)) / 2)) var(--ssm-sp-8);
+	background: var(--ssm-bg);
+}
+
 /* Optional background image (Appearance -> Background -> Image). Rendered
    on its own layer behind everything else, rather than as another layer
    in .ssm-status-page's own `background` shorthand above, because that

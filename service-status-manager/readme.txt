@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.23.1
+Stable tag: 1.23.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.23.2 =
+Subscriber links (confirm/manage/unsubscribe) could still open on a white page: automatic status-page detection only looks at Pages, so if the shortcode lives in a block template, a post or a custom type, the standalone fallback was used - a content-width box on the theme's white body. Added a "Status page" picker under Settings -> General (defaults to automatic detection, and shows which page is currently resolved, or warns if none is). The standalone fallback itself now fills the whole screen with the plugin's own background - dark in dark mode - instead of a box on white, and is always opaque even when the Appearance "Match page" style is selected.
 
 = 1.23.1 =
 Fixed "Too many attempts. Please try again later." when opening a confirm/manage/unsubscribe link after 1.23.0. The new redirect to the status page could, on some setups, redirect to itself repeatedly until the browser gave up, and every hop counted against the per-subscriber rate limit. The redirect is now strictly one-shot, the redirect hop no longer counts toward the limit, the limit is raised from 20 to 60 per hour (a manage-page save round-trips through it), and the counter is reset so anyone currently locked out is unlocked by this update.
