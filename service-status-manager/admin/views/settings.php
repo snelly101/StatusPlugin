@@ -172,7 +172,8 @@ $outgoing_events = array(
 				<td><input type="text" id="ssm-sms-sender" name="sms_sender" value="<?php echo esc_attr( $settings['sms_sender'] ); ?>" />
 				<p class="description"><?php esc_html_e( 'Shared across providers. Twilio accepts an alphanumeric sender ID in supported countries; SMTP2GO requires a phone number in E.164 format (e.g. +12025550000). Leave blank to use SMTP2GO’s account default sender.', 'service-status-manager' ); ?></p></td></tr>
 			<tr><th><label for="ssm-sms-country"><?php esc_html_e( 'Default country', 'service-status-manager' ); ?></label></th>
-				<td><input type="text" id="ssm-sms-country" name="sms_default_country" value="<?php echo esc_attr( $settings['sms_default_country'] ); ?>" style="width:80px;" /></td></tr>
+				<td><input type="text" id="ssm-sms-country" name="sms_default_country" value="<?php echo esc_attr( $settings['sms_default_country'] ); ?>" style="width:80px;" maxlength="2" />
+				<p class="description"><?php esc_html_e( 'Two-letter country code (e.g. GB, US). A phone number not already starting with "+" or "00" - a subscriber’s own number, or one typed into the SMS test field - is converted to this country’s international format, so "07780118777" becomes "+447780118777" for GB. Numbers already in international format are never changed.', 'service-status-manager' ); ?></p></td></tr>
 			<tr><th><label for="ssm-sms-sid"><?php esc_html_e( 'Twilio Account SID', 'service-status-manager' ); ?></label></th>
 				<td><input type="text" id="ssm-sms-sid" name="sms_account_sid" class="regular-text" placeholder="<?php echo esc_attr( ! empty( $sms_credentials['account_sid'] ) ? Encryption::mask( $sms_credentials['account_sid'] ) : '' ); ?>" autocomplete="off" />
 				<p class="description"><?php esc_html_e( 'Leave blank to keep the currently saved value. Never displayed in full after saving.', 'service-status-manager' ); ?></p></td></tr>

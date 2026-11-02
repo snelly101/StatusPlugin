@@ -184,3 +184,4 @@ require_once __DIR__ . '/../includes/class-maintenance-manager.php';
 require_once __DIR__ . '/../includes/class-appearance-settings.php';
 require_once __DIR__ . '/../includes/class-appearance-renderer.php';
 require_once __DIR__ . '/../includes/class-monitor-manager.php';
+require_once __DIR__ . '/../includes/class-subscriber-manager.php';

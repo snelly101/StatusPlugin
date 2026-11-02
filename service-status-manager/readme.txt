@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.20.1
+Stable tag: 1.20.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.20.2 =
+Confirmed root cause of the SMTP2GO SMS test failure: the number wasn't in international format (e.g. "07780118777" instead of "+447780118777"), which SMS providers require. Phone numbers are now automatically normalised to the "Default country" set under Settings -> SMS Provider (GB by default) - "07780118777" becomes "+447780118777" for a GB default, "2025550123" becomes "+12025550123" for a US default, and so on for every supported country. This applies both to subscribers' own numbers when they sign up and to the SMS test-notification field; a number already given in international format (starting "+" or "00") is always left untouched.
 
 = 1.20.1 =
 Fixed the SMTP2GO SMS test notification failing with "An error occurred processing the json data you sent with the request..." - confirmed by testing directly against SMTP2GO's live API that this exact message is what they return for an empty/malformed request body. The test destination field now has the same phone-number formatting cleanup (stripping spaces/dashes/parentheses) a real subscriber's number already gets when saved, since that field was the one path that skipped it; a missing destination or a request that genuinely can't be encoded as JSON now fails with a specific, actionable message instead of reaching SMTP2GO at all; and SMTP2GO's more detailed field-level validation message is now included in the error shown, so any future failure is self-diagnosing instead of just the generic preamble sentence.

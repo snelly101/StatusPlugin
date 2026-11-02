@@ -797,15 +797,67 @@ class SubscriberManager {
 	}
 
 	/**
+	 * Calling codes for the "Default country" (Settings -> SMS Provider)
+	 * setting, used by sanitize_phone() to turn a number typed in national
+	 * format (e.g. a UK mobile starting "07...") into E.164 - most SMS
+	 * providers, including SMTP2GO, reject anything else. Not exhaustive:
+	 * a number typed with a leading "+" is always left untouched regardless
+	 * of this map, so any country not listed here still works as long as
+	 * the subscriber (or admin, on the test-notification form) includes
+	 * their own country code.
+	 */
+	const COUNTRY_CALLING_CODES = array(
+		'GB' => '44', 'IE' => '353', 'US' => '1', 'CA' => '1', 'AU' => '61', 'NZ' => '64',
+		'FR' => '33', 'DE' => '49', 'ES' => '34', 'IT' => '39', 'NL' => '31', 'BE' => '32',
+		'PT' => '351', 'CH' => '41', 'AT' => '43', 'SE' => '46', 'NO' => '47', 'DK' => '45',
+		'FI' => '358', 'PL' => '48', 'IN' => '91', 'ZA' => '27', 'SG' => '65', 'AE' => '971',
+	);
+
+	/**
 	 * Normalises a phone number to a conservative E.164-ish digit string
 	 * for storage/hashing (keeps a leading + if present).
+	 *
+	 * A number already given in international format (leading +, or the
+	 * "00" international dialling prefix) is trusted as-is. Anything else
+	 * is treated as national-format for the configured default country
+	 * (Settings -> SMS Provider -> Default country, GB by default) and
+	 * converted to E.164 - e.g. "07780118777" with the default country set
+	 * to GB becomes "+447780118777", since a bare national-format number is
+	 * what a subscriber (or an admin testing the SMS channel) naturally
+	 * types, but is not what any SMS provider's API actually accepts.
 	 *
 	 * @param string $phone Raw phone number.
 	 * @return string
 	 */
 	public static function sanitize_phone( $phone ) {
 		$phone = preg_replace( '/[^0-9+]/', '', (string) $phone );
-		return $phone && strlen( preg_replace( '/\D/', '', $phone ) ) >= 7 ? $phone : '';
+
+		if ( ! $phone || strlen( preg_replace( '/\D/', '', $phone ) ) < 7 ) {
+			return '';
+		}
+
+		if ( '+' === $phone[0] ) {
+			return $phone;
+		}
+
+		$calling_code = self::COUNTRY_CALLING_CODES[ strtoupper( trim( (string) ssm_get_setting( 'sms_default_country', 'GB' ) ) ) ] ?? '';
+
+		if ( '' === $calling_code ) {
+			// Unrecognised default country - leave the digits as typed
+			// rather than guess at a calling code, same as before this
+			// normalisation existed.
+			return $phone;
+		}
+
+		if ( 0 === strpos( $phone, '00' ) ) {
+			return '+' . substr( $phone, 2 );
+		}
+
+		if ( '0' === $phone[0] ) {
+			return '+' . $calling_code . substr( $phone, 1 );
+		}
+
+		return '+' . $calling_code . $phone;
 	}
 
 	/**
