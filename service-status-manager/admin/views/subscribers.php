@@ -8,6 +8,8 @@
 namespace ServiceStatusManager\Admin;
 
 use ServiceStatusManager\SubscriberManager;
+use ServiceStatusManager\ServiceManager;
+use ServiceStatusManager\MonitorManager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -20,6 +22,45 @@ $status = sanitize_key( wp_unslash( $_GET['status'] ?? '' ) ); // phpcs:ignore W
 $result  = SubscriberManager::query_for_admin( array( 'paged' => $paged, 'search' => $search, 'status' => $status ) );
 $edit_id = absint( $_GET['edit'] ?? 0 ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 $editing = $edit_id ? SubscriberManager::get_subscriber( $edit_id ) : null;
+
+// Built once, shared by the list's "Following" column and the edit form:
+// every subscribable group, service and (public) monitor, plus id => name
+// maps so a subscriber's stored selections can be shown by name.
+$all_groups   = ServiceManager::get_groups();
+$all_services = ServiceManager::get_services( array( 'show_on_status_page' => 1 ) );
+$monitors_by_service = array();
+$group_names   = wp_list_pluck( $all_groups, 'name', 'id' );
+$service_names = wp_list_pluck( $all_services, 'name', 'id' );
+$monitor_names = array();
+foreach ( $all_services as $svc ) {
+	$monitors_by_service[ $svc->id ] = array_values( array_filter( MonitorManager::get_monitors_for_service( $svc->id ), fn( $m ) => $m->is_public ) );
+	foreach ( $monitors_by_service[ $svc->id ] as $m ) {
+		$monitor_names[ $m->id ] = $m->name;
+	}
+}
+
+$severity_labels = array(
+	'informational' => __( 'Informational', 'service-status-manager' ),
+	'minor'         => __( 'Minor', 'service-status-manager' ),
+	'major'         => __( 'Major', 'service-status-manager' ),
+	'critical'      => __( 'Critical', 'service-status-manager' ),
+);
+
+/**
+ * Splits a subscriber's selection rows into id lists per scope type.
+ *
+ * @param array $selections Rows from SubscriberManager::get_selections().
+ * @return array{group: int[], service: int[], monitor: int[]}
+ */
+$split_selections = function ( array $selections ) {
+	$out = array( 'group' => array(), 'service' => array(), 'monitor' => array() );
+	foreach ( $selections as $row ) {
+		if ( isset( $out[ $row->scope_type ] ) ) {
+			$out[ $row->scope_type ][] = (int) $row->scope_id;
+		}
+	}
+	return $out;
+};
 ?>
 <div class="wrap ssm-wrap">
 	<h1><?php esc_html_e( 'Subscribers', 'service-status-manager' ); ?></h1>
@@ -38,7 +79,11 @@ $editing = $edit_id ? SubscriberManager::get_subscriber( $edit_id ) : null;
 	</form>
 
 	<?php if ( $editing ) : ?>
-		<div class="ssm-col-form" style="max-width:420px;">
+		<?php
+		$editing_sel        = $split_selections( SubscriberManager::get_selections( $editing->id ) );
+		$editing_everything = empty( $editing_sel['group'] ) && empty( $editing_sel['service'] ) && empty( $editing_sel['monitor'] );
+		?>
+		<div class="ssm-col-form" style="max-width:680px;">
 			<h2><?php esc_html_e( 'Edit Subscriber', 'service-status-manager' ); ?></h2>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<?php wp_nonce_field( 'ssm_save_subscriber' ); ?>
@@ -57,6 +102,40 @@ $editing = $edit_id ? SubscriberManager::get_subscriber( $edit_id ) : null;
 							</select>
 						</td>
 					</tr>
+					<tr><th><?php esc_html_e( 'Following', 'service-status-manager' ); ?></th>
+						<td>
+							<label><input type="checkbox" name="following_everything" value="1" data-ssm-admin-select-all <?php checked( $editing_everything ); ?> /> <strong><?php esc_html_e( 'Everything', 'service-status-manager' ); ?></strong></label>
+							<p class="description"><?php esc_html_e( 'Ticked: notified about all current and future services. Untick to pick specific groups, services or monitors below.', 'service-status-manager' ); ?></p>
+
+							<?php if ( $all_groups ) : ?>
+								<p style="margin:12px 0 4px;"><strong><?php esc_html_e( 'Service groups', 'service-status-manager' ); ?></strong></p>
+								<?php foreach ( $all_groups as $group ) : ?>
+									<label style="display:block;"><input type="checkbox" name="groups[]" value="<?php echo esc_attr( $group->id ); ?>" data-ssm-admin-selectable <?php checked( in_array( (int) $group->id, $editing_sel['group'], true ) ); ?> <?php disabled( $editing_everything ); ?> /> <?php echo esc_html( $group->name ); ?></label>
+								<?php endforeach; ?>
+							<?php endif; ?>
+
+							<p style="margin:12px 0 4px;"><strong><?php esc_html_e( 'Services', 'service-status-manager' ); ?></strong></p>
+							<?php foreach ( $all_services as $service ) : if ( ! $service->allow_subscriptions ) { continue; } ?>
+								<label style="display:block;"><input type="checkbox" name="services[]" value="<?php echo esc_attr( $service->id ); ?>" data-ssm-admin-selectable <?php checked( in_array( (int) $service->id, $editing_sel['service'], true ) ); ?> <?php disabled( $editing_everything ); ?> /> <?php echo esc_html( $service->name ); ?></label>
+								<?php foreach ( $monitors_by_service[ $service->id ] ?? array() as $monitor ) : ?>
+									<label style="display:block; margin-left:24px;"><input type="checkbox" name="monitors[]" value="<?php echo esc_attr( $monitor->id ); ?>" data-ssm-admin-selectable <?php checked( in_array( (int) $monitor->id, $editing_sel['monitor'], true ) ); ?> <?php disabled( $editing_everything ); ?> /> <?php echo esc_html( $monitor->name ); ?></label>
+								<?php endforeach; ?>
+							<?php endforeach; ?>
+						</td>
+					</tr>
+					<tr><th><label for="ssm-s-severity"><?php esc_html_e( 'Minimum incident severity', 'service-status-manager' ); ?></label></th>
+						<td>
+							<select id="ssm-s-severity" name="min_severity">
+								<?php foreach ( $severity_labels as $level => $label ) : ?>
+									<option value="<?php echo esc_attr( $level ); ?>" <?php selected( $editing->min_severity, $level ); ?>><?php echo esc_html( $label ); ?></option>
+								<?php endforeach; ?>
+							</select>
+							<p class="description"><?php esc_html_e( 'Incidents below this severity are not sent to this subscriber.', 'service-status-manager' ); ?></p>
+						</td>
+					</tr>
+					<tr><th><?php esc_html_e( 'Maintenance', 'service-status-manager' ); ?></th>
+						<td><label><input type="checkbox" name="maintenance_notifications" value="1" <?php checked( $editing->maintenance_notifications, 1 ); ?> /> <?php esc_html_e( 'Notify about scheduled maintenance', 'service-status-manager' ); ?></label></td>
+					</tr>
 				</table>
 				<?php submit_button( __( 'Save', 'service-status-manager' ) ); ?>
 			</form>
@@ -69,13 +148,15 @@ $editing = $edit_id ? SubscriberManager::get_subscriber( $edit_id ) : null;
 			<th><?php esc_html_e( 'Email', 'service-status-manager' ); ?></th>
 			<th><?php esc_html_e( 'Phone', 'service-status-manager' ); ?></th>
 			<th><?php esc_html_e( 'Channels', 'service-status-manager' ); ?></th>
+			<th><?php esc_html_e( 'Following', 'service-status-manager' ); ?></th>
+			<th><?php esc_html_e( 'Preferences', 'service-status-manager' ); ?></th>
 			<th><?php esc_html_e( 'Status', 'service-status-manager' ); ?></th>
 			<th><?php esc_html_e( 'Subscribed', 'service-status-manager' ); ?></th>
 			<th></th>
 		</tr></thead>
 		<tbody>
 		<?php if ( empty( $result['items'] ) ) : ?>
-			<tr><td colspan="7"><?php esc_html_e( 'No subscribers found.', 'service-status-manager' ); ?></td></tr>
+			<tr><td colspan="9"><?php esc_html_e( 'No subscribers found.', 'service-status-manager' ); ?></td></tr>
 		<?php endif; ?>
 		<?php foreach ( $result['items'] as $subscriber ) : ?>
 			<tr>
@@ -90,6 +171,30 @@ $editing = $edit_id ? SubscriberManager::get_subscriber( $edit_id ) : null;
 						$labels[] = ucfirst( $channel ) . ( $verified ? '' : ' (' . esc_html__( 'unverified', 'service-status-manager' ) . ')' );
 					}
 					echo esc_html( implode( ', ', $labels ) ?: '—' );
+					?>
+				</td>
+				<td>
+					<?php
+					$sel   = $split_selections( SubscriberManager::get_selections( $subscriber->id ) );
+					$names = array();
+					foreach ( $sel['group'] as $gid ) {
+						$names[] = ( $group_names[ $gid ] ?? '#' . $gid ) . ' (' . __( 'group', 'service-status-manager' ) . ')';
+					}
+					foreach ( $sel['service'] as $sid ) {
+						$names[] = $service_names[ $sid ] ?? '#' . $sid;
+					}
+					foreach ( $sel['monitor'] as $mid ) {
+						$names[] = ( $monitor_names[ $mid ] ?? '#' . $mid ) . ' (' . __( 'monitor', 'service-status-manager' ) . ')';
+					}
+					echo $names ? esc_html( implode( ', ', $names ) ) : '<em>' . esc_html__( 'Everything', 'service-status-manager' ) . '</em>';
+					?>
+				</td>
+				<td>
+					<?php
+					/* translators: %s: minimum severity label */
+					echo esc_html( sprintf( __( 'Severity: %s', 'service-status-manager' ), $severity_labels[ $subscriber->min_severity ] ?? ucfirst( $subscriber->min_severity ) ) );
+					echo '<br />';
+					echo esc_html( $subscriber->maintenance_notifications ? __( 'Maintenance: yes', 'service-status-manager' ) : __( 'Maintenance: no', 'service-status-manager' ) );
 					?>
 				</td>
 				<td><?php echo esc_html( ucfirst( $subscriber->status ) ); ?></td>

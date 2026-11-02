@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.20.3
+Stable tag: 1.21.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.21.0 =
+Admins can now see and edit what each subscriber is subscribed to. The Subscribers screen gains a "Following" column (the groups, services and monitors they chose - or "Everything") and a "Preferences" column (minimum incident severity, and whether they get maintenance notices). The Edit Subscriber form now lets you change all of that - including the "Everything" toggle - using exactly the same storage logic as the subscriber's own self-service manage page, so admin edits and subscriber edits can never disagree. Previously the admin form could only change a subscriber's name and status.
 
 = 1.20.3 =
 Raised the "Send a test notification" rate limit from 10 to 100 per 10 minutes (per admin user), so iterating on provider settings isn't throttled - a ceiling is kept since every SMS test is a real, billed message.

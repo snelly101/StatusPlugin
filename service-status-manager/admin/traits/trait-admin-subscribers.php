@@ -25,11 +25,28 @@ trait AdminSubscribersTrait {
 			$this->redirect_with_notice( 'subscribers', __( 'New subscribers must sign up through the public subscription form so consent is recorded correctly.', 'service-status-manager' ), 'error' );
 		}
 
+		$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+
+		// "Everything" ticked means no specific selections - the backend
+		// treats an empty selection set as "notify about everything" (see
+		// SubscriberManager::get_matching_subscribers()), exactly as the
+		// public manage page does.
+		$following_everything = ! empty( $post['following_everything'] );
+
 		$result = SubscriberManager::admin_update_subscriber(
 			$id,
 			array(
-				'name'   => wp_unslash( $_POST['name'] ?? '' ),
-				'status' => wp_unslash( $_POST['status'] ?? '' ),
+				'name'        => $post['name'] ?? '',
+				'status'      => $post['status'] ?? '',
+				'preferences' => array(
+					'min_severity'              => $post['min_severity'] ?? '',
+					'maintenance_notifications' => ! empty( $post['maintenance_notifications'] ),
+				),
+				'selections'  => $following_everything ? array() : array(
+					'group'   => (array) ( $post['groups'] ?? array() ),
+					'service' => (array) ( $post['services'] ?? array() ),
+					'monitor' => (array) ( $post['monitors'] ?? array() ),
+				),
 			)
 		);
 

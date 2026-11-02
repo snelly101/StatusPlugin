@@ -735,6 +735,32 @@ class SubscriberManager {
 			array( 'id' => $id )
 		);
 
+		// Preferences and scope selections are only touched when the caller
+		// explicitly supplies them, so a name/status-only update leaves what
+		// the subscriber chose for themselves untouched. Same two private
+		// helpers the self-service manage page uses, so admin edits and
+		// subscriber edits can never drift in how they're stored.
+		if ( isset( $data['preferences'] ) && is_array( $data['preferences'] ) ) {
+			self::set_preferences(
+				$id,
+				array(
+					'min_severity'              => sanitize_key( $data['preferences']['min_severity'] ?? $existing->min_severity ),
+					'maintenance_notifications' => ! empty( $data['preferences']['maintenance_notifications'] ),
+				)
+			);
+		}
+
+		if ( isset( $data['selections'] ) && is_array( $data['selections'] ) ) {
+			self::replace_selections(
+				$id,
+				array(
+					'group'   => array_map( 'absint', (array) ( $data['selections']['group'] ?? array() ) ),
+					'service' => array_map( 'absint', (array) ( $data['selections']['service'] ?? array() ) ),
+					'monitor' => array_map( 'absint', (array) ( $data['selections']['monitor'] ?? array() ) ),
+				)
+			);
+		}
+
 		AuditLog::record( 'subscriber_updated_by_admin', 'subscriber', $id );
 
 		return true;
