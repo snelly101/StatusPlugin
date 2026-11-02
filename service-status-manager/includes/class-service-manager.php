@@ -472,6 +472,16 @@ class ServiceManager {
 			$candidates[] = $incident_status;
 		}
 
+		// A live maintenance window is a status candidate in its own right.
+		// Without this, the "maintenance" status the window writes to the
+		// service when it starts was immediately overridden here on every
+		// render by the monitor-derived status (typically "operational"),
+		// so the service never actually showed as under maintenance.
+		$maintenance_status = MaintenanceManager::get_active_maintenance_status_for_service( $service_id );
+		if ( $maintenance_status ) {
+			$candidates[] = $maintenance_status;
+		}
+
 		if ( empty( $candidates ) ) {
 			// No monitors (or none active) and no active public incident
 			// severe enough to count - "operational" is the honest

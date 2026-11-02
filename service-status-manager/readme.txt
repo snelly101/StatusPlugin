@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.22.0
+Stable tag: 1.22.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.22.1 =
+Fixed a service staying "Operational" while one of its maintenance windows was in progress. The window did mark the service as under maintenance when it started, but the live status shown on the page is re-derived from the service's monitors on every load (added in 1.16.0 to catch stale monitoring data), and that derivation didn't know about maintenance windows - so it overwrote the maintenance status with "Operational" straight away. A live window (in progress or awaiting confirmation, public, not a draft, with an expected impact) is now a status signal in its own right, ranked above Operational but below a genuine outage. The status is now labelled "Maintenance in progress" and uses the plugin's indigo maintenance colour rather than the same blue as links.
 
 = 1.22.0 =
 Added a "Microsoft Teams channel" tickbox under Settings -> Notification Rules. Untick it to remove the Teams option from the public subscribe form and modal entirely, so visitors only see Email and SMS. The server also refuses a Teams signup while it's off, so it can't be bypassed. Existing Teams subscribers are unaffected and keep receiving notifications - this only controls what new visitors can choose.

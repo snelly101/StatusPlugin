@@ -112,6 +112,31 @@ class MaintenanceManager {
 	}
 
 	/**
+	 * Whether a service is currently inside a live maintenance window -
+	 * one that is in progress (or overdue: past its scheduled end but not
+	 * yet confirmed finished), public, not a draft, and with an expected
+	 * impact (a window declared as "no expected impact" deliberately
+	 * leaves the service's shown status alone). Mirrors
+	 * IncidentManager::get_active_incident_status_for_service() so
+	 * ServiceManager::compute_status() can treat a live window as a
+	 * status candidate the same way it treats an active incident.
+	 *
+	 * @param int $service_id Service ID.
+	 * @return string|null 'maintenance', or null if no live window applies.
+	 */
+	public static function get_active_maintenance_status_for_service( $service_id ) {
+		global $wpdb;
+
+		$sql = 'SELECT COUNT(*) FROM ' . ssm_table( 'maintenance' ) . ' m
+			INNER JOIN ' . ssm_table( 'maintenance_services' ) . ' ms ON ms.maintenance_id = m.id
+			WHERE ms.service_id = %d AND m.status IN (%s, %s) AND m.is_public = 1 AND m.is_draft = 0 AND m.impact != %s';
+
+		$count = (int) $wpdb->get_var( $wpdb->prepare( $sql, absint( $service_id ), 'in_progress', 'overdue', 'none' ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		return $count > 0 ? 'maintenance' : null;
+	}
+
+	/**
 	 * @param int $maintenance_id Maintenance ID.
 	 * @return array Service rows.
 	 */

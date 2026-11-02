@@ -67,9 +67,9 @@ function ssm_get_status_definitions() {
 			'severity'    => 90,
 		),
 		'maintenance' => array(
-			'label'       => __( 'Under Maintenance', 'service-status-manager' ),
+			'label'       => __( 'Maintenance in progress', 'service-status-manager' ),
 			'css_class'   => 'ssm-status-maintenance',
-			'color'       => '#2563eb',
+			'color'       => '#6366f1',
 			'icon'        => 'dashicons-admin-tools',
 			'description' => __( 'This service is currently undergoing planned maintenance.', 'service-status-manager' ),
 			'severity'    => 30,
