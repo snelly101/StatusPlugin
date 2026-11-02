@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.19.1
+Stable tag: 1.20.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.20.0 =
+Added SMTP2GO as an SMS provider option (Settings -> SMS Provider), alongside Twilio. It uses the SMTP2GO API (https://developers.smtp2go.com/) and the same API key already configured under Email Provider - one SMTP2GO account and key covers both email and SMS, so switching the SMS Provider dropdown to SMTP2GO never requires entering a second key. Requires a paid SMTP2GO plan with SMS enabled. Supports concurrent sending, its own requests-per-second/concurrency/timeout limits, and a connectivity health check via `wp service-status provider health`, the same as the existing Twilio and SMTP2GO email providers.
 
 = 1.19.1 =
 Fixed the "Last checked" date on the hero banner randomly flipping between the site's configured date format (e.g. "November 2, 2026") and a numeric, browser-locale one (e.g. "11/2/2026") every time the page's live-refresh ran. The background refresh was reformatting the timestamp with the browser's own locale/timezone instead of reusing the site's configured format and timezone - it now reuses the exact same formatted string the page was first rendered with, every time.

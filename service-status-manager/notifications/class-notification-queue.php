@@ -1004,7 +1004,8 @@ class NotificationQueue {
 		$providers = apply_filters(
 			'ssm_sms_providers',
 			array(
-				'twilio' => TwilioSmsProvider::class,
+				'twilio'  => TwilioSmsProvider::class,
+				'smtp2go' => Smtp2goSmsProvider::class,
 			)
 		);
 

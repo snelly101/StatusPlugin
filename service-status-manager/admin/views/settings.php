@@ -161,14 +161,16 @@ $outgoing_events = array(
 		<table class="form-table">
 			<tr><th><label for="ssm-sms-provider"><?php esc_html_e( 'Provider', 'service-status-manager' ); ?></label></th>
 				<td>
+					<?php $sms_provider_labels = array( 'twilio' => 'Twilio', 'smtp2go' => 'SMTP2GO' ); ?>
 					<select id="ssm-sms-provider" name="sms_provider">
-						<?php foreach ( apply_filters( 'ssm_sms_providers', array( 'twilio' => '' ) ) as $slug => $class ) : ?>
-							<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $settings['sms_provider'], $slug ); ?>><?php echo esc_html( ucfirst( $slug ) ); ?></option>
+						<?php foreach ( apply_filters( 'ssm_sms_providers', array( 'twilio' => '', 'smtp2go' => '' ) ) as $slug => $class ) : ?>
+							<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $settings['sms_provider'], $slug ); ?>><?php echo esc_html( $sms_provider_labels[ $slug ] ?? ucfirst( $slug ) ); ?></option>
 						<?php endforeach; ?>
 					</select>
 				</td></tr>
 			<tr><th><label for="ssm-sms-sender"><?php esc_html_e( 'Sender number / ID', 'service-status-manager' ); ?></label></th>
-				<td><input type="text" id="ssm-sms-sender" name="sms_sender" value="<?php echo esc_attr( $settings['sms_sender'] ); ?>" /></td></tr>
+				<td><input type="text" id="ssm-sms-sender" name="sms_sender" value="<?php echo esc_attr( $settings['sms_sender'] ); ?>" />
+				<p class="description"><?php esc_html_e( 'Shared across providers. Twilio accepts an alphanumeric sender ID in supported countries; SMTP2GO requires a phone number in E.164 format (e.g. +12025550000). Leave blank to use SMTP2GO’s account default sender.', 'service-status-manager' ); ?></p></td></tr>
 			<tr><th><label for="ssm-sms-country"><?php esc_html_e( 'Default country', 'service-status-manager' ); ?></label></th>
 				<td><input type="text" id="ssm-sms-country" name="sms_default_country" value="<?php echo esc_attr( $settings['sms_default_country'] ); ?>" style="width:80px;" /></td></tr>
 			<tr><th><label for="ssm-sms-sid"><?php esc_html_e( 'Twilio Account SID', 'service-status-manager' ); ?></label></th>
@@ -193,6 +195,18 @@ $outgoing_events = array(
 				<td><input type="number" id="ssm-twilio-rps" name="twilio_rate_limit_per_second" value="<?php echo esc_attr( $settings['twilio_rate_limit_per_second'] ); ?>" min="0" /> <span class="description"><?php esc_html_e( '0 = unlimited. Match this to your Twilio account\'s actual throughput limit.', 'service-status-manager' ); ?></span></td></tr>
 			<tr><th><label for="ssm-twilio-concurrency"><?php esc_html_e( 'Twilio max concurrent requests', 'service-status-manager' ); ?></label></th>
 				<td><input type="number" id="ssm-twilio-concurrency" name="twilio_max_concurrency" value="<?php echo esc_attr( $settings['twilio_max_concurrency'] ); ?>" min="1" /></td></tr>
+			<tr><th><?php esc_html_e( 'SMTP2GO API key', 'service-status-manager' ); ?></th>
+				<td><p class="description"><?php echo wp_kses_post( sprintf(
+					/* translators: %s: "Email Provider" heading, bolded */
+					__( 'Uses the same SMTP2GO API key configured under %s above - one SMTP2GO account and key covers both email and SMS. Requires a paid SMTP2GO plan with SMS enabled.', 'service-status-manager' ),
+					'<strong>' . esc_html__( 'Email Provider', 'service-status-manager' ) . '</strong>'
+				) ); ?></p></td></tr>
+			<tr><th><label for="ssm-smtp2go-sms-rps"><?php esc_html_e( 'SMTP2GO SMS requests per second', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-smtp2go-sms-rps" name="smtp2go_sms_rate_limit_per_second" value="<?php echo esc_attr( $settings['smtp2go_sms_rate_limit_per_second'] ); ?>" min="0" /> <span class="description"><?php esc_html_e( '0 = unlimited.', 'service-status-manager' ); ?></span></td></tr>
+			<tr><th><label for="ssm-smtp2go-sms-concurrency"><?php esc_html_e( 'SMTP2GO SMS max concurrent requests', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-smtp2go-sms-concurrency" name="smtp2go_sms_max_concurrency" value="<?php echo esc_attr( $settings['smtp2go_sms_max_concurrency'] ); ?>" min="1" /></td></tr>
+			<tr><th><label for="ssm-smtp2go-sms-timeout"><?php esc_html_e( 'SMTP2GO SMS request timeout (seconds)', 'service-status-manager' ); ?></label></th>
+				<td><input type="number" id="ssm-smtp2go-sms-timeout" name="smtp2go_sms_timeout" value="<?php echo esc_attr( $settings['smtp2go_sms_timeout'] ); ?>" min="1" /></td></tr>
 		</table>
 
 		<h2><?php esc_html_e( 'Notification Engine', 'service-status-manager' ); ?></h2>
