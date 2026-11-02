@@ -155,6 +155,9 @@ $outgoing_events = array(
 				</td></tr>
 			<tr><th><label for="ssm-max-sms"><?php esc_html_e( 'Max SMS per subscriber per day', 'service-status-manager' ); ?></label></th>
 				<td><input type="number" id="ssm-max-sms" name="max_sms_per_subscriber_per_day" value="<?php echo esc_attr( $settings['max_sms_per_subscriber_per_day'] ); ?>" min="0" /></td></tr>
+			<tr><th><?php esc_html_e( 'Microsoft Teams channel', 'service-status-manager' ); ?></th>
+				<td><label><input type="checkbox" name="teams_channel_enabled" value="1" <?php checked( ! empty( $settings['teams_channel_enabled'] ) ); ?> /> <?php esc_html_e( 'Offer Microsoft Teams as a subscription channel on the public status page', 'service-status-manager' ); ?></label>
+				<p class="description"><?php esc_html_e( 'Untick to remove the Teams option from the subscribe form entirely. Existing Teams subscribers keep receiving notifications; this only controls what new visitors can choose.', 'service-status-manager' ); ?></p></td></tr>
 		</table>
 
 		<h2><?php esc_html_e( 'SMS Provider', 'service-status-manager' ); ?></h2>

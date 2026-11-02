@@ -415,6 +415,7 @@ function ssm_get_settings() {
 			'smtp2go_sms_max_concurrency' => 10,
 			'smtp2go_sms_timeout'         => 15,
 			'teams_max_concurrency'       => 10,
+			'teams_channel_enabled'       => true,
 			'circuit_breaker_failure_threshold' => 5,
 			'circuit_breaker_cooldown_seconds'  => 60,
 			'notification_dispatch_time_budget_seconds' => 20,

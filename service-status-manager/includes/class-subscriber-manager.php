@@ -53,7 +53,7 @@ class SubscriberManager {
 			return new \WP_Error( 'ssm_consent_required', __( 'Please confirm your consent to subscribe.', 'service-status-manager' ) );
 		}
 
-		$channels = array_intersect( (array) ( $post['channels'] ?? array() ), array( 'email', 'sms', 'teams' ) );
+		$channels = array_intersect( (array) ( $post['channels'] ?? array() ), self::offered_channels() );
 		$email    = sanitize_email( $post['email'] ?? '' );
 		$phone    = self::sanitize_phone( $post['phone'] ?? '' );
 		$teams    = esc_url_raw( $post['teams_webhook'] ?? '' );
@@ -884,6 +884,27 @@ class SubscriberManager {
 		}
 
 		return '+' . $calling_code . $phone;
+	}
+
+	/**
+	 * The channels new subscribers may currently choose from. Email and SMS
+	 * are always offered; Microsoft Teams can be switched off by an admin
+	 * (Settings -> Notification Rules). Used both to render the public
+	 * subscribe forms and to validate what they submit, so a channel that
+	 * isn't offered can't be smuggled in by a crafted request either.
+	 * Existing subscribers on a switched-off channel are unaffected - this
+	 * only governs what can be newly chosen.
+	 *
+	 * @return string[]
+	 */
+	public static function offered_channels() {
+		$channels = array( 'email', 'sms' );
+
+		if ( ssm_get_setting( 'teams_channel_enabled', true ) ) {
+			$channels[] = 'teams';
+		}
+
+		return $channels;
 	}
 
 	/**

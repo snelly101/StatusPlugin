@@ -59,6 +59,7 @@ trait AdminSettingsTrait {
 			'smtp2go_max_concurrency'         => max( 1, absint( $post['smtp2go_max_concurrency'] ?? 10 ) ),
 			'smtp2go_timeout'                 => max( 1, absint( $post['smtp2go_timeout'] ?? 15 ) ),
 			'teams_max_concurrency'           => max( 1, absint( $post['teams_max_concurrency'] ?? 10 ) ),
+			'teams_channel_enabled'           => ! empty( $post['teams_channel_enabled'] ),
 			'circuit_breaker_failure_threshold' => max( 1, absint( $post['circuit_breaker_failure_threshold'] ?? 5 ) ),
 			'circuit_breaker_cooldown_seconds'  => max( 1, absint( $post['circuit_breaker_cooldown_seconds'] ?? 60 ) ),
 			'notification_dispatch_time_budget_seconds' => max( 1, absint( $post['notification_dispatch_time_budget_seconds'] ?? 20 ) ),

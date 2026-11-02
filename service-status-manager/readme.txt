@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.21.1
+Stable tag: 1.22.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.22.0 =
+Added a "Microsoft Teams channel" tickbox under Settings -> Notification Rules. Untick it to remove the Teams option from the public subscribe form and modal entirely, so visitors only see Email and SMS. The server also refuses a Teams signup while it's off, so it can't be bypassed. Existing Teams subscribers are unaffected and keep receiving notifications - this only controls what new visitors can choose.
 
 = 1.21.1 =
 Fixed a subscriber who signed up with SMS (or Teams) only getting a "management link" email queued that could never be delivered - it sat in the queue failing with "Subscriber has no valid email address" and retrying five times. The management link now goes to a channel the subscriber actually has: email if they have one, otherwise SMS, otherwise Teams (one channel only, since SMS is billed per message). Separately, a "no address/number for this channel" failure is now treated as permanent and failed immediately, instead of being retried with backoff and counted against the provider's circuit breaker as if the provider itself were down.

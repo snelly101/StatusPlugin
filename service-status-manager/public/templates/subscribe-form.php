@@ -45,12 +45,14 @@ $show_monitor_selection = 'yes' === $atts['show_subscribe'];
 			</label>
 			<input type="tel" id="ssm-sub-phone" name="phone" autocomplete="tel" placeholder="<?php esc_attr_e( '+44 7700 900000', 'service-status-manager' ); ?>" />
 
+			<?php if ( in_array( 'teams', \ServiceStatusManager\SubscriberManager::offered_channels(), true ) ) : ?>
 			<label class="ssm-checkbox-row">
 				<input type="checkbox" name="channels[]" value="teams" />
 				<?php esc_html_e( 'Microsoft Teams', 'service-status-manager' ); ?>
 			</label>
 			<input type="url" id="ssm-sub-teams" name="teams_webhook" placeholder="<?php esc_attr_e( 'https://...webhook.office.com/...', 'service-status-manager' ); ?>" />
 			<p class="description"><?php esc_html_e( 'Paste an Incoming Webhook URL for the Teams channel that should receive alerts. This is never shown publicly once saved.', 'service-status-manager' ); ?></p>
+			<?php endif; ?>
 		</fieldset>
 
 		<?php if ( $show_monitor_selection ) : ?>

@@ -76,11 +76,13 @@ $severity_explainers = array(
 							<?php echo ssm_icon( 'mail' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 							<?php esc_html_e( 'Email', 'service-status-manager' ); ?>
 						</label>
+						<?php if ( in_array( 'teams', \ServiceStatusManager\SubscriberManager::offered_channels(), true ) ) : ?>
 						<label class="ssm-choice-card">
 							<input type="checkbox" name="channels[]" value="teams" data-ssm-channel="teams" />
 							<?php echo ssm_icon( 'message-square' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 							<?php esc_html_e( 'Microsoft Teams', 'service-status-manager' ); ?>
 						</label>
+						<?php endif; ?>
 						<label class="ssm-choice-card">
 							<input type="checkbox" name="channels[]" value="sms" data-ssm-channel="sms" />
 							<?php echo ssm_icon( 'smartphone' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
