@@ -351,6 +351,80 @@ class SubscriberManager {
 	}
 
 	/**
+	 * Lets an administrator correct a subscriber's email address and/or
+	 * mobile number (typos, changed numbers). A changed address is treated
+	 * as a new, unconfirmed one: that channel drops back to unverified and
+	 * a fresh confirmation is sent to the corrected address, so double
+	 * opt-in isn't quietly bypassed by an edit - the admin can still use
+	 * "Verify" if they already know it's right. Clearing a value removes
+	 * it and deactivates that channel. Unchanged values are left alone
+	 * entirely (no re-verification, no message).
+	 *
+	 * @param int    $subscriber_id Subscriber ID.
+	 * @param string $email         New email ('' to remove).
+	 * @param string $phone         New phone, any format ('' to remove).
+	 * @return true|\WP_Error
+	 */
+	public static function admin_update_contact( $subscriber_id, $email, $phone ) {
+		global $wpdb;
+		$table    = ssm_table( 'subscribers' );
+		$existing = self::get_subscriber( $subscriber_id );
+		if ( ! $existing ) {
+			return new \WP_Error( 'ssm_not_found', __( 'Subscriber not found.', 'service-status-manager' ) );
+		}
+
+		$email = sanitize_email( $email );
+		if ( '' !== (string) $email && ! is_email( $email ) ) {
+			return new \WP_Error( 'ssm_invalid_email', __( 'That email address is not valid.', 'service-status-manager' ) );
+		}
+		$phone = self::sanitize_phone( $phone );
+
+		$fields          = array();
+		$changed_channel = array();
+
+		if ( (string) $email !== (string) $existing->email ) {
+			$email_hash = $email ? hash( 'sha256', strtolower( $email ) ) : null;
+			if ( $email_hash && $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE email_hash = %s AND id != %d", $email_hash, $subscriber_id ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				return new \WP_Error( 'ssm_email_in_use', __( 'Another subscriber already uses that email address.', 'service-status-manager' ) );
+			}
+			$fields['email']      = $email ? $email : null;
+			$fields['email_hash'] = $email_hash;
+			$changed_channel['email'] = (bool) $email;
+		}
+
+		if ( (string) $phone !== (string) $existing->phone ) {
+			$phone_hash = $phone ? hash( 'sha256', $phone ) : null;
+			if ( $phone_hash && $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE phone_hash = %s AND id != %d", $phone_hash, $subscriber_id ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				return new \WP_Error( 'ssm_phone_in_use', __( 'Another subscriber already uses that mobile number.', 'service-status-manager' ) );
+			}
+			$fields['phone']      = $phone ? $phone : null;
+			$fields['phone_hash'] = $phone_hash;
+			$changed_channel['sms'] = (bool) $phone;
+		}
+
+		if ( empty( $fields ) ) {
+			return true;
+		}
+
+		$fields['updated_at'] = ssm_now();
+		$wpdb->update( $table, $fields, array( 'id' => $subscriber_id ) );
+
+		foreach ( $changed_channel as $channel => $has_value ) {
+			if ( ! $has_value ) {
+				$wpdb->update( ssm_table( 'subscriber_channels' ), array( 'is_active' => 0, 'verified' => 0, 'updated_at' => ssm_now() ), array( 'subscriber_id' => $subscriber_id, 'channel' => $channel ) );
+				continue;
+			}
+			self::ensure_channel_row( $subscriber_id, $channel );
+			$wpdb->update( ssm_table( 'subscriber_channels' ), array( 'verified' => 0, 'verified_at' => null, 'updated_at' => ssm_now() ), array( 'subscriber_id' => $subscriber_id, 'channel' => $channel ) );
+			self::send_verification( (int) $subscriber_id, $channel );
+		}
+
+		AuditLog::record( 'subscriber_contact_updated_by_admin', 'subscriber', (int) $subscriber_id, null, array( 'channels' => array_keys( $changed_channel ) ) );
+
+		return true;
+	}
+
+	/**
 	 * Lets an administrator verify a subscriber's channel by hand - e.g.
 	 * when a confirmation email never arrived, or a number was confirmed
 	 * out-of-band. Routes through the same mark_channel_verified() the

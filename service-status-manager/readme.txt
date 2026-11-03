@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.24.0
+Stable tag: 1.25.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.25.0 =
+Admins can now edit a subscriber's email address and mobile number from the Edit Subscriber form, to correct typos or changed numbers. A changed address is treated as new and unconfirmed: that channel drops back to unverified and a fresh confirmation is sent to the corrected address (so an edit can't quietly bypass double opt-in) - use the Verify button if you already know it's right. Numbers are normalised to international format the same way as on signup. Clearing a value removes that channel. An address already used by another subscriber is rejected. Recorded in the audit log.
 
 = 1.24.0 =
 Admins can now verify a subscriber's email, mobile number or Teams channel by hand - for when a confirmation message never arrived, or a number was confirmed out-of-band. The Subscribers list shows each channel's verified state with a tick, and an unverified channel has a "Verify" button next to it. Verifying this way does exactly what clicking the confirmation link would: the channel is marked verified, a pending subscriber becomes active, and they're sent their management link. Recorded in the audit log.

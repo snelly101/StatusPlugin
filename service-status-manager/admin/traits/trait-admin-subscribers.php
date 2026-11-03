@@ -9,6 +9,7 @@ namespace ServiceStatusManager\Admin;
 
 use ServiceStatusManager\Capabilities;
 use ServiceStatusManager\SubscriberManager;
+use ServiceStatusManager\Notifications\NotificationQueue;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -53,6 +54,21 @@ trait AdminSubscribersTrait {
 		if ( is_wp_error( $result ) ) {
 			$this->redirect_with_notice( 'subscribers', $result->get_error_message(), 'error' );
 		}
+
+		// Contact details are handled separately from preferences because a
+		// changed address has side effects (re-verification, a fresh
+		// confirmation message) that a name/status/selection edit must not.
+		$contact = SubscriberManager::admin_update_contact( $id, $post['email'] ?? '', $post['phone'] ?? '' );
+
+		if ( is_wp_error( $contact ) ) {
+			$this->redirect_with_notice( 'subscribers', $contact->get_error_message(), 'error' );
+		}
+
+		// A corrected address queues a fresh confirmation - send this
+		// subscriber's own (small, bounded) pending rows now rather than
+		// waiting on cron, same as the public signup flow. No-op if
+		// nothing was queued.
+		NotificationQueue::process_for_subscriber( $id );
 
 		$this->redirect_with_notice( 'subscribers', __( 'Subscriber updated.', 'service-status-manager' ) );
 	}

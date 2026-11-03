@@ -90,8 +90,11 @@ $split_selections = function ( array $selections ) {
 				<input type="hidden" name="action" value="ssm_save_subscriber" />
 				<input type="hidden" name="id" value="<?php echo esc_attr( $editing->id ); ?>" />
 				<table class="form-table">
-					<tr><th><?php esc_html_e( 'Email', 'service-status-manager' ); ?></th><td><?php echo esc_html( $editing->email ?: '—' ); ?></td></tr>
-					<tr><th><?php esc_html_e( 'Phone', 'service-status-manager' ); ?></th><td><?php echo esc_html( $editing->phone ?: '—' ); ?></td></tr>
+					<tr><th><label for="ssm-s-email"><?php esc_html_e( 'Email', 'service-status-manager' ); ?></label></th>
+						<td><input type="email" id="ssm-s-email" name="email" class="regular-text" value="<?php echo esc_attr( $editing->email ); ?>" /></td></tr>
+					<tr><th><label for="ssm-s-phone"><?php esc_html_e( 'Phone', 'service-status-manager' ); ?></label></th>
+						<td><input type="tel" id="ssm-s-phone" name="phone" class="regular-text" value="<?php echo esc_attr( $editing->phone ); ?>" />
+						<p class="description"><?php esc_html_e( 'Changing an email or number treats it as a new, unconfirmed address: that channel drops back to unverified and a fresh confirmation is sent to the corrected address. Use the Verify button in the list if you already know it is right. Clearing a value removes that channel.', 'service-status-manager' ); ?></p></td></tr>
 					<tr><th><?php esc_html_e( 'Channels', 'service-status-manager' ); ?></th>
 						<td>
 							<?php
