@@ -108,7 +108,16 @@ class NotificationDispatcher {
 			self::extend_run_lock( $budget );
 
 			if ( 0 === $fanned && 0 === $claimed_this_pass ) {
-				break;
+				// Nothing was due *right now* - but rows a provider's
+				// per-second rate limit just deferred (next_attempt_at a
+				// second or two out) come due almost immediately. Breaking
+				// here left them for the next cron tick a minute later, so a
+				// 100-row send went out as 10 per minute. Wait briefly for
+				// them instead, as long as the run's time budget allows.
+				if ( ! self::has_remaining_work( 3 ) ) {
+					break;
+				}
+				usleep( 250000 );
 			}
 		}
 
@@ -166,9 +175,11 @@ class NotificationDispatcher {
 	}
 
 	/**
+	 * @param int $lookahead_seconds Also count rows that come due within
+	 *                               this many seconds (0 = due right now).
 	 * @return bool True if there are due queue rows or pending events left to work on.
 	 */
-	private static function has_remaining_work() {
+	private static function has_remaining_work( $lookahead_seconds = 0 ) {
 		global $wpdb;
 
 		$queue_table  = \ssm_table( 'notification_queue' );
@@ -177,7 +188,7 @@ class NotificationDispatcher {
 		$due_row = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT 1 FROM {$queue_table} WHERE status IN ('pending','retry_scheduled') AND next_attempt_at <= %s LIMIT 1",
-				\ssm_now()
+				gmdate( 'Y-m-d H:i:s', time() + max( 0, (int) $lookahead_seconds ) )
 			)
 		); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 

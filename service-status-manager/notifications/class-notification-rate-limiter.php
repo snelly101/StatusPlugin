@@ -41,8 +41,18 @@ class NotificationRateLimiter {
 
 		$granted = 0;
 
+		// Fixed one-second windows keyed by wall-clock second, rather than
+		// one key with a sliding 1s TTL. WordPress's default (non-persistent)
+		// object cache ignores expiry, so within a single long dispatcher
+		// run a sliding key stayed "full" after the first $max_per_second
+		// grants and refused every later pass - precisely the run that now
+		// waits a moment for capacity to come back. A fresh key each second
+		// resets the count without depending on cache expiry at all; the
+		// 2s transient TTL just tidies up behind it.
+		$window_key = 'ssm_notify_rl_' . $provider_slug . ':' . time();
+
 		for ( $i = 0; $i < $wanted; $i++ ) {
-			if ( ! RateLimiter::allow( 'ssm_notify_rl_' . $provider_slug, (int) $max_per_second, 1 ) ) {
+			if ( ! RateLimiter::allow( $window_key, (int) $max_per_second, 2 ) ) {
 				break;
 			}
 			++$granted;

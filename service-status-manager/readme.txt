@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.25.0
+Stable tag: 1.25.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.25.1 =
+Fixed notifications going out in batches of 10 per minute instead of all at once. Each provider has a requests-per-second limit (10 by default, under Settings); once a second's allowance was used, the dispatcher deferred the remaining messages by one second and then - finding nothing due that instant - ended the run, leaving them for the next cron tick a minute later. The dispatcher now waits briefly for deferred messages to come due and keeps going within its time budget (20 seconds by default), so a 100-message send completes in about 10 seconds. Also fixed the per-second limit refusing everything for the rest of a long run on sites without a persistent object cache. The "Process notification queue now" button benefits in the same way.
 
 = 1.25.0 =
 Admins can now edit a subscriber's email address and mobile number from the Edit Subscriber form, to correct typos or changed numbers. A changed address is treated as new and unconfirmed: that channel drops back to unverified and a fresh confirmation is sent to the corrected address (so an edit can't quietly bypass double opt-in) - use the Verify button if you already know it's right. Numbers are normalised to international format the same way as on signup. Clearing a value removes that channel. An address already used by another subscriber is rejected. Recorded in the audit log.
