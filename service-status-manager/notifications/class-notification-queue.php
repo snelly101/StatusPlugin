@@ -12,6 +12,7 @@ namespace ServiceStatusManager\Notifications;
 
 use ServiceStatusManager\SubscriberManager;
 use ServiceStatusManager\AuditLog;
+use ServiceStatusManager\Cron;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -288,6 +289,13 @@ class NotificationQueue {
 
 		$token = \ssm_get_setting( 'cron_secret', '' );
 		if ( '' === $token ) {
+			// No cron secret configured (Tools screen), so the loopback
+			// below can't authenticate. Previously this just returned, which
+			// made "immediate" silently mean "whenever WP-Cron next happens
+			// to run" - on a low-traffic site, that's the next time someone
+			// loads a page. A maintenance reminder queued by the 5-minute
+			// cron could sit for hours until an admin did something else.
+			self::wake_dispatcher_without_secret();
 			return;
 		}
 
@@ -301,6 +309,46 @@ class NotificationQueue {
 				'sslverify' => apply_filters( 'https_local_ssl_verify', false ),
 			)
 		);
+	}
+
+	/**
+	 * Wakes the dispatcher soon without the authenticated REST loopback,
+	 * for sites that haven't configured a cron secret.
+	 */
+	private static function wake_dispatcher_without_secret() {
+		if ( defined( 'DOING_CRON' ) && DOING_CRON ) {
+			// Already inside a WP-Cron process (e.g. the 5-minute maintenance
+			// cron queueing a reminder). A spawned sibling would be refused
+			// by WP's cron lock, and a single event scheduled now is
+			// invisible to the already-running loop's snapshot - so run the
+			// dispatcher at the end of *this* process instead, once, after
+			// every producer has finished queueing. run_once()'s own lock
+			// and time budget keep it bounded.
+			static $hooked = false;
+			if ( ! $hooked ) {
+				$hooked = true;
+				add_action(
+					'shutdown',
+					function () {
+						NotificationDispatcher::run_once( 'all', null, 'cron_chain' );
+					}
+				);
+			}
+			return;
+		}
+
+		// A normal request (an admin saving an incident, a public
+		// subscription): make a dispatcher cron event due right now and
+		// fire WP's standard non-blocking cron spawn, so it runs in the
+		// background without delaying this request. The event carries a
+		// distinguishing arg because WordPress refuses a single event that
+		// duplicates the recurring one-minute event within 10 minutes.
+		// Under DISABLE_WP_CRON, spawn_cron() is a no-op and the due event
+		// is simply picked up by the real cron's next wp-cron.php hit.
+		if ( ! wp_next_scheduled( Cron::PROCESS_NOTIFICATIONS, array( 'immediate' ) ) ) {
+			wp_schedule_single_event( time(), Cron::PROCESS_NOTIFICATIONS, array( 'immediate' ) );
+		}
+		spawn_cron();
 	}
 
 	/**

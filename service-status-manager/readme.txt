@@ -4,7 +4,7 @@ Tags: status page, uptime monitoring, incidents, maintenance, notifications
 Requires at least: 6.2
 Tested up to: 6.6
 Requires PHP: 8.1
-Stable tag: 1.25.1
+Stable tag: 1.25.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -230,6 +230,9 @@ Deactivating the plugin never deletes data - it only unschedules cron events. Un
 * Enable Debug-level logging under Settings > Logging temporarily, then check **Service Status > Logs**.
 
 == Changelog ==
+
+= 1.25.2 =
+Fixed queued notifications (a maintenance reminder, for example) sitting unsent until something unrelated happened on the site. When no cron secret is configured on the Tools screen, the "send this now" nudge after queueing a message had nowhere to go and silently did nothing, leaving delivery to WP-Cron - which on a quiet site only runs when someone loads a page. A reminder queued by the 5-minute maintenance cron could therefore wait hours, until an admin did something else. Without a secret the plugin now wakes the dispatcher itself: inside a cron run it dispatches at the end of that same run, and otherwise it triggers a background cron spawn immediately. Setting a cron secret (Tools screen) and pointing a real cron job at the endpoint remains the most reliable setup.
 
 = 1.25.1 =
 Fixed notifications going out in batches of 10 per minute instead of all at once. Each provider has a requests-per-second limit (10 by default, under Settings); once a second's allowance was used, the dispatcher deferred the remaining messages by one second and then - finding nothing due that instant - ended the run, leaving them for the next cron tick a minute later. The dispatcher now waits briefly for deferred messages to come due and keeps going within its time budget (20 seconds by default), so a 100-message send completes in about 10 seconds. Also fixed the per-second limit refusing everything for the rest of a long run on sites without a persistent object cache. The "Process notification queue now" button benefits in the same way.
